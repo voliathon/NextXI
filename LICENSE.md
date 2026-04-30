@@ -1,4 +1,4 @@
-Copyright © 2026 Voliathon
+Copyright © 2026 Voliathon <br />
 Copyright © Windower Dev Team
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
