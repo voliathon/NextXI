@@ -85,6 +85,7 @@ To compile this project locally, you will need the following installed:
 4. **WiX Toolset v3.14** (Required only for building `installer.sln`. Install the core tools from the [WiX Releases Page](https://github.com/wixtoolset/wix3/releases) and the "WiX v3 - Visual Studio 2022" extension).
 
 <br />
+
 ## Deployed File Structure
 When installed or successfully compiled, the deployment directory will contain the following critical components:
 
@@ -97,5 +98,6 @@ When installed or successfully compiled, the deployment directory will contain t
 * `addons/` — All user-created Lua addons (like custom UI elements or chat tools) are installed. Each addon resides in its own folder with a `manifest.xml` file.
 
 <br />
+
 ## License
 This software is provided under the MIT License. See the `LICENSE.md` file for details.
