@@ -5,7 +5,9 @@ I then wanted to understand C++ more and what was done in core as it is not taug
 
 (Visual Studio 2026 / v145) was used in the development of this application.
 
-> **Note for Developers:** I did rehandle the IPC and the migration to the .NET 10 runtime. I totally used AI tools to /assist <me> in developing.  Notice that word? `/assist`. It's faster than learning at University and when you know how to speak proper English it helps. You should never let it do everything for you! This ain't one of those Vibe coding apps and by no means does it work 100% of the time unless it is simple.  For me it is like having a peer developer.  It's a tool to help already excellent developers do more excellent stuffs.  Get GUD or Get REKT!  I troubleshoot, test, test, test everything. I want the best stuffs and have an app that is bug free. I do not like technical debt either. That stuff gets fixed! 
+> **Note for Developers:** I did rehandle the IPC and the migration to the .NET 10 runtime. I totally used AI tools to /assist <me> in developing.  Notice that word? `/assist`. It's faster than learning at University and when you know how to speak proper English it helps. You should never let it do everything for you! This ain't one of those Vibe coding apps and by no means does it work 100% of the time unless it is simple.  For me it is like having a peer developer.  It's a tool to help already excellent developers do more excellent stuffs.  Get GUD or Get REKT!  I troubleshoot, test, test, test everything. I want the best stuffs and have an app that is bug free. I do not like technical debt either. That stuff gets fixed!
+
+The current code in the Main Branch is .NET10, No dgVoodoo2, a console, an Addon Manager, and misc goodies. I got to the point of the UI and despised it. I work out of dev and never main. Check out the roadmap below to see what is being worked on in dev.
 
 <br /><br />
 
