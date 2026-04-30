@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package>
+    <name>CrashTest</name>
+    <description>[DEV] Spams the console to test engine stability.</description>
+    <author>Test</author>
+    <version>1.0.0.0</version>
+    <type>addon</type>
+    <dependencies>
+        <dependency>chat</dependency>
+    </dependencies>
+</package>

@@ -1,0 +1,96 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemDefinitionGroup>
+    <Reference>
+      <Private>False</Private>
+    </Reference>
+  </ItemDefinitionGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>disable</Nullable>
+    <SatelliteResourceLanguages>en-US</SatelliteResourceLanguages>
+    <ReleaseBuild Condition=" '$(ReleaseBuild)' == '' ">true</ReleaseBuild>
+    <ReleaseConstants Condition=" '$(ReleaseBuild)' == 'true' ">WINDOWER_RELEASE_BUILD</ReleaseConstants>
+    <ReleaseConstants Condition=" '$(ReleaseBuild)' != 'true' ">WINDOWER_TEST_BUILD</ReleaseConstants>
+    <OutputPath>$(SolutionDir)build\bin\$(Configuration)\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <SupportedCultures>en-US</SupportedCultures>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>Windower</RootNamespace>
+    <AssemblyName>windower</AssemblyName>
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
+    <ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationManifest>launcher.manifest</ApplicationManifest>
+    <StartupObject />
+    <AssemblyOriginatorKeyFile />
+    <ApplicationIcon>res\Icon.ico</ApplicationIcon>
+    <EnableUnsafeBinaryFormatterSerialization>true</EnableUnsafeBinaryFormatterSerialization>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'debug|AnyCPU' ">
+    <DefineConstants>$(ReleaseConstants);DEBUG;TRACE</DefineConstants>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <UseVSHostingProcess>true</UseVSHostingProcess>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors Condition="$(CI) == 'true'">true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'release|AnyCPU' ">
+    <DefineConstants>$(ReleaseConstants);TRACE</DefineConstants>
+    <CodeAnalysisRuleSet></CodeAnalysisRuleSet>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
+    <UseVSHostingProcess>true</UseVSHostingProcess>
+    <TreatWarningsAsErrors Condition="$(CI) == 'true'">true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Update="launcher.manifest">
+      <SubType>Designer</SubType>
+    </None>
+    <PackageReference Include="CommandLineParser" Version="2.9.1" />
+    <PackageReference Include="Costura.Fody" Version="6.0.0">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Extended.Wpf.Toolkit" Version="5.0.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <CodeAnalysisDictionary Include="CustomDictionary.xml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="res\Icon.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="FodyWeavers.xml" />
+  </ItemGroup>
+
+<Target Name="DeployEngineAssets" AfterTargets="Build">
+    <Copy SourceFiles="..\paths.xml" DestinationFolder="$(OutDir)" />
+    <ItemGroup>
+      <MarkdownDocs Include="..\*.md" />
+    </ItemGroup>
+    <Copy SourceFiles="@(MarkdownDocs)" DestinationFolder="$(OutDir)" />
+
+    <MakeDir Directories="$(OutDir)addons" />
+    <ItemGroup>
+      <MyAddons Include="..\addons\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(MyAddons)" DestinationFolder="$(OutDir)addons\%(RecursiveDir)" />
+  </Target>
+
+  <Target Name="CopyFileResources" AfterTargets="CoreCompile" Inputs="@(FileResource)" Outputs="@(FileResource->'$(OutDir)%(filename)%(extension)')">
+    <Copy SourceFiles="@(FileResource)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+    <ItemGroup>
+      <FileWrites Include="@(FileResource->'$(OutDir)%(filename)%(extension)')" />
+    </ItemGroup>
+  </Target>
+
+</Project>

@@ -1,0 +1,138 @@
+/*
+ * Copyright © Windower Dev Team
+ *
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation files
+ * (the "Software"),to deal in the Software without restriction,
+ * including without limitation the rights to use, copy, modify, merge,
+ * publish, distribute, sublicense, and/or sell copies of the Software,
+ * and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+#ifndef APSTUDIO_INVOKED
+
+#include "resource.hpp"
+#include "version.hpp"
+
+#include <winres.h>
+
+LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+ICON_MANDY              ICON        "res\\icon.ico"
+
+VS_VERSION_INFO VERSIONINFO
+    FILEVERSION WINDOWER_VERSION_MAJOR, WINDOWER_VERSION_MINOR, WINDOWER_VERSION_BUILD, WINDOWER_VERSION_REV
+    PRODUCTVERSION WINDOWER_VERSION_MAJOR, WINDOWER_VERSION_MINOR, WINDOWER_VERSION_BUILD, WINDOWER_VERSION_REV
+    FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+#if WINDOWER_RELEASE_BUILD
+#   ifdef _DEBUG
+        FILEFLAGS VS_FF_SPECIALBUILD | VS_FF_DEBUG
+#   else
+        FILEFLAGS VS_FF_SPECIALBUILD
+#   endif
+#else
+#   ifdef _DEBUG
+        FILEFLAGS VS_FF_SPECIALBUILD | VS_FF_PRIVATEBUILD | VS_FF_DEBUG
+#   else
+        FILEFLAGS VS_FF_SPECIALBUILD | VS_FF_PRIVATEBUILD
+#   endif
+#endif
+    FILEOS 0x40004L
+    FILETYPE 0x2L
+    FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "000004b0"
+        BEGIN
+            VALUE "FileDescription", "Windower Core"
+            VALUE "FileVersion", WINDOWER_VERSION_STRING
+            VALUE "InternalName", "Windower"
+            VALUE "LegalCopyright", WINDOWER_COPYRIGHT_STRING
+            VALUE "OriginalFilename", "core.dll"
+            VALUE "ProductName", "Windower"
+            VALUE "ProductVersion", WINDOWER_VERSION_STRING
+            VALUE "SpecialBuild", WINDOWER_BUILD_TAG_STRING
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0000, 1200
+    END
+END
+
+client-commands         RCDATA      "res\\client-commands.txt"
+icons                   RCDATA      "res\\icons.png"
+layout-grid.100         RCDATA      "res\\layout-grid.100.png"
+layout-grid.125         RCDATA      "res\\layout-grid.125.png"
+layout-grid.150         RCDATA      "res\\layout-grid.150.png"
+layout-grid.175         RCDATA      "res\\layout-grid.175.png"
+layout-grid.200         RCDATA      "res\\layout-grid.200.png"
+layout-grid.225         RCDATA      "res\\layout-grid.225.png"
+layout-grid.250         RCDATA      "res\\layout-grid.250.png"
+layout-grid.275         RCDATA      "res\\layout-grid.275.png"
+layout-grid.300         RCDATA      "res\\layout-grid.300.png"
+layout-grid.325         RCDATA      "res\\layout-grid.325.png"
+layout-grid.350         RCDATA      "res\\layout-grid.350.png"
+layout-grid.375         RCDATA      "res\\layout-grid.375.png"
+layout-grid.400         RCDATA      "res\\layout-grid.400.png"
+system.100              RCDATA      "res\\system.100.png"
+system.125              RCDATA      "res\\system.125.png"
+system.150              RCDATA      "res\\system.150.png"
+system.175              RCDATA      "res\\system.175.png"
+system.200              RCDATA      "res\\system.200.png"
+system.225              RCDATA      "res\\system.225.png"
+system.250              RCDATA      "res\\system.250.png"
+system.275              RCDATA      "res\\system.275.png"
+system.300              RCDATA      "res\\system.300.png"
+system.325              RCDATA      "res\\system.325.png"
+system.350              RCDATA      "res\\system.350.png"
+system.375              RCDATA      "res\\system.375.png"
+system.400              RCDATA      "res\\system.400.png"
+
+#if WINDOWER_RELEASE_BUILD
+    skin.100            RCDATA      "res\\stable\\skin.100.png"
+    skin.125            RCDATA      "res\\stable\\skin.125.png"
+    skin.150            RCDATA      "res\\stable\\skin.150.png"
+    skin.175            RCDATA      "res\\stable\\skin.175.png"
+    skin.200            RCDATA      "res\\stable\\skin.200.png"
+    skin.225            RCDATA      "res\\stable\\skin.225.png"
+    skin.250            RCDATA      "res\\stable\\skin.250.png"
+    skin.275            RCDATA      "res\\stable\\skin.275.png"
+    skin.300            RCDATA      "res\\stable\\skin.300.png"
+    skin.325            RCDATA      "res\\stable\\skin.325.png"
+    skin.350            RCDATA      "res\\stable\\skin.350.png"
+    skin.375            RCDATA      "res\\stable\\skin.375.png"
+    skin.400            RCDATA      "res\\stable\\skin.400.png"
+#else
+    skin.100            RCDATA      "res\\test\\skin.100.png"
+    skin.125            RCDATA      "res\\test\\skin.125.png"
+    skin.150            RCDATA      "res\\test\\skin.150.png"
+    skin.175            RCDATA      "res\\test\\skin.175.png"
+    skin.200            RCDATA      "res\\test\\skin.200.png"
+    skin.225            RCDATA      "res\\test\\skin.225.png"
+    skin.250            RCDATA      "res\\test\\skin.250.png"
+    skin.275            RCDATA      "res\\test\\skin.275.png"
+    skin.300            RCDATA      "res\\test\\skin.300.png"
+    skin.325            RCDATA      "res\\test\\skin.325.png"
+    skin.350            RCDATA      "res\\test\\skin.350.png"
+    skin.375            RCDATA      "res\\test\\skin.375.png"
+    skin.400            RCDATA      "res\\test\\skin.400.png"
+#endif
+
+#endif

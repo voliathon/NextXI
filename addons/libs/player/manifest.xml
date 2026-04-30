@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package>
+  <name>player</name>
+  <version>1.3.1.1</version>
+  <type>library</type>
+  <dependencies>
+    <dependency>player_service</dependency>
+    <dependency>account</dependency>
+    <dependency>shared</dependency>
+    <dependency>resources</dependency>
+  </dependencies>
+</package>

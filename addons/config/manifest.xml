@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package>
+  <name>config</name>
+  <description>[OFFICIAL] Menu for FPS and draw distance tweaks.</description>
+  <version>1.0.2.2</version>
+  <type>addon</type>
+  <dependencies>
+    <dependency>memory</dependency>
+    <dependency>settings</dependency>
+    <dependency>ui</dependency>
+    <dependency>chat</dependency>
+    <dependency>command</dependency>
+    <dependency>math</dependency>
+    <dependency>string</dependency>
+    <dependency>table</dependency>
+  </dependencies>
+</package>

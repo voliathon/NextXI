@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package>
+    <name>ui</name>
+    <version>1.0.0</version>
+    <type>library</type>
+    <dependencies>
+        <dependency>math</dependency>
+        <dependency>table</dependency>
+    </dependencies>
+</package>

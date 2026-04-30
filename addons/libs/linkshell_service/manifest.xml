@@ -1,0 +1,10 @@
+<package>
+  <name>linkshell_service</name>
+  <version>1.2.2.2</version>
+  <type>service</type>
+  <dependencies>
+    <dependency>packet</dependency>
+    <dependency>shared</dependency>
+    <dependency>struct</dependency>
+  </dependencies>
+</package>

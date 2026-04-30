@@ -1,13 +1,8 @@
-# Build Files
-/build
-/packages
-
-# IDE Files
-/.vs
-/.vscode
-
-# User Files
-*.user
-
-# Resource Editor Files
-*.aps
+# Build folders
+bin/
+obj/
+x64/
+x86/
+Debug/
+Release/
+.vs/

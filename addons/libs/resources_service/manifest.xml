@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package>
+  <name>resources_service</name>
+  <version>1.3.0</version>
+  <type>service</type>
+  <dependencies>
+    <dependency>resources_data</dependency> 
+	<dependency>shared</dependency>
+    <dependency>file</dependency>
+  </dependencies>
+</package>

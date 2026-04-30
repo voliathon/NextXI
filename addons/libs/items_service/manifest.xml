@@ -1,0 +1,15 @@
+<package>
+  <name>items_service</name>
+  <version>2.3.1.1</version>
+  <type>service</type>
+  <dependencies>
+    <dependency>account</dependency>
+    <dependency>client_data</dependency>
+    <dependency>packet</dependency>
+    <dependency>resources</dependency>
+    <dependency>shared</dependency>
+    <dependency>string</dependency>
+    <dependency>struct</dependency>
+    <dependency>table</dependency>
+  </dependencies>
+</package>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package>
+    <name>Debugger</name>
+    <description>[DEV] Tracks memory leaks and garbage collection.</description>
+    <version>1.0.0</version>
+    <type>addon</type>
+    <dependencies>
+        <dependency>ui</dependency>
+        <dependency>chat</dependency>
+        <dependency>command</dependency>
+        <dependency>string</dependency>
+    </dependencies>
+</package>

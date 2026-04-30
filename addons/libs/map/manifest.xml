@@ -1,0 +1,11 @@
+<package>
+  <name>map</name>
+  <version>3.0.0.0</version>
+  <type>library</type>
+  <dependencies>
+    <dependency>key_items</dependency>
+    <dependency>memory</dependency>
+    <dependency>target</dependency>
+    <dependency>world</dependency>
+  </dependencies>
+</package>
