@@ -396,7 +396,7 @@
       <WarningLevel>Level4</WarningLevel>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WINDOWER_AUTO_VERSION;$(ReleaseConstants);WIN32_LEAN_AND_MEAN;NOMINMAX;WINVER=_WIN32_WINNT_WIN8;_WIN32_WINNT=_WIN32_WINNT_WIN8;PSAPI_VERSION=1;_HAS_AUTO_PTR_ETC=0;_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;NDEBUG;_DEBUG;gsl_FEATURE_WITH_CONTAINER_TO_STD=14;gsl_FEATURE_MAKE_SPAN_TO_STD=14;gsl_FEATURE_BYTE_SPAN_TO_STD=14;gsl_FEATURE_OWNER_MACRO=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(IntDir)src;$(ProjectDir)src;$(ProjectDir)lib;$(SolutionDir)extern\luajit\repo\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(IntDir)src;$(ProjectDir)src;$(ProjectDir)lib;$(SolutionDir)extern\luajit\src\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <EnablePREfast>true</EnablePREfast>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -430,7 +430,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WINDOWER_AUTO_VERSION;$(ReleaseConstants);WIN32_LEAN_AND_MEAN;NOMINMAX;WINVER=_WIN32_WINNT_WIN8;_WIN32_WINNT=_WIN32_WINNT_WIN8;PSAPI_VERSION=1;_HAS_AUTO_PTR_ETC=0;_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;NDEBUG;gsl_FEATURE_WITH_CONTAINER_TO_STD=14;gsl_FEATURE_MAKE_SPAN_TO_STD=14;gsl_FEATURE_BYTE_SPAN_TO_STD=14;gsl_FEATURE_OWNER_MACRO=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(IntDir)src;$(ProjectDir)src;$(ProjectDir)lib;$(SolutionDir)extern\luajit\repo\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(IntDir)src;$(ProjectDir)src;$(ProjectDir)lib;$(SolutionDir)extern\luajit\src\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <EnablePREfast>true</EnablePREfast>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>

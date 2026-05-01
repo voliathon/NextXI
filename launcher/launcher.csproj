@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemDefinitionGroup>
     <Reference>
@@ -27,7 +27,7 @@
     <ApplicationManifest>launcher.manifest</ApplicationManifest>
     <StartupObject />
     <AssemblyOriginatorKeyFile />
-    <ApplicationIcon>res\Icon.ico</ApplicationIcon>
+    <ApplicationIcon>res\favicon.ico</ApplicationIcon>
     <EnableUnsafeBinaryFormatterSerialization>true</EnableUnsafeBinaryFormatterSerialization>
   </PropertyGroup>
 
@@ -62,10 +62,6 @@
 
   <ItemGroup>
     <CodeAnalysisDictionary Include="CustomDictionary.xml" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Resource Include="res\Icon.ico" />
   </ItemGroup>
 
   <ItemGroup>

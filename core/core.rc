@@ -33,7 +33,7 @@ LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-ICON_MANDY              ICON        "res\\icon.ico"
+ICON_MANDY              ICON        "res\\favicon.ico"
 
 VS_VERSION_INFO VERSIONINFO
     FILEVERSION WINDOWER_VERSION_MAJOR, WINDOWER_VERSION_MINOR, WINDOWER_VERSION_BUILD, WINDOWER_VERSION_REV

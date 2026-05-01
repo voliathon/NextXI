@@ -1,6 +1,6 @@
 {
-  "name": "windower",
-  "version-string": "5.0",
+  "name": "nextxi",
+  "version-string": "1.0.0",
   "dependencies": [
     "ms-gsl",
     "pugixml"
