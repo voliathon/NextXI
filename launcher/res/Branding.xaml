@@ -24,8 +24,8 @@ SOFTWARE.
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
-    <sys:String x:Key="ProductName">Fenestra</sys:String>
-    <Color x:Key="WindowerBrandingColor">#FF5861AC</Color>
+    <sys:String x:Key="ProductName">NextXI</sys:String>
+    <Color x:Key="WindowerBrandingColor">#9744AA00</Color>
     <Style x:Key="WindowerLogoType" TargetType="{x:Type Control}">
         <Setter Property="IsTabStop" Value="False"/>
         <Setter Property="KeyboardNavigation.TabNavigation" Value="None"/>

@@ -43,6 +43,7 @@ namespace Windower.Core
         private readonly EnvironmentAnimation? environmentAnimation;
         private readonly FontType? fontType;
         private readonly bool? accessControlPrompt;
+        private readonly GraphicsEngine? selectedEngine;
 
         public static Profile Default { get; } = default(Profile);
 
@@ -51,7 +52,7 @@ namespace Windower.Core
             bool hardwareMouse, int maxSounds, bool playSoundWhenUnfocused, int mipmapping, bool bumpMapping, bool mapCompression,
             TextureCompression textureCompression, EnvironmentAnimation environmentAnimation, FontType fontType, float? gamma,
             bool driverStability, bool playIntro, bool debug, bool developerMode, string settingsPath, string userPath,
-            string tempPath, bool accessControlPrompt)
+            string tempPath, bool accessControlPrompt, GraphicsEngine selectedEngine)
         {
             this.name = name?.Trim() ?? throw new ArgumentNullException(nameof(name));
             this.samplesPerPixel = samplesPerPixel;
@@ -62,6 +63,7 @@ namespace Windower.Core
             this.environmentAnimation = environmentAnimation;
             this.fontType = fontType;
             this.accessControlPrompt = accessControlPrompt;
+            this.selectedEngine = selectedEngine;
 
             Region = region;
             UseSteam = useSteam;
@@ -87,6 +89,8 @@ namespace Windower.Core
         }
 
         public string Name => name ?? string.Empty;
+
+        public GraphicsEngine SelectedEngine => selectedEngine ?? GraphicsEngine.VanillaDX8;
 
         public Region? Region { get; }
 
@@ -146,6 +150,13 @@ namespace Windower.Core
 
         public bool AccessControlPrompt => accessControlPrompt ?? true;
 
+        public enum GraphicsEngine
+        {
+            VanillaDX8 = 0,
+            NextXIDX11 = 1,
+            RtxRemixVulkan = 2
+        }
+
         [SuppressMessage("Microsoft.Design", "CA1006")]
         [SuppressMessage("Microsoft.Design", "CA1026")]
         [SuppressMessage("Microsoft.Maintainability", "CA1502")]
@@ -180,7 +191,8 @@ namespace Windower.Core
             Maybe<string> SettingsPath = new Maybe<string>(),
             Maybe<string> UserPath = new Maybe<string>(),
             Maybe<string> TempPath = new Maybe<string>(),
-            Maybe<bool> AccessControlPrompt = new Maybe<bool>())
+            Maybe<bool> AccessControlPrompt = new Maybe<bool>(),
+            Maybe<GraphicsEngine> SelectedEngine = new Maybe<GraphicsEngine>())
         {
             if (Name != this.Name || Region != this.Region || UseSteam != this.UseSteam || Executable != this.Executable ||
                 ExecutableArgs != this.ExecutableArgs || RunAsAdmin != this.RunAsAdmin || WindowType != this.WindowType ||
@@ -192,7 +204,7 @@ namespace Windower.Core
                 FontType != this.FontType || Gamma != this.Gamma || DriverStability != this.DriverStability ||
                 PlayIntro != this.PlayIntro || Debug != this.Debug || DeveloperMode != this.DeveloperMode ||
                 SettingsPath != this.SettingsPath || UserPath != this.UserPath || TempPath != this.TempPath ||
-                AccessControlPrompt != this.AccessControlPrompt)
+                AccessControlPrompt != this.AccessControlPrompt || SelectedEngine != this.SelectedEngine)
             {
                 return new Profile(
                     Name.Default(this.Name),
@@ -224,7 +236,8 @@ namespace Windower.Core
                     SettingsPath.Default(this.SettingsPath),
                     UserPath.Default(this.UserPath),
                     TempPath.Default(this.TempPath),
-                    AccessControlPrompt.Default(this.AccessControlPrompt));
+                    AccessControlPrompt.Default(this.AccessControlPrompt),
+                    SelectedEngine.Default(this.SelectedEngine));
             }
 
             return this;
@@ -235,6 +248,7 @@ namespace Windower.Core
         {
             get
             {
+                yield return Pair("graphics_engine", SelectedEngine.ToString());
                 yield return Pair("window_type", WindowType);
                 yield return Pair("display_device_name", Display);
                 yield return Pair("width", Resolution?.Width);
@@ -271,6 +285,7 @@ namespace Windower.Core
             get
             {
                 var builder = new StringBuilder("launch");
+                AddOption(builder, p => p.SelectedEngine, "engine");
                 AddOption(builder, p => p.Region, "region");
                 AddOption(builder, p => p.UseSteam, "steam");
                 AddOption(builder, p => p.Executable, "executable");

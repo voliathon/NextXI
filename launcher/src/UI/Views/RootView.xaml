@@ -28,7 +28,7 @@ SOFTWARE.
         Title="{DynamicResource ProductName}"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
-        Width="370" Height="605"
+        Width="550" Height="700"
         Icon="{Binding Source, Source={StaticResource Icon}, Mode=OneTime}">
     <Window.Template>
         <ControlTemplate TargetType="{x:Type Window}">

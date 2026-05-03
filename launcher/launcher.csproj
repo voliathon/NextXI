@@ -18,8 +18,8 @@
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <SupportedCultures>en-US</SupportedCultures>
     <OutputType>WinExe</OutputType>
-    <RootNamespace>Windower</RootNamespace>
-    <AssemblyName>windower</AssemblyName>
+    <RootNamespace>NextXI</RootNamespace>
+    <AssemblyName>NextXI</AssemblyName>
     <UseWindowsForms>true</UseWindowsForms>
     <UseWPF>true</UseWPF>
     <ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>

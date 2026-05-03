@@ -34,11 +34,39 @@ SOFTWARE.
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="/windower;component/res/Branding.xaml"/>
-                <ResourceDictionary Source="/windower;component/res/Strings.xaml"/>
+                <ResourceDictionary Source="/NextXI;component/res/Branding.xaml"/>
+                <ResourceDictionary Source="/NextXI;component/res/Strings.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
-            <Image x:Key="Icon" Source="/windower;component/res/Icon.ico"/>
+            <Style TargetType="ToolTip">
+                <Setter Property="ToolTipService.InitialShowDelay" Value="100" />
+                <Setter Property="ToolTipService.ShowDuration" Value="10000" />
+                <Setter Property="ToolTipService.BetweenShowDelay" Value="0" />
+
+                <Setter Property="Background" Value="#1E1E1E" />
+                <Setter Property="Foreground" Value="#EAEAEA" />
+                <Setter Property="BorderBrush" Value="#4FB0E8" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Padding" Value="8,6" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ToolTip">
+                            <Border Background="{TemplateBinding Background}" 
+                            BorderBrush="{TemplateBinding BorderBrush}" 
+                            BorderThickness="{TemplateBinding BorderThickness}" 
+                            CornerRadius="4">
+                                <Border.Effect>
+                                    <DropShadowEffect Color="Black" Opacity="0.5" BlurRadius="8" ShadowDepth="2" />
+                                </Border.Effect>
+                                <ContentPresenter Margin="{TemplateBinding Padding}" />
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Image x:Key="Icon" Source="/NextXI;component/res/Icon.ico"/>
 
             <SolidColorBrush x:Key="WindowerBranding" Color="{DynamicResource WindowerBrandingColor}"/>
             <SolidColorBrush x:Key="BaseLow" Color="#33000000"/>

@@ -123,6 +123,12 @@ namespace Windower.UI.Views
             }
         }
 
+        public int SelectedEngine
+        {
+            get => (int)profile.SelectedEngine;
+            set => Set(ref profile, profile.With(SelectedEngine: (Profile.GraphicsEngine)value));
+        }
+
         public WindowType WindowType
         {
             get => profile.WindowType;

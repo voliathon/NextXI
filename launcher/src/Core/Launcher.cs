@@ -141,8 +141,8 @@ namespace Windower.Core
 
                         using (var settings = new SettingsChannel(injector.Process, profile.Settings))
                         {
+                            await injector.Inject(Path.Combine(Path.GetDirectoryName(CorePath), "lua51.dll"));
                             await injector.Inject(CorePath);
-
                             progress?.Report(ProgressDetail.Create(LaunchStatus.TransferringSettings));
                             await settings.FinishAsync(token);
                         }
