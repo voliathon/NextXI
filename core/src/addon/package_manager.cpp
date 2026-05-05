@@ -202,7 +202,7 @@ windower::package::package(std::filesystem::path root_path, bool can_update) :
     m_version = package_version{package.child("version").text().as_string()};
 
     auto const type =
-        std::string_view{package.child("type").text().as_string("addon")};
+        std::string_view{ package.child("type").text().as_string("addon") };
     if (type == "addon")
     {
         m_type = package_type::addon;
@@ -211,13 +211,13 @@ windower::package::package(std::filesystem::path root_path, bool can_update) :
     {
         m_type = package_type::service;
     }
-    else if (type == "library")
+    else if (type == "library" || type == "data" || type == "plugin")
     {
         m_type = package_type::library;
     }
     else
     {
-        throw package_error{u8"PKG:M2"};
+        throw package_error{ u8"PKG:M2" };
     }
 
     auto const dependencies = package.child("dependencies");
@@ -952,9 +952,10 @@ void windower::package_manager::populate_installed_packages(
                             v.value->name(), std::move(v));
                     }
                 }
-                catch (std::runtime_error const&)
+                catch (std::exception const& e)
                 {
-                    core::error(u8"package manager");
+                    // Print the bad package but KEEP SCANNING!
+                    core::error(u8"package manager", e);
                 }
             }
         }
@@ -1083,10 +1084,8 @@ void windower::package_manager::topological_sort(
     {
         if (required)
         {
-            // SAFETY NET: Log and safely abort this dependency branch.
-            core::error(
-                u8"package manager", u8"Missing required dependency: " + name);
-            return;
+            // Throw the error so the ENTIRE load aborts cleanly without crashing the client!
+            throw package_error{ u8"PKG:P1", name };
         }
     }
     else

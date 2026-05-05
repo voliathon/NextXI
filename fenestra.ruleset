@@ -22,7 +22,7 @@ ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 -->
-<RuleSet Name="Rules for Windower/Fenestra" Description="Code analysis rules for core.vcxproj." ToolsVersion="17.0">
+<RuleSet Name="Rules for Windower/NextXI" Description="Code analysis rules for core.vcxproj." ToolsVersion="17.0">
   <IncludeAll Action="Warning" />
   <Rules AnalyzerId="Microsoft.Analyzers.NativeCodeAnalysis" RuleNamespace="Microsoft.Rules.Native">
     <Rule Id="C26434" Action="None" />

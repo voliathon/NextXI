@@ -25,6 +25,8 @@
 #include "core.hpp"
 
 #include "addon/error.hpp"
+#include "addon/errors/package_error.hpp"
+
 #include "command_handlers.hpp"
 #include "command_manager.hpp"
 #include "crash_handler.hpp"
@@ -50,320 +52,272 @@
 
 namespace
 {
-struct log_message
-{
-    std::wstring text;
-    bool is_error;
-};
-
-std::mutex log_mutex;
-std::condition_variable log_cv;
-std::vector<log_message> log_queue;
-bool log_shutdown = false;
-std::thread log_thread;
-
-void log_worker()
-{
-    auto output_handle = ::GetStdHandle(STD_OUTPUT_HANDLE);
-    auto error_handle  = ::GetStdHandle(STD_ERROR_HANDLE);
-    std::vector<log_message> local_queue;
-
-    while (true)
+    struct log_message
     {
-        {
-            // Sleep the background thread until there is a log message to
-            // process
-            std::unique_lock<std::mutex> lock{log_mutex};
-            log_cv.wait(
-                lock, [] { return !log_queue.empty() || log_shutdown; });
+        std::u8string text; // <-- Kept as u8string to prevent truncation!
+        bool is_error;
+    };
 
-            if (log_shutdown && log_queue.empty())
-            {
-                break;
-            }
+    std::mutex log_mutex;
+    std::condition_variable log_cv;
+    std::vector<log_message> log_queue;
+    bool log_shutdown = false;
+    std::thread log_thread;
 
-            // Steal the pending messages instantly to release the lock back to
-            // the game thread
-            std::swap(log_queue, local_queue);
-        }
-
-        // Process all console output safely in the background
-        for (auto& msg : local_queue)
-        {
-            auto handle = msg.is_error ? error_handle : output_handle;
-
-            ::CONSOLE_SCREEN_BUFFER_INFO buffer_info;
-            bool const has_info =
-                ::GetConsoleScreenBufferInfo(handle, &buffer_info);
-
-            // If the console cursor isn't at the start of a line, inject a
-            // newline
-            if (has_info && buffer_info.dwCursorPosition.X != 0)
-            {
-                msg.text.insert(msg.text.begin(), L'\n');
-            }
-
-            if (msg.is_error)
-            {
-                ::SetConsoleTextAttribute(
-                    handle, FOREGROUND_RED | FOREGROUND_INTENSITY);
-            }
-
-            ::DWORD written = 0;
-            ::WriteConsoleW(
-                handle, msg.text.data(), msg.text.size(), &written, nullptr);
-
-            if (msg.is_error)
-            {
-                ::SetConsoleTextAttribute(
-                    handle, has_info ? buffer_info.wAttributes
-                                     : (FOREGROUND_RED | FOREGROUND_GREEN |
-                                        FOREGROUND_BLUE));
-            }
-
-            ::OutputDebugStringW(msg.text.c_str());
-
-// --- SEND TO IN-GAME UI CONSOLE ---
-            auto u8_text = windower::to_u8string(msg.text);
-            // Strip trailing newlines so we don't get double-spacing in the UI
-            while (!u8_text.empty() &&
-                   (u8_text.back() == u8'\n' || u8_text.back() == u8'\r'))
-            {
-                u8_text.pop_back();
-            }
-
-            // The background log thread MUST NOT directly modify the UI
-            // buffer! Hand the text safely back to the main FFXI thread via the
-            // mutex-locked queue.
-            windower::core::instance().run_on_next_frame(
-                [text = std::move(u8_text)]() {
-                    windower::ui::engine_console::push_log(text);
-                });
-        }
-        local_queue.clear();
-    }
-}
-
-// Automatically cleans up the background thread when Windower unloads
-struct async_logger_cleanup
-{
-    constexpr async_logger_cleanup() noexcept                    = default;
-    async_logger_cleanup(async_logger_cleanup const&)            = delete;
-    async_logger_cleanup(async_logger_cleanup&&)                 = delete;
-    async_logger_cleanup& operator=(async_logger_cleanup const&) = delete;
-    async_logger_cleanup& operator=(async_logger_cleanup&&)      = delete;
-
-    ~async_logger_cleanup()
+    void log_worker()
     {
-        {
-            std::lock_guard<std::mutex> lock{log_mutex};
-            log_shutdown = true;
-        }
-        log_cv.notify_all();
-        if (log_thread.joinable())
-        {
-            // telling the DLL to let go of the thread and allow the OS to kill
-            // the process immediately without waiting. This is necessary to
-            // avoid deadlocks on shutdown if the thread is currently blocked in
-            // a Windows API call that doesn't respond to cancellation (e.g.
-            // WriteConsoleW).
-            log_thread.detach();
-        }
-    }
-} cleanup_logger;
+        auto output_handle = ::GetStdHandle(STD_OUTPUT_HANDLE);
+        auto error_handle = ::GetStdHandle(STD_ERROR_HANDLE);
+        std::vector<log_message> local_queue;
 
-void queue_log(std::wstring text, bool is_error)
-{
-    {
-        std::lock_guard<std::mutex> lock{log_mutex};
-        // Lazy-initialize the thread so it doesn't spin up unless a log
-        // actually happens
-        if (!log_thread.joinable())
+        while (true)
         {
-            log_thread = std::thread{log_worker};
-        }
-        log_queue.push_back({std::move(text), is_error});
-    }
-    log_cv.notify_one();
-}
-
-template<typename E>
-void get_type_name(std::u8string& result, E const& exception)
-{
-    std::string_view const type_name = typeid(exception).name();
-    std::transform(
-        type_name.begin(), type_name.end(), std::back_inserter(result),
-        [](auto c) noexcept { return gsl::narrow_cast<char8_t>(c); });
-}
-
-void get_error_message(
-    std::u8string& result, windower::lua::error const& exception)
-{
-    std::string_view const what = exception.what();
-    result.reserve(result.size() + what.size());
-    std::copy(what.begin(), what.end(), std::back_inserter(result));
-
-    if (windower::core::instance().settings.verbose_logging &&
-        exception.has_stack_trace())
-    {
-        for (auto const& frame : exception.stack_trace())
-        {
-            result.append(1, u8'\n');
-            if (!frame.type.empty())
             {
-                result.append(1, u8'(');
-                result.append(frame.type);
-                result.append(1, u8')');
-            }
-            result.append(frame.name.empty() ? frame.name : u8"<unknown>");
-            if (!frame.source.value.empty())
-            {
-                result.append(u8"\n  ");
-                if (frame.source.type == u8"string")
+                std::unique_lock<std::mutex> lock{ log_mutex };
+                log_cv.wait(
+                    lock, [] { return !log_queue.empty() || log_shutdown; });
+
+                if (log_shutdown && log_queue.empty())
                 {
-                    if (gsl::at(frame.source.value, 0) == u8'=')
+                    break;
+                }
+                std::swap(log_queue, local_queue);
+            }
+
+            for (auto& msg : local_queue)
+            {
+                // Convert to wstring ONLY for the external developer console window
+                auto w_text = windower::to_wstring(msg.text);
+                auto handle = msg.is_error ? error_handle : output_handle;
+
+                ::CONSOLE_SCREEN_BUFFER_INFO buffer_info;
+                bool const has_info =
+                    ::GetConsoleScreenBufferInfo(handle, &buffer_info);
+
+                if (has_info && buffer_info.dwCursorPosition.X != 0)
+                {
+                    w_text.insert(w_text.begin(), L'\n');
+                }
+
+                if (msg.is_error)
+                {
+                    ::SetConsoleTextAttribute(
+                        handle, FOREGROUND_RED | FOREGROUND_INTENSITY);
+                }
+
+                ::DWORD written = 0;
+                ::WriteConsoleW(
+                    handle, w_text.data(), w_text.size(), &written, nullptr);
+
+                if (msg.is_error)
+                {
+                    ::SetConsoleTextAttribute(
+                        handle, has_info ? buffer_info.wAttributes
+                        : (FOREGROUND_RED | FOREGROUND_GREEN |
+                            FOREGROUND_BLUE));
+                }
+
+                ::OutputDebugStringW(w_text.c_str());
+
+                // --- SEND TO IN-GAME UI CONSOLE ---
+                windower::core::instance().run_on_next_frame(
+                    [text = std::move(msg.text)]() {
+                        // Split the text explicitly by \n so the UI perfectly renders every line!
+                        std::u8string::size_type start = 0;
+                        std::u8string::size_type pos;
+
+                        while ((pos = text.find(u8'\n', start)) != std::u8string::npos)
+                        {
+                            auto line = text.substr(start, pos - start);
+                            while (!line.empty() && line.back() == u8'\r') line.pop_back(); // Strip carriage returns
+
+                            if (!line.empty()) {
+                                windower::ui::engine_console::push_log(line);
+                            }
+                            start = pos + 1;
+                        }
+
+                        auto final_line = text.substr(start);
+                        while (!final_line.empty() && final_line.back() == u8'\r') final_line.pop_back();
+
+                        if (!final_line.empty()) {
+                            windower::ui::engine_console::push_log(final_line);
+                        }
+                    });
+            }
+            local_queue.clear();
+        }
+    }
+
+    struct async_logger_cleanup
+    {
+        constexpr async_logger_cleanup() noexcept = default;
+        async_logger_cleanup(async_logger_cleanup const&) = delete;
+        async_logger_cleanup(async_logger_cleanup&&) = delete;
+        async_logger_cleanup& operator=(async_logger_cleanup const&) = delete;
+        async_logger_cleanup& operator=(async_logger_cleanup&&) = delete;
+
+        ~async_logger_cleanup()
+        {
+            {
+                std::lock_guard<std::mutex> lock{ log_mutex };
+                log_shutdown = true;
+            }
+            log_cv.notify_all();
+            if (log_thread.joinable())
+            {
+                log_thread.detach();
+            }
+        }
+    } cleanup_logger;
+
+    void queue_log(std::u8string text, bool is_error)
+    {
+        {
+            std::lock_guard<std::mutex> lock{ log_mutex };
+            if (!log_thread.joinable())
+            {
+                log_thread = std::thread{ log_worker };
+            }
+            log_queue.push_back({ std::move(text), is_error });
+        }
+        log_cv.notify_one();
+    }
+
+    // 1. Explicit Lua Stack Trace Extractor
+    void format_lua_error(std::u8string& result, windower::lua::error const& exception)
+    {
+        if (exception.has_stack_trace())
+        {
+            for (auto const& frame : exception.stack_trace())
+            {
+                result.append(1, u8'\n');
+                if (!frame.type.empty())
+                {
+                    result.append(1, u8'(');
+                    result.append(frame.type);
+                    result.append(1, u8')');
+                }
+                result.append(frame.name.empty() ? frame.name : u8"<unknown>");
+                if (!frame.source.value.empty())
+                {
+                    result.append(u8"\n  ");
+                    if (frame.source.type == u8"string")
                     {
-                        result.append(
-                            frame.source.value.begin() + 1,
-                            frame.source.value.end());
+                        if (gsl::at(frame.source.value, 0) == u8'=')
+                            result.append(frame.source.value.begin() + 1, frame.source.value.end());
+                        else
+                        {
+                            result.append(u8"[string]");
+                            result.append(frame.source.value);
+                        }
                     }
                     else
                     {
-                        result.append(u8"[string]");
+                        if (frame.source.type != u8"file")
+                        {
+                            result.append(1, u8'[');
+                            result.append(frame.source.type);
+                            result.append(1, u8']');
+                        }
                         result.append(frame.source.value);
                     }
-                }
-                else
-                {
-                    if (frame.source.type != u8"file")
+
+                    if (frame.source.line != 0)
                     {
-                        result.append(1, u8'[');
-                        result.append(frame.source.type);
-                        result.append(1, u8']');
+                        result.append(1, u8':');
+                        result.append(windower::to_u8string(frame.source.line));
                     }
-                    result.append(frame.source.value);
-                }
-
-                if (frame.source.line != 0)
-                {
-                    result.append(1, u8':');
-                    result.append(windower::to_u8string(frame.source.line));
-                }
-            }
-            if (!frame.locals.empty())
-            {
-                result.append(u8"\n  locals:");
-                for (auto const& l : frame.locals)
-                {
-                    result.append(u8"\n    ");
-                    result.append(l.name);
-                    result.append(u8" = [");
-                    result.append(l.type);
-                    result.append(u8"]");
-                    result.append(l.value);
-                }
-            }
-            if (!frame.upvalues.empty())
-            {
-                result.append(u8"\n  upvalues:");
-                for (auto const& u : frame.upvalues)
-                {
-                    result.append(u8"\n    ");
-                    result.append(u.name);
-                    result.append(u8" = [");
-                    result.append(u.type);
-                    result.append(u8"]");
-                    result.append(u.value);
                 }
             }
         }
     }
-}
 
-template<typename E>
-void get_error_message(std::u8string& result, E const& exception)
-{
-    if (auto ptr = dynamic_cast<windower::lua::error const*>(&exception))
+    // 2. Brute-Force Unwrapper (Bypasses Template Slicing!)
+    void unwrap_exception(std::u8string& result, std::size_t level, std::exception const& ex)
     {
-        get_error_message(result, *ptr);
-    }
-    else
-    {
-        get_type_name(result, exception);
-        result.append(u8"\n");
-        auto const what = windower::to_u8string(exception.what());
-        result.append(what);
-        if (auto windower_error =
-                dynamic_cast<windower::windower_error const*>(&exception))
-        {
-            result.append(u8": ");
-            result.append(windower_error->message());
+        std::string_view const type_name = typeid(ex).name();
+        std::transform(type_name.begin(), type_name.end(), std::back_inserter(result), [](auto c) noexcept { return gsl::narrow_cast<char8_t>(c); });
+
+        result.append(u8"\n  What: ");
+        auto const what_str = ex.what();
+        if (what_str && what_str[0] != '\0') {
+            result.append(windower::to_u8string(what_str));
         }
-    }
-}
+        else {
+            result.append(u8"<empty>");
+        }
 
-template<typename E>
-void get_error_message(
-    std::u8string& result, std::size_t level, E const& exception)
-{
-    get_error_message(result, exception);
-    if (auto nested = dynamic_cast<std::nested_exception const*>(&exception))
-    {
-        if (auto nested_ptr = nested->nested_ptr())
-        {
-            try
-            {
-                std::rethrow_exception(nested_ptr);
+        if (auto windower_err = dynamic_cast<windower::windower_error const*>(&ex)) {
+            result.append(u8"\n  Message: ");
+            result.append(windower_err->message());
+        }
+
+        if (auto pkg_err = dynamic_cast<windower::package_error const*>(&ex)) {
+            result.append(u8"\n  Packages: ");
+            for (auto const& p : pkg_err->packages()) {
+                result.append(p);
+                result.append(1, u8' ');
             }
-            catch (std::exception const& e)
-            {
-                result.append(u8"\nnested exception [");
+        }
+
+        if (auto lua_err = dynamic_cast<windower::lua::error const*>(&ex)) {
+            format_lua_error(result, *lua_err);
+        }
+
+        if (auto nested = dynamic_cast<std::nested_exception const*>(&ex)) {
+            if (auto nested_ptr = nested->nested_ptr()) {
+                result.append(u8"\n  --- Nested Exception [");
                 result.append(windower::to_u8string(level + 1));
-                result.append(u8"]: \n");
-                get_error_message(result, level + 1, e);
+                result.append(u8"] ---\n  ");
+
+                try {
+                    std::rethrow_exception(nested_ptr);
+                }
+                catch (windower::lua::error const& e) { unwrap_exception(result, level + 1, e); }
+                catch (windower::package_error const& e) { unwrap_exception(result, level + 1, e); }
+                catch (windower::windower_error const& e) { unwrap_exception(result, level + 1, e); }
+                catch (std::exception const& e) { unwrap_exception(result, level + 1, e); }
+                catch (...) { result.append(u8"<Unknown Exception Type>"); }
             }
         }
     }
-}
 
-template<typename E>
-std::u8string get_error_message(E const& exception)
-{
-    std::u8string result;
-    get_error_message(result, 0, exception);
-    return result;
-}
-
-std::u8string
-process_output(std::u8string_view component, std::u8string_view text)
-{
-    if (component.empty())
+    // 3. The new core handler
+    std::u8string get_error_message(std::exception const& exception)
     {
-        component = u8"core";
+        std::u8string result;
+        unwrap_exception(result, 0, exception);
+        return result;
     }
-    auto const count = std::count(text.begin(), text.end(), u8'\n') + 1;
-    std::u8string temp;
-    temp.reserve(temp.size() + (component.size() + 3) * count);
-    temp.append(1, u8'[');
-    temp.append(component);
-    temp.append(1, u8']');
-    temp.append(1, u8' ');
-    std::u8string::size_type start = 0;
-    std::u8string::size_type pos;
-    while ((pos = text.find(u8'\n', start)) != std::u8string::npos)
+
+    std::u8string process_output(std::u8string_view component, std::u8string_view text)
     {
-        temp.append(text, start, pos - start + 1);
+        if (component.empty()) { component = u8"core"; }
+        auto const count = std::count(text.begin(), text.end(), u8'\n') + 1;
+        std::u8string temp;
+        temp.reserve(temp.size() + (component.size() + 3) * count);
         temp.append(1, u8'[');
         temp.append(component);
         temp.append(1, u8']');
         temp.append(1, u8' ');
-        start = pos + 1;
+        std::u8string::size_type start = 0;
+        std::u8string::size_type pos;
+        while ((pos = text.find(u8'\n', start)) != std::u8string::npos)
+        {
+            temp.append(text, start, pos - start + 1);
+            temp.append(1, u8'[');
+            temp.append(component);
+            temp.append(1, u8']');
+            temp.append(1, u8' ');
+            start = pos + 1;
+        }
+        temp.append(text, start, std::u8string::npos);
+        return temp;
     }
-    temp.append(text, start, std::u8string::npos);
-    return temp;
-}
 
-}
+} // <-- End of the anonymous namespace
+
 
 void windower::core::initialize() noexcept { instance(); }
 
@@ -474,15 +428,16 @@ void windower::core::output(
 {
     if (source < command_source::client)
     {
-        auto w_text =
-            to_wstring(process_output(component, text)).append(1, L'\n');
-        queue_log(std::move(w_text), false);
+        // Keep it strictly u8string so it never drops characters
+        auto u8_text = process_output(component, text);
+        u8_text.append(1, u8'\n');
+        queue_log(std::move(u8_text), false);
     }
     else
     {
         instance().run_on_next_frame([text = process_output(component, text)] {
             ffximain::add_to_chat(text);
-        });
+            });
     }
 }
 
@@ -490,18 +445,10 @@ void windower::core::error(
     std::u8string_view component, std::u8string_view text,
     command_source source)
 {
-    if (source < command_source::client)
-    {
-        auto w_text =
-            to_wstring(process_output(component, text)).append(1, L'\n');
-        queue_log(std::move(w_text), true);
-    }
-    else
-    {
-        instance().run_on_next_frame([text = process_output(component, text)] {
-            ffximain::add_to_chat(text, 0xA7);
-        });
-    }
+    // FORCE ALL ERRORS TO THE UI CONSOLE IN RAW UTF-8
+    auto u8_text = process_output(component, text);
+    u8_text.append(1, u8'\n');
+    queue_log(std::move(u8_text), true);
 }
 
 void windower::core::error(
@@ -539,95 +486,6 @@ void windower::core::update() noexcept
         m_updated = true;
 
         // ==========================================
-        // THE BULLETPROOF AUTOLOADER (WINDOWER 5 NATIVE)
-        // Waits until the engine is fully alive and the addon_manager exists
-        // ==========================================
-        static bool auto_loaded = false;
-        static int boot_delay   = 0;
-
-        if (!auto_loaded && addon_manager)
-        {
-            // Give the engine time to breathe (approx 2 seconds)
-            if (boot_delay < 120)
-            {
-                boot_delay++;
-            }
-            else
-            {
-                try
-                {
-                    auto& cmd = command_manager::instance();
-
-                    // 1. The Core Network & Data Providers
-                    cmd.handle_command(
-                        u8"/load packet_service",
-                        windower::command_source::client);
-                    cmd.handle_command(
-                        u8"/load settings_service",
-                        windower::command_source::client);
-                    cmd.handle_command(
-                        u8"/load resources_service",
-                        windower::command_source::client);
-                    cmd.handle_command(
-                        u8"/load client_data_service",
-                        windower::command_source::client);
-
-                    // 2. The Dynamic Game-State Hosts
-                    cmd.handle_command(
-                        u8"/load account_service",
-                        windower::command_source::client);
-                    cmd.handle_command(
-                        u8"/load player_service",
-                        windower::command_source::client);
-                    cmd.handle_command(
-                        u8"/load target_service",
-                        windower::command_source::client);
-                    cmd.handle_command(
-                        u8"/load world_service",
-                        windower::command_source::client);
-                    cmd.handle_command(
-                        u8"/load items_service",
-                        windower::command_source::client);
-                    cmd.handle_command(
-                        u8"/load key_items_service",
-                        windower::command_source::client);
-                    cmd.handle_command(
-                        u8"/load action_service",
-                        windower::command_source::client);
-                    cmd.handle_command(
-                        u8"/load automaton_service",
-                        windower::command_source::client);
-                    cmd.handle_command(
-                        u8"/load linkshell_service",
-                        windower::command_source::client);
-                    cmd.handle_command(
-                        u8"/load status_effects_service",
-                        windower::command_source::client);
-                    cmd.handle_command(
-                        u8"/load treasure_service",
-                        windower::command_source::client);
-
-                    // 3. The Master Interface
-                    cmd.handle_command(
-                        u8"/load AddonManager",
-                        windower::command_source::client);
-
-                    // ONLY flag as successfully loaded if every command above
-                    // fires without throwing an error!
-                    auto_loaded = true;
-                }
-                catch (...)
-                {
-                    // The engine parser threw an error because it isn't awake
-                    // yet. Knock the delay back down so it waits 1 more second,
-                    // then tries the loop again.
-                    boot_delay = 60;
-                }
-            }
-        }
-        // ==========================================
-
-        // ==========================================
         // THE FPU AIRLOCK (LUAJIT 64-BIT MATH GUARD)
         // ==========================================
         class FpuStateGuard
@@ -635,10 +493,10 @@ void windower::core::update() noexcept
             unsigned int original_state;
 
         public:
-            FpuStateGuard(FpuStateGuard const&)            = delete;
-            FpuStateGuard(FpuStateGuard&&)                 = delete;
+            FpuStateGuard(FpuStateGuard const&) = delete;
+            FpuStateGuard(FpuStateGuard&&) = delete;
             FpuStateGuard& operator=(FpuStateGuard const&) = delete;
-            FpuStateGuard& operator=(FpuStateGuard&&)      = delete;
+            FpuStateGuard& operator=(FpuStateGuard&&) = delete;
 
             FpuStateGuard() noexcept
             {
@@ -653,9 +511,7 @@ void windower::core::update() noexcept
             }
         };
 
-        // Activate the airlock! It will automatically lock the CPU into 64-bit
-        // mode here, and unlock it when it hits the closing bracket of the
-        // update() loop.
+        // Activate the airlock!
         FpuStateGuard fpu_guard;
 
         // EVERYTHING BELOW THIS LINE RUNS SAFELY IN 64-BIT MODE
@@ -671,7 +527,7 @@ void windower::core::update() noexcept
 
         //Lock the mutex exactly once and steal all pending functions
         {
-            std::lock_guard<std::mutex> guard{m_queued_functions_mutex};
+            std::lock_guard<std::mutex> guard{ m_queued_functions_mutex };
             std::swap(m_queued_functions, local_functions);
         } // Mutex is instantly unlocked here!
 
@@ -682,14 +538,14 @@ void windower::core::update() noexcept
             {
                 local_functions.front()();
             }
-            catch (std::exception const&)
+            catch (std::exception const& e) // <--- Catch the variable 'e'
             {
-                error(u8"");
+                // 2. Properly route the error with a component tag
+                error(u8"Background Task", e, command_source::client);
             }
             local_functions.pop();
         }
-    } // <-- FpuStateGuard is automatically destroyed here, returning CPU to
-      // 32-bit for FFXI!
+    }
 }
 
 void windower::core::begin_frame() noexcept

@@ -421,6 +421,16 @@
       <PreprocessorDefinitions>WINDOWER_AUTO_VERSION;$(ReleaseConstants);%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalOptions>/c 1252</AdditionalOptions>
     </ResourceCompile>
+    <PreBuildEvent>
+      <Command>if not exist "$(SolutionDir)build\lib\luajit\$(Configuration)\lua\jit" mkdir "$(SolutionDir)build\lib\luajit\$(Configuration)\lua\jit"
+if not exist "$(SolutionDir)build\bin\$(Configuration)" mkdir "$(SolutionDir)build\bin\$(Configuration)"
+
+copy /Y "$(SolutionDir)extern\luajit\src\luajit.exe" "$(SolutionDir)build\lib\luajit\$(Configuration)\luajit.exe"
+copy /Y "$(SolutionDir)extern\luajit\src\lua51.lib" "$(SolutionDir)build\lib\luajit\$(Configuration)\lua51.static.lib"
+copy /Y "$(SolutionDir)extern\luajit\src\lua51.dll" "$(SolutionDir)build\lib\luajit\$(Configuration)\lua51.dll"
+copy /Y "$(SolutionDir)extern\luajit\src\lua51.dll" "$(SolutionDir)build\bin\$(Configuration)\lua51.dll"
+xcopy /E /I /Y "$(SolutionDir)extern\luajit\src\jit\*" "$(SolutionDir)build\lib\luajit\$(Configuration)\lua\jit\"</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='release|Win32'">
     <ClCompile>
@@ -463,6 +473,16 @@
       <PreprocessorDefinitions>WINDOWER_AUTO_VERSION;$(ReleaseConstants);%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalOptions>/c 1252</AdditionalOptions>
     </ResourceCompile>
+    <PreBuildEvent>
+      <Command>if not exist "$(SolutionDir)build\lib\luajit\$(Configuration)\lua\jit" mkdir "$(SolutionDir)build\lib\luajit\$(Configuration)\lua\jit"
+if not exist "$(SolutionDir)build\bin\$(Configuration)" mkdir "$(SolutionDir)build\bin\$(Configuration)"
+
+copy /Y "$(SolutionDir)extern\luajit\src\luajit.exe" "$(SolutionDir)build\lib\luajit\$(Configuration)\luajit.exe"
+copy /Y "$(SolutionDir)extern\luajit\src\lua51.lib" "$(SolutionDir)build\lib\luajit\$(Configuration)\lua51.static.lib"
+copy /Y "$(SolutionDir)extern\luajit\src\lua51.dll" "$(SolutionDir)build\lib\luajit\$(Configuration)\lua51.dll"
+copy /Y "$(SolutionDir)extern\luajit\src\lua51.dll" "$(SolutionDir)build\bin\$(Configuration)\lua51.dll"
+xcopy /E /I /Y "$(SolutionDir)extern\luajit\src\jit\*" "$(SolutionDir)build\lib\luajit\$(Configuration)\lua\jit\"</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

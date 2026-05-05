@@ -441,6 +441,9 @@ local register = function(name, resource, safe)
         error()
     end
 
+    -- NEW: If the Lua function doesn't exist (e.g. a 5.2 function in a 5.1 environment), silently skip it.
+    if resource == nil then return nil end
+
     if resource_registry[name] ~= nil then
         error('\'' .. name .. '\' already registered with value ' ..
                   tostring(resource_registry[name]))

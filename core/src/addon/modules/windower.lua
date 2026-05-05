@@ -91,7 +91,7 @@ local windower = {
     package_path = package_path,
     package_name = package_name,
     
-    -- Expose all 4 bridges to your FenestraSDK!
+    -- Expose all 4 bridges to your NextXISDK!
     get_package_list = get_package_list, 
     get_package_readme = get_package_readme,
     read_file = read_file,   

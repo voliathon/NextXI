@@ -408,7 +408,7 @@ void engine_console::push_log(std::u8string_view text) noexcept
             if (line.find(u8"_service") != std::u8string::npos ||
                 line.find(u8"_data") != std::u8string::npos ||
                 line.find(u8"AddonManager") != std::u8string::npos ||
-                line.find(u8"FenestraSDK") != std::u8string::npos ||
+                line.find(u8"NextXISDK") != std::u8string::npos ||
                 line.find(u8"mime") != std::u8string::npos ||
                 line.find(u8"socket") != std::u8string::npos)
             {

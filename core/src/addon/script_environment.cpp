@@ -29,6 +29,9 @@
 #include "addon/lua_internal.hpp"
 #include "addon/package_manager.hpp"
 #include "addon/scheduler.hpp"
+
+#include "addon/modules/command.hpp"
+
 #include "core.hpp"
 #include "utility.hpp"
 
@@ -47,7 +50,7 @@ int load_script_module(windower::lua::state s)
     std::replace(name.begin(), name.end(), u8'.', u8'\\');
     name.append(u8".lua");
 
-    auto path = user_path() / u8"scripts" / name;
+    auto path = windower_path() / u8"scripts" / name;
     std::ifstream stream{path, std::ios::binary};
 
     lua::stack_guard guard{s};
@@ -102,7 +105,7 @@ windower::script_environment::script_environment() noexcept
 
 void windower::script_environment::initialize() const
 {
-    lua::stack_guard guard{m_interpreter};
+    lua::stack_guard guard{ m_interpreter };
 
     lua::push(guard, u8"package");
     lua::raw_get(guard, lua::globals);
@@ -111,6 +114,10 @@ void windower::script_environment::initialize() const
 
     lua::push(guard, load_script_module);
     lua::raw_set(guard, -2, 2);
+
+    // INJECT THE WINDOWER COMMAND API
+    // This allows init.lua to successfully call require('core.command')
+    lua::preload(m_interpreter, u8"core.command", &load_command_module);
 }
 
 void windower::script_environment::run_until_idle()
@@ -120,7 +127,7 @@ void windower::script_environment::run_until_idle()
 
 void windower::script_environment::execute(std::u8string_view name) const
 {
-    auto path = user_path() / u8"scripts" / name;
+    auto path = windower_path() / u8"scripts" / name;
     path += u8".lua";
     std::ifstream stream{path, std::ios::binary};
     if (stream.is_open())

@@ -75,7 +75,7 @@ extern "C" char const* read_market_file_ffi(char const* filename)
     content.clear();
 
     // Call the standalone windower::user_path() function
-    auto dir  = windower::user_path() / u8"addons" / u8"FenestraMarket";
+    auto dir  = windower::user_path() / u8"addons" / u8"NextXIMarket";
     auto path = dir / reinterpret_cast<const char8_t*>(filename);
 
     std::ifstream file(path, std::ios::binary);
@@ -91,7 +91,7 @@ extern "C" char const* read_market_file_ffi(char const* filename)
 extern "C" void write_market_file_ffi(char const* filename, char const* data)
 {
     // Call the standalone windower::user_path() function
-    auto dir = windower::user_path() / u8"addons" / u8"FenestraMarket";
+    auto dir = windower::user_path() / u8"addons" / u8"NextXIMarket";
     std::filesystem::create_directories(dir);
 
     auto path = dir / reinterpret_cast<const char8_t*>(filename);
@@ -139,7 +139,7 @@ int windower::load_windower_module(lua::state s)
     lua::push(guard, WINDOWER_VERSION_BUILD_STRING); // version_build
     lua::push(guard, WINDOWER_BUILD_TAG_STRING); // build_tag
 
-    auto const scripts = user_path() / u8"scripts";
+    auto const scripts = windower_path() / u8"scripts";
 
     lua::push(guard, client_path().u8string()); // client_path
     lua::push(guard, scripts.u8string()); // scripts_path
