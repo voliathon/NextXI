@@ -1,4 +1,4 @@
-# UI Library (Fenestra Immediate-Mode GUI)
+# UI Library (NextXI Immediate-Mode GUI)
 
 The `ui` library is a native, immediate-mode graphical user interface wrapper for the Windower 5 C++ engine. It allows developers to draw reactive, high-performance DirectX overlays, windows, and widgets without managing complex object hierarchies.
 

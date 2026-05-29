@@ -1,16 +1,6 @@
 ----------------------------------------------------------------------------
 -- LuaJIT PPC disassembler module.
 --
--- Copyright (C) 2005-2026 Mike Pall. All rights reserved.
--- Released under the MIT/X license. See Copyright Notice in luajit.h
-----------------------------------------------------------------------------
--- This is a helper module used by the LuaJIT machine code dumper module.
---
--- It disassembles all common, non-privileged 32/64 bit PowerPC instructions
--- plus the e500 SPE instructions and some Cell/Xenon extensions.
---
--- NYI: VMX, VMX128
-------------------------------------------------------------------------------
 
 local type = type
 local byte, format = string.byte, string.format
@@ -588,4 +578,3 @@ return {
   disass = disass,
   regname = regname
 }
-

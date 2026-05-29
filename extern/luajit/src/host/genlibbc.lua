@@ -2,9 +2,6 @@
 -- Lua script to dump the bytecode of the library functions written in Lua.
 -- The resulting 'buildvm_libbc.h' is used for the build process of LuaJIT.
 ----------------------------------------------------------------------------
--- Copyright (C) 2005-2026 Mike Pall. All rights reserved.
--- Released under the MIT license. See Copyright Notice in luajit.h
-----------------------------------------------------------------------------
 
 local ffi = require("ffi")
 local bit = require("bit")
@@ -231,4 +228,3 @@ local defs32 = find_defs(src, "Wdts")
 local defs64 = find_defs(src, "Xdts")
 local hdr = gen_header(defs32, defs64)
 write_file(outfile, hdr)
-

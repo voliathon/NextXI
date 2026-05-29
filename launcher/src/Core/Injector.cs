@@ -38,11 +38,7 @@ namespace Windower.Core
 
     internal class Injector : IDisposable
     {
-        /// <summary>
-        /// The x86 op-code for an unconditional relative jump to itself.
-        /// <code>jmp -2</code>
-        /// </summary>
-        private static readonly byte[] jumpToSelf = { 0xEB, 0xFE };
+
 
         /// <summary>
         /// The disposed flag
@@ -73,6 +69,8 @@ namespace Windower.Core
         /// The process initialization state
         /// </summary>
         private bool initialized;
+
+        private readonly System.Collections.Generic.List<SafeProcessMemoryHandle> memoryHandles = new System.Collections.Generic.List<SafeProcessMemoryHandle>();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Injector"/> class by creating and attaching to a new suspended
@@ -165,12 +163,6 @@ namespace Windower.Core
                 throw new ObjectDisposedException(null);
             }
 
-            if (!initialized)
-            {
-                await RunProcessInitialization();
-                initialized = true;
-            }
-
             var function = GetRemoteFunctionAddress("kernel32.dll", "LoadLibraryW");
             if (function == IntPtr.Zero)
             {
@@ -178,16 +170,20 @@ namespace Windower.Core
             }
 
             var buffer = Encoding.Unicode.GetBytes(dllPath + '\0');
-            using (var remoteBuffer = new SafeProcessMemoryHandle(processHandle, (uint)buffer.Length))
-            {
-                Write(processHandle, remoteBuffer, buffer);
+            var remoteBuffer = new SafeProcessMemoryHandle(processHandle, (uint)buffer.Length);
+            memoryHandles.Add(remoteBuffer);
 
-                // This is an unusual way to return a SafeWaitHandle, but
-                // it is required to work around an issue in Mono's
-                // implementation.  I believe this can technically leak the
-                // thread handle, but any situation which might cause this
-                // to happen is going to bring down the entire process
-                // anyway, and then the OS will clean up after us.
+            Write(processHandle, remoteBuffer, buffer);
+
+            if (!initialized)
+            {
+                if (NativeMethods.QueueUserAPC(function, threadHandle, remoteBuffer) == 0)
+                {
+                    throw new Win32Exception();
+                }
+            }
+            else
+            {
                 var remoteThreadHandle = NativeMethods.CreateRemoteThread(processHandle, IntPtr.Zero, UIntPtr.Zero, function,
                     remoteBuffer, 0, IntPtr.Zero);
                 using (var remoteThread = new SafeWaitHandle(remoteThreadHandle, true))
@@ -249,6 +245,12 @@ namespace Windower.Core
                 }
                 finally
                 {
+                    foreach (var handle in memoryHandles)
+                    {
+                        handle.Dispose();
+                    }
+                    memoryHandles.Clear();
+
                     threadHandle.Dispose();
                     processHandle.Dispose();
                     process.Dispose();
@@ -258,69 +260,7 @@ namespace Windower.Core
             disposed = true;
         }
 
-        /// <summary>
-        /// Runs the remote process's initialization.
-        /// </summary>
-        private async Task RunProcessInitialization()
-        {
-            var entrypoint = await GetEntrypoint();
-            var access = SetMemoryAccess(entrypoint, jumpToSelf.Length, NativeMethods.PAGE_EXECUTE_READWRITE);
-            try
-            {
-                var original = Read(processHandle, entrypoint, (uint)jumpToSelf.Length);
 
-                Write(processHandle, entrypoint, jumpToSelf);
-                try
-                {
-                    Resume();
-
-                    try
-                    {
-                        while (GetInstructionPointer() != entrypoint)
-                        {
-                            await Task.Delay(10);
-                        }
-                    }
-                    finally
-                    {
-                        Suspend();
-                    }
-                }
-                finally
-                {
-                    try
-                    {
-                        Write(processHandle, entrypoint, original);
-                    }
-                    catch
-                    {
-                        process.Kill();
-                        Resume();
-                    }
-                }
-            }
-            finally
-            {
-                SetMemoryAccess(entrypoint, jumpToSelf.Length, access);
-            }
-        }
-
-        /// <summary>
-        /// Gets a pointer to the process's entrypoint.
-        /// </summary>
-        /// <returns>A pointer to the process's entrypoint.</returns>
-        /// <exception cref="System.ComponentModel.Win32Exception">Could not locate the process's main module.</exception>
-        private async Task<IntPtr> GetEntrypoint()
-        {
-            using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-            {
-                var dosheader = await ReadAsync<NativeMethods.IMAGE_DOS_HEADER>(stream);
-                stream.Seek(dosheader.e_lfanew, SeekOrigin.Begin);
-                var ntheaders = await ReadAsync<NativeMethods.IMAGE_NT_HEADERS>(stream);
-
-                return new IntPtr(ntheaders.OptionalHeader.ImageBase + ntheaders.OptionalHeader.AddressOfEntryPoint);
-            }
-        }
 
         /// <summary>
         /// Suspends the main thread.
@@ -338,6 +278,15 @@ namespace Windower.Core
         /// Resumes the main thread.
         /// </summary>
         /// <exception cref="System.ComponentModel.Win32Exception">The process could not be resumed.</exception>
+        public void ResumeProcess()
+        {
+            if (!initialized && !disposed)
+            {
+                Resume();
+                initialized = true;
+            }
+        }
+
         private void Resume()
         {
             if (!threadHandle.IsInvalid && NativeMethods.ResumeThread(threadHandle) == 0xFFFFFFFF)
@@ -346,58 +295,7 @@ namespace Windower.Core
             }
         }
 
-        /// <summary>
-        /// Sets access rights for the given memory region within the process.
-        /// </summary>
-        /// <param name="address">The start address of the memory region.</param>
-        /// <param name="length">The length of the memory region.</param>
-        /// <param name="access">The access.</param>
-        /// <returns>The region's previous access rights.</returns>
-        /// <exception cref="System.ComponentModel.Win32Exception">The access for the region could not be modified.</exception>
-        private uint SetMemoryAccess(IntPtr address, int length, uint access)
-        {
-            if (!NativeMethods.VirtualProtectEx(processHandle, address, (UIntPtr)length, access, out access))
-            {
-                throw new Win32Exception();
-            }
 
-            return access;
-        }
-
-        /// <summary>
-        /// Gets the main thread's instruction pointer.
-        /// </summary>
-        /// <returns>The thread's instruction pointer.</returns>
-        private IntPtr GetInstructionPointer()
-        {
-            var ptr = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(NativeMethods.WOW64_CONTEXT)) + 0xF);
-            try
-            {
-                if (ptr != IntPtr.Zero)
-                {
-                    Suspend();
-
-                    var aligned = new IntPtr((ptr.ToInt64() + 0xF) & ~0xF);
-                    var context = default(NativeMethods.WOW64_CONTEXT);
-                    context.ContextFlags = NativeMethods.CONTEXT_CONTROL;
-                    Marshal.StructureToPtr(context, aligned, false);
-                    NativeMethods.Wow64GetThreadContext(threadHandle, aligned);
-                    context = (NativeMethods.WOW64_CONTEXT)Marshal.PtrToStructure(aligned, typeof(NativeMethods.WOW64_CONTEXT));
-                    return new IntPtr((int)context.Eip);
-                }
-            }
-            finally
-            {
-                if (ptr != IntPtr.Zero)
-                {
-                    Marshal.FreeHGlobal(ptr);
-                }
-
-                Resume();
-            }
-
-            return IntPtr.Zero;
-        }
 
         /// <summary>
         /// Gets the address of an exported function from the remote process.
@@ -407,74 +305,15 @@ namespace Windower.Core
         /// <returns>The function address.</returns>
         private IntPtr GetRemoteFunctionAddress(string module, string function)
         {
-            var remoteBase = GetModule(module);
-
-            var dosheader = Read<NativeMethods.IMAGE_DOS_HEADER>(processHandle, remoteBase);
-            var ntheaders = Read<NativeMethods.IMAGE_NT_HEADERS>(processHandle, remoteBase + dosheader.e_lfanew);
-
-            var exportsOffset = ntheaders.OptionalHeader.DataDirectory[NativeMethods.IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
-            var exports = Read<NativeMethods.IMAGE_EXPORT_DIRECTORY>(processHandle, remoteBase + (int)exportsOffset);
-
-            var nameLength = (uint)Encoding.ASCII.GetByteCount(function) + 1;
-
-            for (var i = 0; i < exports.NumberOfNames; i++)
+            var hModule = NativeMethods.GetModuleHandle(module);
+            if (hModule == IntPtr.Zero)
             {
-                var nameOffset = Read<uint>(processHandle, remoteBase + (int)exports.AddressOfNames + 4 * i);
-                var buffer = Read(processHandle, remoteBase + (int)nameOffset, nameLength);
-                if (Array.IndexOf(buffer, (byte)0) == function.Length)
-                {
-                    var name = Encoding.ASCII.GetString(buffer, 0, function.Length);
-                    if (name == function)
-                    {
-                        var ordinal = Read<ushort>(processHandle, remoteBase + (int)exports.AddressOfNameOrdinals + 2 * i);
-                        var functionOffset = Read<uint>(processHandle, remoteBase + (int)exports.AddressOfFunctions + 4 * ordinal);
-                        return remoteBase + (int)functionOffset;
-                    }
-                }
+                hModule = NativeMethods.LoadLibrary(module);
             }
 
-            return IntPtr.Zero;
-        }
-
-        private IntPtr GetModule(string name)
-        {
-            var count = 0;
-            IntPtr[] modules;
-            do
+            if (hModule != IntPtr.Zero)
             {
-                modules = new IntPtr[count];
-                uint required;
-                try
-                {
-                    if (!NativeMethods.EnumProcessModulesEx(processHandle, modules, (uint)(modules.Length * IntPtr.Size),
-                        out required, NativeMethods.LIST_MODULES_32BIT))
-                    {
-                        throw new Win32Exception();
-                    }
-                }
-                catch (EntryPointNotFoundException)
-                {
-                    if (!NativeMethods.EnumProcessModules(processHandle, modules, (uint)(modules.Length * IntPtr.Size),
-                        out required))
-                    {
-                        throw new Win32Exception();
-                    }
-                }
-
-                count = (int)required / IntPtr.Size;
-            }
-            while (count > modules.Length);
-
-            for (var i = 0; i < count; i++)
-            {
-                var buffer = new StringBuilder(260);
-                if (NativeMethods.GetModuleFileNameEx(processHandle, modules[i], buffer, (uint)buffer.Capacity) != 0)
-                {
-                    if (string.Equals(Path.GetFileName(buffer.ToString()), name, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return modules[i];
-                    }
-                }
+                return NativeMethods.GetProcAddress(hModule, function);
             }
 
             return IntPtr.Zero;

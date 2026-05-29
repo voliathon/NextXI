@@ -35,7 +35,7 @@ SOFTWARE.
       Style="{StaticResource Page}"
       ui:TransitionControl.ExitTransition="SlideRight"
       ui:FocusBehavior.FocusFirst="True">
-    <Grid Background="White">
+    <Grid Background="White" ToolTipService.InitialShowDelay="200" ToolTipService.ShowDuration="15000">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition/>
@@ -307,7 +307,6 @@ SOFTWARE.
                     <ComboBox Margin="12,4,12,0" SelectedIndex="{Binding SelectedEngine}" Grid.Row="1" Grid.ColumnSpan="5" ToolTip="Select the underlying graphics rendering API. NextXI (DX11) is recommended for modern features.">
                         <ComboBoxItem Content="Vanilla (DirectX 8) - Legacy" ToolTip="The original, unmodified FFXI rendering pipeline." />
                         <ComboBoxItem Content="NextXI (dgVoodoo2 / DX11)" ToolTip="Translates DX8 to DX11. Required for ImGui and CEF web addons." />
-                        <ComboBoxItem Content="RTX Remix (Vulkan) - Experimental" ToolTip="Translates to Vulkan for path-tracing and modern lighting replacements." />
                     </ComboBox>
 
                     <Label ToolTip="Renders the game at a massive internal resolution and scales it down to smooth out jagged pixel edges. Extremely high visual quality, but requires a powerful graphics card." Content="{StaticResource Strings.SupersampleAntiAliasing}" Margin="12,12,12,0" d:LayoutOverrides="Height" Grid.ColumnSpan="5" Grid.Row="2"/>
@@ -444,6 +443,9 @@ SOFTWARE.
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
                         <Grid Margin="12,12,12,0" Grid.ColumnSpan="5">
@@ -517,7 +519,9 @@ SOFTWARE.
                             <Button ToolTip="Browse for folder..." Content="{StaticResource Strings.Browse}" Grid.Column="2" Command="{Binding BrowseTempPath}" CommandParameter="{StaticResource Strings.SelectTempPath}"/>
                         </Grid>
 
-                        <Grid Grid.ColumnSpan="5" Margin="12,22,12,0" Grid.Row="11">
+                        <CheckBox ToolTip="Automatically logs into PlayOnline and launches FFXI immediately." Content="Enable Fast POL Login" Grid.ColumnSpan="5" Grid.Row="11" Style="{StaticResource YesNoToggleSwitch}" Margin="12,12,12,0" IsChecked="{Binding PolFastLogin}"/>
+
+                        <Grid Grid.ColumnSpan="5" Margin="12,22,12,0" Grid.Row="14">
                             <Grid.Style>
                                 <Style TargetType="{x:Type Grid}">
                                     <Style.Triggers>

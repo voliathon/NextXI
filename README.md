@@ -1,6 +1,6 @@
 # NextXI (Totally Not Windower5)
 
-I originally yoinked this code from the Official Fenestra Repo and then upgraded a bunch of stuff. I chose to upgrade the launcher to .NET 10 because I wanted to use the latest C# features and also because it was a fun challenge to modernize the codebase. 
+I originally yoinked this code from the Official NextXI Repo and then upgraded a bunch of stuff. I chose to upgrade the launcher to .NET 10 because I wanted to use the latest C# features and also because it was a fun challenge to modernize the codebase. 
 I then wanted to understand C++ more and what was done in core as it is not taught in school.
 
 (Visual Studio 2026 / v145) was used in the development of this application.

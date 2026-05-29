@@ -1,17 +1,6 @@
 ----------------------------------------------------------------------------
 -- LuaJIT ARM64 disassembler module.
 --
--- Copyright (C) 2005-2026 Mike Pall. All rights reserved.
--- Released under the MIT license. See Copyright Notice in luajit.h
---
--- Contributed by Djordje Kovacevic and Stefan Pejic from RT-RK.com.
--- Sponsored by Cisco Systems, Inc.
-----------------------------------------------------------------------------
--- This is a helper module used by the LuaJIT machine code dumper module.
---
--- It disassembles most user-mode AArch64 instructions.
--- NYI: Advanced SIMD and VFP instructions.
-------------------------------------------------------------------------------
 
 local type = type
 local sub, byte, format = string.sub, string.byte, string.format
@@ -1230,4 +1219,3 @@ return {
   disass = disass,
   regname = regname
 }
-

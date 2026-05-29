@@ -39,11 +39,13 @@
 #include "hooks/imm32.hpp"
 #include "hooks/kernel32.hpp"
 #include "hooks/user32.hpp"
+#include "hooks/ws2_32.hpp"
 #include "settings.hpp"
 #include "ui/user_interface.hpp"
 #include "ui/engine_console.hpp"
 #include "unicode.hpp"
 #include "utility.hpp"
+#include "utilities/pol_hacks.hpp"
 #include <float.h>
 #include <gsl/gsl>
 #include <condition_variable>
@@ -336,6 +338,7 @@ windower::core::core() noexcept
     d3d8::install();
     dinput8::install();
     ddraw::install();
+    ws2_32::install();
 
     settings.load();
     crash_handler::instance().dump_path(settings.temp_path);
@@ -445,6 +448,7 @@ void windower::core::error(
     std::u8string_view component, std::u8string_view text,
     command_source source)
 {
+    (void)source;
     // FORCE ALL ERRORS TO THE UI CONSOLE IN RAW UTF-8
     auto u8_text = process_output(component, text);
     u8_text.append(1, u8'\n');
@@ -513,6 +517,9 @@ void windower::core::update() noexcept
 
         // Activate the airlock!
         FpuStateGuard fpu_guard;
+
+        // Apply dynamic POL patches if they haven't been already
+        windower::pol_hacks::apply();
 
         // EVERYTHING BELOW THIS LINE RUNS SAFELY IN 64-BIT MODE
         scheduler::next_frame();

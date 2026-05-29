@@ -1,57 +1,6 @@
 ----------------------------------------------------------------------------
 -- LuaJIT compiler dump module.
 --
--- Copyright (C) 2005-2026 Mike Pall. All rights reserved.
--- Released under the MIT license. See Copyright Notice in luajit.h
-----------------------------------------------------------------------------
---
--- This module can be used to debug the JIT compiler itself. It dumps the
--- code representations and structures used in various compiler stages.
---
--- Example usage:
---
---   luajit -jdump -e "local x=0; for i=1,1e6 do x=x+i end; print(x)"
---   luajit -jdump=im -e "for i=1,1000 do for j=1,1000 do end end" | less -R
---   luajit -jdump=is myapp.lua | less -R
---   luajit -jdump=-b myapp.lua
---   luajit -jdump=+aH,myapp.html myapp.lua
---   luajit -jdump=ixT,myapp.dump myapp.lua
---
--- The first argument specifies the dump mode. The second argument gives
--- the output file name. Default output is to stdout, unless the environment
--- variable LUAJIT_DUMPFILE is set. The file is overwritten every time the
--- module is started.
---
--- Different features can be turned on or off with the dump mode. If the
--- mode starts with a '+', the following features are added to the default
--- set of features; a '-' removes them. Otherwise the features are replaced.
---
--- The following dump features are available (* marks the default):
---
---  * t  Print a line for each started, ended or aborted trace (see also -jv).
---  * b  Dump the traced bytecode.
---  * i  Dump the IR (intermediate representation).
---    r  Augment the IR with register/stack slots.
---    s  Dump the snapshot map.
---  * m  Dump the generated machine code.
---    x  Print each taken trace exit.
---    X  Print each taken trace exit and the contents of all registers.
---    a  Print the IR of aborted traces, too.
---
--- The output format can be set with the following characters:
---
---    T  Plain text output.
---    A  ANSI-colored text output
---    H  Colorized HTML + CSS output.
---
--- The default output format is plain text. It's set to ANSI-colored text
--- if the COLORTERM variable is set. Note: this is independent of any output
--- redirection, which is actually considered a feature.
---
--- You probably want to use less -R to enjoy viewing ANSI-colored text from
--- a pipe or a file. Add this to your ~/.bashrc: export LESS="-R"
---
-------------------------------------------------------------------------------
 
 -- Cache some library functions and objects.
 local jit = require("jit")
@@ -727,4 +676,3 @@ return {
   off = dumpoff,
   start = dumpon -- For -j command line option.
 }
-

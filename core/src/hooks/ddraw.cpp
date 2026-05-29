@@ -85,7 +85,7 @@ void windower::ddraw::install()
 {
     if (!hooks::DirectDrawCreateEx)
     {
-        hooks::DirectDrawCreateEx = hooklib::make_hook(
+        hooks::DirectDrawCreateEx = hooklib::make_hook<false>(
             u8"ddraw.dll", u8"DirectDrawCreateEx",
             callbacks::DirectDrawCreateEx);
     }

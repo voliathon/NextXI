@@ -1,14 +1,6 @@
 ----------------------------------------------------------------------------
 -- LuaJIT module to save/list bytecode.
 --
--- Copyright (C) 2005-2026 Mike Pall. All rights reserved.
--- Released under the MIT license. See Copyright Notice in luajit.h
-----------------------------------------------------------------------------
---
--- This module saves or lists the bytecode for an input file.
--- It's run by the -b command line option.
---
-------------------------------------------------------------------------------
 
 local jit = require("jit")
 assert(jit.version_num == 20199, "LuaJIT core/library version mismatch")
@@ -634,4 +626,3 @@ end
 return {
   start = docmd -- Process -b command line option.
 }
-

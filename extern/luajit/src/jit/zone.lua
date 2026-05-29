@@ -1,28 +1,6 @@
 ----------------------------------------------------------------------------
 -- LuaJIT profiler zones.
 --
--- Copyright (C) 2005-2026 Mike Pall. All rights reserved.
--- Released under the MIT license. See Copyright Notice in luajit.h
-----------------------------------------------------------------------------
---
--- This module implements a simple hierarchical zone model.
---
--- Example usage:
---
---   local zone = require("jit.zone")
---   zone("AI")
---   ...
---     zone("A*")
---     ...
---     print(zone:get()) --> "A*"
---     ...
---     zone()
---   ...
---   print(zone:get()) --> "AI"
---   ...
---   zone()
---
-----------------------------------------------------------------------------
 
 local remove = table.remove
 
@@ -42,4 +20,3 @@ return setmetatable({
     end
   end
 })
-

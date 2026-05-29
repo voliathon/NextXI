@@ -1,14 +1,6 @@
 ----------------------------------------------------------------------------
 -- LuaJIT ARM disassembler module.
 --
--- Copyright (C) 2005-2026 Mike Pall. All rights reserved.
--- Released under the MIT license. See Copyright Notice in luajit.h
-----------------------------------------------------------------------------
--- This is a helper module used by the LuaJIT machine code dumper module.
---
--- It disassembles most user-mode ARMv7 instructions
--- NYI: Advanced SIMD and VFP instructions.
-------------------------------------------------------------------------------
 
 local type = type
 local sub, byte, format = string.sub, string.byte, string.format
@@ -686,4 +678,3 @@ return {
   disass = disass,
   regname = regname
 }
-

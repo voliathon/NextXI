@@ -239,6 +239,10 @@ void windower::settings::load()
 
     verbose_logging = s.get(u8"verbose_logging", debug);
 
+    pol_account_limit = s.get(u8"pol_account_limit", false);
+    pol_fast_login = s.get(u8"pol_fast_login", false);
+    pol_no_throttle = s.get(u8"pol_no_throttle", false);
+
     settings_path = s.get(u8"settings_path", u8"");
     user_path     = s.get(u8"user_path", u8"");
     temp_path     = s.get(u8"temp_path", u8"");

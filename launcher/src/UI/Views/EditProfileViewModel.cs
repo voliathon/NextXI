@@ -435,6 +435,24 @@ namespace Windower.UI.Views
             set => Set(ref profile, profile.With(TempPath: value));
         }
 
+        public bool PolAccountLimit
+        {
+            get => profile.PolAccountLimit;
+            set => Set(ref profile, profile.With(PolAccountLimit: value));
+        }
+
+        public bool PolFastLogin
+        {
+            get => profile.PolFastLogin;
+            set => Set(ref profile, profile.With(PolFastLogin: value));
+        }
+
+        public bool PolNoThrottle
+        {
+            get => profile.PolNoThrottle;
+            set => Set(ref profile, profile.With(PolNoThrottle: value));
+        }
+
         public string Error { get; } = null;
 
         public string this[string columnName]

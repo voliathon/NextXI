@@ -71,6 +71,10 @@ public:
 
     bool verbose_logging = true;
 
+    bool pol_account_limit = false;
+    bool pol_fast_login = false;
+    bool pol_no_throttle = false;
+
     std::filesystem::path settings_path;
     std::filesystem::path user_path;
     std::filesystem::path temp_path;

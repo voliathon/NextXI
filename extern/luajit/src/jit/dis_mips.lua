@@ -1,14 +1,6 @@
 ----------------------------------------------------------------------------
 -- LuaJIT MIPS disassembler module.
 --
--- Copyright (C) 2005-2026 Mike Pall. All rights reserved.
--- Released under the MIT/X license. See Copyright Notice in luajit.h
-----------------------------------------------------------------------------
--- This is a helper module used by the LuaJIT machine code dumper module.
---
--- It disassembles all standard MIPS32R1/R2 instructions.
--- Default mode is big-endian, but see: dis_mipsel.lua
-------------------------------------------------------------------------------
 
 local type = type
 local byte, format = string.byte, string.format
@@ -691,4 +683,3 @@ return {
   disass_r6_el = disass_r6_el,
   regname = regname
 }
-

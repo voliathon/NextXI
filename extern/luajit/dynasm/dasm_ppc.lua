@@ -1,11 +1,6 @@
 ------------------------------------------------------------------------------
 -- DynASM PPC/PPC64 module.
 --
--- Copyright (C) 2005-2026 Mike Pall. All rights reserved.
--- See dynasm.lua for full copyright notice.
---
--- Support for various extensions contributed by Caio Souza Oliveira.
-------------------------------------------------------------------------------
 
 -- Module information:
 local _info = {
@@ -1916,4 +1911,3 @@ end
 return _M
 
 ------------------------------------------------------------------------------
-

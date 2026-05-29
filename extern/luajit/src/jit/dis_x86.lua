@@ -1,27 +1,6 @@
 ----------------------------------------------------------------------------
 -- LuaJIT x86/x64 disassembler module.
 --
--- Copyright (C) 2005-2026 Mike Pall. All rights reserved.
--- Released under the MIT license. See Copyright Notice in luajit.h
-----------------------------------------------------------------------------
--- This is a helper module used by the LuaJIT machine code dumper module.
---
--- Sending small code snippets to an external disassembler and mixing the
--- output with our own stuff was too fragile. So I had to bite the bullet
--- and write yet another x86 disassembler. Oh well ...
---
--- The output format is very similar to what ndisasm generates. But it has
--- been developed independently by looking at the opcode tables from the
--- Intel and AMD manuals. The supported instruction set is quite extensive
--- and reflects what a current generation Intel or AMD CPU implements in
--- 32 bit and 64 bit mode. Yes, this includes MMX, SSE, SSE2, SSE3, SSSE3,
--- SSE4.1, SSE4.2, SSE4a, AVX, AVX2 and even privileged and hypervisor
--- (VMX/SVM) instructions.
---
--- Notes:
--- * The (useless) a16 prefix, 3DNow and pre-586 opcodes are unsupported.
--- * No attempt at optimization has been made -- it's fast enough for my needs.
-------------------------------------------------------------------------------
 
 local type = type
 local sub, byte, format = string.sub, string.byte, string.format
@@ -968,4 +947,3 @@ return {
   regname = regname,
   regname64 = regname64
 }
-

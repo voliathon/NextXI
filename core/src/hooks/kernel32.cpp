@@ -48,38 +48,21 @@ namespace
 namespace hooks
 {
 windower::hooklib::hook<decltype(::GetACP)> GetACP;
-windower::hooklib::hook<decltype(::LoadLibraryA)> LoadLibraryA;
 windower::hooklib::hook<decltype(::LoadLibraryW)> LoadLibraryW;
-windower::hooklib::hook<decltype(::CreateMutexA)> CreateMutexA;
 windower::hooklib::hook<decltype(::CreateMutexW)> CreateMutexW;
-windower::hooklib::hook<decltype(::OpenMutexA)> OpenMutexA;
 windower::hooklib::hook<decltype(::OpenMutexW)> OpenMutexW;
 windower::hooklib::hook<decltype(::GetPriorityClass)> GetPriorityClass;
 windower::hooklib::hook<decltype(::SetPriorityClass)> SetPriorityClass;
 windower::hooklib::hook<decltype(::CreateProcessW)> CreateProcessW;
 windower::hooklib::hook<decltype(::SetUnhandledExceptionFilter)>
     SetUnhandledExceptionFilter;
+windower::hooklib::hook<decltype(::CreateMutexA)> CreateMutexA;
+windower::hooklib::hook<decltype(::OpenMutexA)> OpenMutexA;
 };
 
 namespace callbacks
 {
 ::UINT WINAPI GetACP() noexcept { return 932; }
-
-::HMODULE WINAPI LoadLibraryA(::LPCSTR lpFileName) noexcept
-{
-    if (lpFileName && ::CompareStringA(
-                          LOCALE_INVARIANT, NORM_IGNORECASE, lpFileName, -1,
-                          "hook.dll", 8) == CSTR_EQUAL)
-    {
-        return nullptr;
-    }
-    else if (!windower::is_game_module(WINDOWER_RETURN_ADDRESS))
-    {
-        auto guard = windower::uncloak();
-        return hooks::LoadLibraryA(lpFileName);
-    }
-    return hooks::LoadLibraryA(lpFileName);
-}
 
 ::HMODULE WINAPI LoadLibraryW(::LPCWSTR lpFileName) noexcept
 {
@@ -97,18 +80,21 @@ namespace callbacks
     return hooks::LoadLibraryW(lpFileName);
 }
 
+::HANDLE WINAPI CreateMutexW(
+    ::LPSECURITY_ATTRIBUTES lpMutexAttributes, ::BOOL bInitialOwner,
+    ::LPCWSTR lpName) noexcept;
+
 ::HANDLE WINAPI CreateMutexA(
     ::LPSECURITY_ATTRIBUTES lpMutexAttributes, ::BOOL bInitialOwner,
     ::LPCSTR lpName) noexcept
 {
-    if (lpName)
-    {
-        std::string name = lpName;
-        name.append(std::to_string(::GetCurrentProcessId()));
-        return hooks::CreateMutexA(
-            lpMutexAttributes, bInitialOwner, name.c_str());
+    std::wstring nameW;
+    ::LPCWSTR namePtr = nullptr;
+    if (lpName) {
+        nameW = windower::to_wstring(std::u8string_view(reinterpret_cast<const char8_t*>(lpName)));
+        namePtr = nameW.c_str();
     }
-    return hooks::CreateMutexA(lpMutexAttributes, bInitialOwner, lpName);
+    return callbacks::CreateMutexW(lpMutexAttributes, bInitialOwner, namePtr);
 }
 
 ::HANDLE WINAPI CreateMutexW(
@@ -125,16 +111,19 @@ namespace callbacks
     return hooks::CreateMutexW(lpMutexAttributes, bInitialOwner, lpName);
 }
 
+::HANDLE WINAPI OpenMutexW(
+    ::DWORD dwDesiredAccess, ::BOOL bInheritHandle, ::LPCWSTR lpName) noexcept;
+
 ::HANDLE WINAPI OpenMutexA(
     ::DWORD dwDesiredAccess, ::BOOL bInheritHandle, ::LPCSTR lpName) noexcept
 {
-    if (lpName)
-    {
-        std::string name = lpName;
-        name.append(std::to_string(::GetCurrentProcessId()));
-        return hooks::OpenMutexA(dwDesiredAccess, bInheritHandle, name.c_str());
+    std::wstring nameW;
+    ::LPCWSTR namePtr = nullptr;
+    if (lpName) {
+        nameW = windower::to_wstring(std::u8string_view(reinterpret_cast<const char8_t*>(lpName)));
+        namePtr = nameW.c_str();
     }
-    return hooks::OpenMutexA(dwDesiredAccess, bInheritHandle, lpName);
+    return callbacks::OpenMutexW(dwDesiredAccess, bInheritHandle, namePtr);
 }
 
 ::HANDLE WINAPI OpenMutexW(
@@ -183,12 +172,12 @@ SetPriorityClass(::HANDLE hProcess, ::DWORD dwPriorityClass) noexcept
             std::wcsrchr(lpApplicationName, '\\'),
             std::wcsrchr(lpApplicationName, '/'));
         name = name ? std::next(name, 1) : lpApplicationName;
-        if (std::wcscmp(name, L"startpol.exe") == 0)
+        if (std::wcscmp(name, L"pol.exe") == 0)
         {
             STARTUPINFO startup{};
             startup.cb = sizeof startup;
 
-            auto path = windower::windower_path() / u8"windower.exe";
+            auto path = windower::windower_path() / u8"NextXI.exe";
             auto u8_args =
                 u8R"(")" + path.u8string() + u8R"(" )" +
                 windower::core::instance().settings.command_line_args;
@@ -341,8 +330,6 @@ void windower::kernel32::install()
 
         hooks::GetACP =
             hooklib::make_hook(u8"kernel32.dll", u8"GetACP", callbacks::GetACP);
-        hooks::LoadLibraryA = hooklib::make_hook(
-            u8"kernel32.dll", u8"LoadLibraryA", callbacks::LoadLibraryA);
         hooks::LoadLibraryW = hooklib::make_hook(
             u8"kernel32.dll", u8"LoadLibraryW", callbacks::LoadLibraryW);
         hooks::CreateMutexA = hooklib::make_hook(
@@ -377,6 +364,7 @@ void windower::kernel32::install()
 void windower::kernel32::uninstall() noexcept
 {
     hooks::GetACP                      = {};
+    hooks::LoadLibraryW                = {};
     hooks::CreateMutexA                = {};
     hooks::CreateMutexW                = {};
     hooks::OpenMutexA                  = {};

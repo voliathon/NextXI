@@ -1,43 +1,6 @@
 ----------------------------------------------------------------------------
 -- LuaJIT bytecode listing module.
 --
--- Copyright (C) 2005-2026 Mike Pall. All rights reserved.
--- Released under the MIT license. See Copyright Notice in luajit.h
-----------------------------------------------------------------------------
---
--- This module lists the bytecode of a Lua function. If it's loaded by -jbc
--- it hooks into the parser and lists all functions of a chunk as they
--- are parsed.
---
--- Example usage:
---
---   luajit -jbc -e 'local x=0; for i=1,1e6 do x=x+i end; print(x)'
---   luajit -jbc=- foo.lua
---   luajit -jbc=foo.list foo.lua
---
--- Default output is to stderr. To redirect the output to a file, pass a
--- filename as an argument (use '-' for stdout) or set the environment
--- variable LUAJIT_LISTFILE. The file is overwritten every time the module
--- is started.
---
--- This module can also be used programmatically:
---
---   local bc = require("jit.bc")
---
---   local function foo() print("hello") end
---
---   bc.dump(foo)           --> -- BYTECODE -- [...]
---   print(bc.line(foo, 2)) --> 0002    KSTR     1   1      ; "hello"
---
---   local out = {
---     -- Do something with each line:
---     write = function(t, ...) io.write(...) end,
---     close = function(t) end,
---     flush = function(t) end,
---   }
---   bc.dump(foo, out)
---
-------------------------------------------------------------------------------
 
 -- Cache some library functions and objects.
 local jit = require("jit")
@@ -186,4 +149,3 @@ return {
   off = bclistoff,
   start = bcliston -- For -j command line option.
 }
-

@@ -323,7 +323,11 @@ namespace Windower.Core
         /// See <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms683199.aspx">MSDN</a> for more details.
         /// </remarks>
         //[DllImport("kernel32.dll", CallingConvention = CallingConvention.Winapi, CharSet = CharSet.Unicode, SetLastError = true)]
-        //internal static extern IntPtr GetModuleHandle([MarshalAs(UnmanagedType.LPWStr)]string lpModuleName);
+        [DllImport("kernel32.dll", EntryPoint = "GetModuleHandleW", ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
+        internal static extern IntPtr GetModuleHandle([MarshalAs(UnmanagedType.LPWStr)]string lpModuleName);
+
+        [DllImport("kernel32.dll", EntryPoint = "LoadLibraryW", ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
+        internal static extern IntPtr LoadLibrary([MarshalAs(UnmanagedType.LPWStr)]string lpFileName);
 
         /// <summary>
         /// Retrieves the address of an exported function or variable from the specified dynamic-link library (DLL).
@@ -333,7 +337,8 @@ namespace Windower.Core
         /// </remarks>
         //[DllImport("kernel32.dll", CallingConvention = CallingConvention.Winapi, CharSet = CharSet.Ansi, BestFitMapping = false,
         //    ThrowOnUnmappableChar = true, SetLastError = true)]
-        //internal static extern IntPtr GetProcAddress(IntPtr hModule, [MarshalAs(UnmanagedType.LPStr)]string lpProcName);
+        [DllImport("kernel32.dll", ExactSpelling = true, SetLastError = true, CharSet = CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
+        internal static extern IntPtr GetProcAddress(IntPtr hModule, [MarshalAs(UnmanagedType.LPStr)]string lpProcName);
 
         /// <summary>
         /// <para>Creates a thread that runs in the virtual address space of another process.</para>
@@ -347,6 +352,9 @@ namespace Windower.Core
         [DllImport("kernel32.dll", CallingConvention = CallingConvention.Winapi, SetLastError = true)]
         internal static extern IntPtr CreateRemoteThread(SafeWaitHandle hProcess, IntPtr lpThreadAttributes, UIntPtr dwStackSize,
             IntPtr lpStartAddress, SafeProcessMemoryHandle lpParameter, uint dwCreationFlags, IntPtr lpThreadId);
+
+        [DllImport("kernel32.dll", CallingConvention = CallingConvention.Winapi, SetLastError = true)]
+        internal static extern uint QueueUserAPC(IntPtr pfnAPC, SafeWaitHandle hThread, SafeProcessMemoryHandle dwData);
 
         /// <summary>
         /// Waits until the specified object is in the signaled state or the time-out interval elapses.

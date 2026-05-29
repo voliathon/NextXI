@@ -27,6 +27,7 @@
 #include "core.hpp"
 #include "hooklib/hook.hpp"
 #include "resource.hpp"
+#include "unicode.hpp"
 #include "utility.hpp"
 
 #include <propsys.h>
@@ -77,6 +78,10 @@ windower::hooklib::hook<decltype(::SetWindowTextW)> SetWindowTextW;
 windower::hooklib::hook<decltype(::SetWindowsHookExA)> SetWindowsHookExA;
 windower::hooklib::hook<decltype(::SetWindowsHookExW)> SetWindowsHookExW;
 windower::hooklib::hook<decltype(::UnhookWindowsHookEx)> UnhookWindowsHookEx;
+windower::hooklib::hook<decltype(::FindWindowA)> FindWindowA;
+windower::hooklib::hook<decltype(::FindWindowW)> FindWindowW;
+windower::hooklib::hook<decltype(::FindWindowExA)> FindWindowExA;
+windower::hooklib::hook<decltype(::FindWindowExW)> FindWindowExW;
 
 }
 
@@ -274,7 +279,7 @@ void set_window_properties(::HWND hwnd)
                         ::PropVariantClear(&value);
                     }
                     auto executable =
-                        windower::windower_path() / u8"windower.exe";
+                        windower::windower_path() / u8"NextXI.exe";
                     if (SUCCEEDED(::InitPropVariantFromString(
                             executable.c_str(), &value)))
                     {
@@ -323,6 +328,106 @@ namespace callbacks
         return result;
     }
     return hooks::RegisterClassExW(lpWndClass);
+}
+
+::HWND WINAPI FindWindowA(::LPCSTR lpClassName, ::LPCSTR lpWindowName) noexcept
+{
+    if (lpClassName)
+    {
+        if (check_class_name(lpClassName, "FFXiClass") ||
+            check_class_name(lpClassName, "PlayOnlineUS") ||
+            check_class_name(lpClassName, "PlayOnlineEU") ||
+            check_class_name(lpClassName, "PlayOnline"))
+        {
+            ::HWND hWnd = nullptr;
+            while ((hWnd = hooks::FindWindowExA(nullptr, hWnd, lpClassName, lpWindowName)) != nullptr)
+            {
+                ::DWORD processId = 0;
+                ::GetWindowThreadProcessId(hWnd, &processId);
+                if (processId == ::GetCurrentProcessId())
+                {
+                    return hWnd;
+                }
+            }
+            return nullptr;
+        }
+    }
+    return hooks::FindWindowA(lpClassName, lpWindowName);
+}
+
+::HWND WINAPI FindWindowW(::LPCWSTR lpClassName, ::LPCWSTR lpWindowName) noexcept
+{
+    if (lpClassName)
+    {
+        if (check_class_name(lpClassName, L"FFXiClass") ||
+            check_class_name(lpClassName, L"PlayOnlineUS") ||
+            check_class_name(lpClassName, L"PlayOnlineEU") ||
+            check_class_name(lpClassName, L"PlayOnline"))
+        {
+            ::HWND hWnd = nullptr;
+            while ((hWnd = hooks::FindWindowExW(nullptr, hWnd, lpClassName, lpWindowName)) != nullptr)
+            {
+                ::DWORD processId = 0;
+                ::GetWindowThreadProcessId(hWnd, &processId);
+                if (processId == ::GetCurrentProcessId())
+                {
+                    return hWnd;
+                }
+            }
+            return nullptr;
+        }
+    }
+    return hooks::FindWindowW(lpClassName, lpWindowName);
+}
+
+::HWND WINAPI FindWindowExA(::HWND hWndParent, ::HWND hWndChildAfter, ::LPCSTR lpszClass, ::LPCSTR lpszWindow) noexcept
+{
+    if (lpszClass)
+    {
+        if (check_class_name(lpszClass, "FFXiClass") ||
+            check_class_name(lpszClass, "PlayOnlineUS") ||
+            check_class_name(lpszClass, "PlayOnlineEU") ||
+            check_class_name(lpszClass, "PlayOnline"))
+        {
+            ::HWND hWnd = hWndChildAfter;
+            while ((hWnd = hooks::FindWindowExA(hWndParent, hWnd, lpszClass, lpszWindow)) != nullptr)
+            {
+                ::DWORD processId = 0;
+                ::GetWindowThreadProcessId(hWnd, &processId);
+                if (processId == ::GetCurrentProcessId())
+                {
+                    return hWnd;
+                }
+            }
+            return nullptr;
+        }
+    }
+    return hooks::FindWindowExA(hWndParent, hWndChildAfter, lpszClass, lpszWindow);
+}
+
+::HWND WINAPI FindWindowExW(::HWND hWndParent, ::HWND hWndChildAfter, ::LPCWSTR lpszClass, ::LPCWSTR lpszWindow) noexcept
+{
+    if (lpszClass)
+    {
+        if (check_class_name(lpszClass, L"FFXiClass") ||
+            check_class_name(lpszClass, L"PlayOnlineUS") ||
+            check_class_name(lpszClass, L"PlayOnlineEU") ||
+            check_class_name(lpszClass, L"PlayOnline"))
+        {
+            ::HWND hWnd = hWndChildAfter;
+            while ((hWnd = hooks::FindWindowExW(hWndParent, hWnd, lpszClass, lpszWindow)) != nullptr)
+            {
+                ::DWORD processId = 0;
+                ::GetWindowThreadProcessId(hWnd, &processId);
+                if (processId == ::GetCurrentProcessId())
+                {
+                    return hWnd;
+                }
+            }
+            return nullptr;
+        }
+    }
+    return hooks::FindWindowExW(hWndParent, hWndChildAfter, lpszClass, lpszWindow);
 }
 
 ::HCURSOR WINAPI GetCursor() noexcept
@@ -499,7 +604,7 @@ namespace callbacks
                 hooks::SetWindowLongW(hWnd, GWL_WNDPROC, wnd_proc);
                 auto result =
                     hooks::SetWindowLongA(hWnd, GWL_WNDPROC, dwNewLong);
-                wnd_proc = hooks::SetWindowLongW(hWnd, GWL_WNDPROC, wnd_proc);
+                wnd_proc = hooks::SetWindowLongW(hWnd, GWL_WNDPROC, std::bit_cast<::LONG>(&ffxi_wnd_proc));
                 data->wnd_proc = std::bit_cast<::WNDPROC>(wnd_proc);
                 return result;
             }
@@ -525,7 +630,7 @@ namespace callbacks
                 hooks::SetWindowLongW(hWnd, GWL_WNDPROC, wnd_proc);
                 auto result =
                     hooks::SetWindowLongW(hWnd, GWL_WNDPROC, dwNewLong);
-                wnd_proc = hooks::SetWindowLongW(hWnd, GWL_WNDPROC, wnd_proc);
+                wnd_proc = hooks::SetWindowLongW(hWnd, GWL_WNDPROC, std::bit_cast<::LONG>(&ffxi_wnd_proc));
                 data->wnd_proc = std::bit_cast<::WNDPROC>(wnd_proc);
                 return result;
             }
@@ -583,7 +688,11 @@ namespace callbacks
         dwExStyle, lpClassName, lpWindowName, dwStyle, x, y, nWidth, nHeight,
         hWndParent, hMenu, hInstance, lpParam);
 
-    if (check_class(hwnd, ffxi_class_atom))
+    if (check_class(hwnd, pol_class_atom))
+    {
+        set_window_properties(hwnd);
+    }
+    else if (check_class(hwnd, ffxi_class_atom))
     {
         auto ptr  = std::make_unique<window_data>();
         auto data = ptr.get();
@@ -593,12 +702,9 @@ namespace callbacks
         wnd_proc       = hooks::SetWindowLongW(hwnd, GWL_WNDPROC, wnd_proc);
         data->wnd_proc = std::bit_cast<::WNDPROC>(wnd_proc);
 
-        auto const title_size = std::strlen(lpWindowName);
-        data->title.resize(::MultiByteToWideChar(
-            CP_ACP, 0, lpWindowName, title_size, nullptr, 0));
-        ::MultiByteToWideChar(
-            CP_ACP, 0, lpWindowName, title_size, data->title.data(),
-            data->title.size());
+        if (lpWindowName) {
+            data->title = windower::to_wstring(std::u8string_view(reinterpret_cast<const char8_t*>(lpWindowName)));
+        }
 
         ::SetWindowTextW(hwnd, L"Final Fantasy XI");
         set_window_properties(hwnd);
@@ -761,6 +867,8 @@ void windower::user32::install()
 
     hooks::CreateWindowExA = hooklib::make_hook(
         u8"user32.dll", u8"CreateWindowExA", callbacks::CreateWindowExA);
+    hooks::CreateWindowExW = hooklib::make_hook(
+        u8"user32.dll", u8"CreateWindowExW", callbacks::CreateWindowExW);
 
     hooks::MoveWindow = hooklib::make_hook(
         u8"user32.dll", u8"MoveWindow", callbacks::MoveWindow);
@@ -777,6 +885,14 @@ void windower::user32::install()
     hooks::UnhookWindowsHookEx = hooklib::make_hook(
         u8"user32.dll", u8"UnhookWindowsHookEx",
         callbacks::UnhookWindowsHookEx);
+    hooks::FindWindowA = hooklib::make_hook(
+        u8"user32.dll", u8"FindWindowA", callbacks::FindWindowA);
+    hooks::FindWindowW = hooklib::make_hook(
+        u8"user32.dll", u8"FindWindowW", callbacks::FindWindowW);
+    hooks::FindWindowExA = hooklib::make_hook(
+        u8"user32.dll", u8"FindWindowExA", callbacks::FindWindowExA);
+    hooks::FindWindowExW = hooklib::make_hook(
+        u8"user32.dll", u8"FindWindowExW", callbacks::FindWindowExW);
 }
 
 void windower::user32::uninstall() noexcept
@@ -806,4 +922,8 @@ void windower::user32::uninstall() noexcept
     hooks::SetWindowsHookExA   = {};
     hooks::SetWindowsHookExW   = {};
     hooks::UnhookWindowsHookEx = {};
+    hooks::FindWindowA         = {};
+    hooks::FindWindowW         = {};
+    hooks::FindWindowExA       = {};
+    hooks::FindWindowExW       = {};
 }

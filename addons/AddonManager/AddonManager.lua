@@ -68,17 +68,39 @@ coroutine.schedule(function()
                         
                         -- Execute the user's saved loadout
                         if profile_settings.addons then
-                            for addon_id, is_active in pairs(profile_settings.addons) do
-                                if is_active then
+                            -- Normalize old boolean settings
+                            for k, v in pairs(profile_settings.addons) do
+                                if type(v) == "boolean" then
+                                    profile_settings.addons[k] = v and "login" or "off"
+                                end
+                            end
+
+                            -- Load 'login' addons immediately
+                            for addon_id, state_val in pairs(profile_settings.addons) do
+                                if state_val == "login" then
                                     core_command.input('/load ' .. addon_id)
                                 end
                             end
+
+                            -- Schedule 'delayed' addons
+                            coroutine.schedule(function()
+                                local expected_character = name
+                                coroutine.sleep(5)
+                                if state.current_character == expected_character then
+                                    for addon_id, state_val in pairs(profile_settings.addons) do
+                                        if state_val == "delayed" then
+                                            core_command.input('/load ' .. addon_id)
+                                        end
+                                    end
+                                end
+                            end)
                         end
                         
                         state.scanned = false 
                         
                         -- COUNTER-MEASURE: Defeat the account_service forced load
-                        if not profile_settings.addons['config'] then
+                        local config_state = profile_settings.addons and profile_settings.addons['config'] or "off"
+                        if config_state == "off" then
                             core_command.input('/unload config')
                         end
                     end)
@@ -189,12 +211,14 @@ local function scan_packages()
             
             local is_dev = false
             local is_official = false
+            local engine_support = "DX8/DX11"
             if pkg_name == "config" then is_official = true end 
-
+            
             if version_cache[pkg_path] then
                 exact_version = version_cache[pkg_path]
                 is_dev = version_cache[pkg_path .. "_dev"] or false
                 is_official = version_cache[pkg_path .. "_off"] or is_official
+                engine_support = version_cache[pkg_path .. "_eng"] or "DX8/DX11"
             else
                 local manifest_file = file.new(pkg_path .. "\\manifest.xml")
                 if manifest_file:exists() then
@@ -203,23 +227,28 @@ local function scan_packages()
                         local raw_v = content:match("<version>%s*(.-)%s*</version>")
                         if raw_v then exact_version = raw_v end
                         
-                        -- Parse description for tags
                         local raw_desc = content:match("<description>%s*(.-)%s*</description>")
                         if raw_desc then
                             if raw_desc:match("^%[DEV%]") then is_dev = true end
                             if raw_desc:match("^%[OFFICIAL%]") then is_official = true end
+                        end
+
+                        local raw_engine = content:match("<engine>%s*(.-)%s*</engine>")
+                        if raw_engine then 
+                            engine_support = raw_engine 
                         end
                     end
                 end
                 version_cache[pkg_path] = exact_version
                 version_cache[pkg_path .. "_dev"] = is_dev
                 version_cache[pkg_path .. "_off"] = is_official
+                version_cache[pkg_path .. "_eng"] = engine_support
             end
             
             local cat = "addon"
             local grp = "third_party"
 
-            if pkg_name == "FenestraSDK" or pkg_name == "AddonManager" then
+            if pkg_name == "NextXISDK" or pkg_name == "AddonManager" then
                 cat = "core"
                 grp = "core"
             elseif pkg_path:find("[\\/]libs[\\/]") or 
@@ -239,7 +268,15 @@ local function scan_packages()
                 end
             end
 
-            local is_loaded = (profile_settings.addons and profile_settings.addons[pkg_name] == true)
+            local current_state = "off"
+            if profile_settings.addons and profile_settings.addons[pkg_name] ~= nil then
+                local s = profile_settings.addons[pkg_name]
+                if type(s) == "boolean" then
+                    current_state = s and "login" or "off"
+                else
+                    current_state = s
+                end
+            end
             
             table.insert(state.packages, {
                 id = pkg_name, 
@@ -247,9 +284,11 @@ local function scan_packages()
                 version = exact_version, 
                 path = pkg_path,
                 has_readme = (has_readme_str == "1"), 
-                loaded = is_loaded,
+                loaded = (current_state ~= "off"),
+                lifecycle = current_state,
                 category = cat,
-                group = grp
+                group = grp,
+                engine = engine_support or "DX8/DX11"
             })
         end
     end
@@ -280,6 +319,7 @@ local readme_scroll = ui.scroll_panel_state(580, 460)
 local function draw_package(canvas, pkg)
     if pkg.group == "core" or pkg.group == "dependency" then
         canvas:label(pkg.name .. "  v" .. pkg.version, ui.color.system_gray)
+        canvas:same_line(220)
         
         if pkg.group == "core" then
             canvas:label("  🔒 CORE SYSTEM", ui.color.system_white)
@@ -303,29 +343,59 @@ local function draw_package(canvas, pkg)
         canvas:space(20) 
     else
         canvas:label(pkg.name .. "  v" .. pkg.version)
+        canvas:same_line(150)
         
-        local tgl_label = pkg.loaded and "  [Active]{color:limegreen weight:bold}" or "  Offline"
-        local clicked, _ = canvas:check("tgl_" .. pkg.id, tgl_label, pkg.loaded)
+        if pkg.engine == "DX11" then
+            canvas:label("[DX11/dgVoodoo2]", ui.color.skin_accent)
+        else
+            canvas:label("[DX8 / DX11]", ui.color.system_gray)
+        end
         
-        if clicked and not pkg.locked then
-            pkg.locked = true 
-            pkg.loaded = not pkg.loaded
-            
+        canvas:same_line(230)
+        local c_state = pkg.lifecycle or "off"
+
+        local btn_off_col = (c_state == "off") and ui.color.system_red or ui.color.system_gray
+        local btn_boot_col = (c_state == "boot") and ui.color.system_green or ui.color.system_gray
+        local btn_log_col = (c_state == "login") and ui.color.system_green or ui.color.system_gray
+        local btn_del_col = (c_state == "delayed") and ui.color.system_green or ui.color.system_gray
+
+        local clicked_off = canvas:button("off_" .. pkg.id, "Off", false, btn_off_col)
+        canvas:same_line()
+        local clicked_boot = canvas:button("boot_" .. pkg.id, "Boot", false, btn_boot_col)
+        canvas:same_line()
+        local clicked_login = canvas:button("log_" .. pkg.id, "Login", false, btn_log_col)
+        canvas:same_line()
+        local clicked_delayed = canvas:button("del_" .. pkg.id, "Delayed", false, btn_del_col)
+
+        local new_state = c_state
+        if clicked_off and not pkg.locked then new_state = "off" end
+        if clicked_boot and not pkg.locked then new_state = "boot" end
+        if clicked_login and not pkg.locked then new_state = "login" end
+        if clicked_delayed and not pkg.locked then new_state = "delayed" end
+
+        if new_state ~= c_state then
+            pkg.locked = true
+            pkg.lifecycle = new_state
+            pkg.loaded = (new_state ~= "off")
+
             if not profile_settings.addons then profile_settings.addons = {} end
-            profile_settings.addons[pkg.id] = pkg.loaded
-            
-            if pkg.loaded then
+            profile_settings.addons[pkg.id] = new_state
+
+            if new_state == "off" then
+                coroutine.schedule(function()
+                    core_command.input('/unload ' .. pkg.id)
+                    chat.warning("AddonManager: Unloaded '" .. pkg.name .. "'")
+                    pkg.locked = false 
+                end)
+            elseif c_state == "off" then
+                -- Immediately load it if we just turned it on manually
                 coroutine.schedule(function()
                     core_command.input('/load ' .. pkg.id) 
                     chat.success("AddonManager: Loaded '" .. pkg.name .. "'")
                     pkg.locked = false 
                 end)
             else
-                coroutine.schedule(function()
-                    core_command.input('/unload ' .. pkg.id)
-                    chat.warning("AddonManager: Unloaded '" .. pkg.name .. "'")
-                    pkg.locked = false 
-                end)
+                pkg.locked = false
             end
             settings.save('profiles') 
         end
@@ -466,6 +536,20 @@ end)
 addon.unload = function()
     chat.warning("AddonManager has been unloaded.")
 end
+
+-- ============================================================================
+-- 7. BOOT EXECUTION (Runs immediately when AddonManager loads)
+-- ============================================================================
+coroutine.schedule(function()
+    coroutine.sleep_frame()
+    if profile_settings.addons then
+        for addon_id, state_val in pairs(profile_settings.addons) do
+            if state_val == "boot" then
+                core_command.input('/load ' .. addon_id)
+            end
+        end
+    end
+end)
 
 chat.success("----------------------------------------------------")
 chat.success("AddonManager Initialized. Type /addon to continue...")

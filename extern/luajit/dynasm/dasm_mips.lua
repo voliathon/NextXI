@@ -1,9 +1,6 @@
 ------------------------------------------------------------------------------
 -- DynASM MIPS32/MIPS64 module.
 --
--- Copyright (C) 2005-2026 Mike Pall. All rights reserved.
--- See dynasm.lua for full copyright notice.
-------------------------------------------------------------------------------
 
 local mips64 = mips64
 local mipsr6 = _map_def.MIPSR6
@@ -1178,4 +1175,3 @@ end
 return _M
 
 ------------------------------------------------------------------------------
-

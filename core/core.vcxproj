@@ -221,6 +221,7 @@
     <ClCompile Include="src\hooks\d3d8.cpp" />
     <ClCompile Include="src\hooks\kernel32.cpp" />
     <ClCompile Include="src\hooks\user32.cpp" />
+    <ClCompile Include="src\hooks\ws2_32.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\settings_channel.cpp" />
     <ClCompile Include="src\ui\bitmap.cpp" />
@@ -258,6 +259,8 @@
     <ClCompile Include="src\ui\window.cpp" />
     <ClCompile Include="src\ui\window_manager.cpp" />
     <ClCompile Include="src\unicode.cpp" />
+    <ClCompile Include="src\utilities\pol_hacks.cpp" />
+    <ClCompile Include="src\utilities\sigscan.cpp" />
     <ClCompile Include="src\utilities\xml.cpp" />
     <ClCompile Include="src\utility.cpp" />
     <ClCompile Include="src\wrappers\direct_3d.cpp" />
@@ -380,16 +383,18 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='debug|Win32'">
     <OutDir>$(SolutionDir)build\bin\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\obj\$(ProjectName)\$(Configuration)\</IntDir>
-    <CodeAnalysisRuleSet>$(SolutionDir)\fenestra.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>$(SolutionDir)\nextxi.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <CodeAnalysisTreatWarningsAsErrors>false</CodeAnalysisTreatWarningsAsErrors>
+    <IncludePath>$(UniversalCRTSdkDir)Include\$(TargetPlatformVersion)\ucrt;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='release|Win32'">
     <OutDir>$(SolutionDir)build\bin\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\obj\$(ProjectName)\$(Configuration)\</IntDir>
-    <CodeAnalysisRuleSet>$(SolutionDir)\fenestra.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>$(SolutionDir)\nextxi.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
+    <IncludePath>$(UniversalCRTSdkDir)Include\$(TargetPlatformVersion)\ucrt;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='debug|Win32'">
     <ClCompile>
@@ -414,7 +419,7 @@
     <Link>
       <AdditionalLibraryDirectories>$(SolutionDir)build\lib\luajit\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ModuleDefinitionFile>$(ProjectName).def</ModuleDefinitionFile>
-      <AdditionalDependencies>lua51.static.lib;shlwapi.lib;dbghelp.lib;winhttp.lib;imm32.lib;dwrite.lib;d2d1.lib;windowscodecs.lib;icu.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>lua51.static.lib;shlwapi.lib;dbghelp.lib;winhttp.lib;imm32.lib;dwrite.lib;d2d1.lib;windowscodecs.lib;icu.lib;psapi.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(IntDir)src;$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -464,7 +469,7 @@ xcopy /E /I /Y "$(SolutionDir)extern\luajit\src\jit\*" "$(SolutionDir)build\lib\
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>$(SolutionDir)build\lib\luajit\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ModuleDefinitionFile>$(ProjectName).def</ModuleDefinitionFile>
-      <AdditionalDependencies>lua51.static.lib;shlwapi.lib;dbghelp.lib;winhttp.lib;imm32.lib;dwrite.lib;d2d1.lib;windowscodecs.lib;icu.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>lua51.static.lib;shlwapi.lib;dbghelp.lib;winhttp.lib;imm32.lib;dwrite.lib;d2d1.lib;windowscodecs.lib;icu.lib;psapi.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <GenerateMapFile>true</GenerateMapFile>
     </Link>

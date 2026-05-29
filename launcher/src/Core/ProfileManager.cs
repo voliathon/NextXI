@@ -162,6 +162,7 @@ namespace Windower.Core
                 yield return new XElement("run-as-admin", p.RunAsAdmin);
             }
             yield return new XElement("window-type", ToLowerString(p.WindowType));
+            yield return new XElement("graphics-engine", p.SelectedEngine.ToString());
             yield return new XElement("display", p.Display);
             yield return new XElement("resolution", Serialize(p.Resolution));
             if (p.WindowType != WindowType.FullScreen)
@@ -206,6 +207,18 @@ namespace Windower.Core
             {
                 yield return new XElement("access-control-prompt", p.AccessControlPrompt);
             }
+            if (p.PolAccountLimit)
+            {
+                yield return new XElement("pol-account-limit", p.PolAccountLimit);
+            }
+            if (p.PolFastLogin)
+            {
+                yield return new XElement("pol-fast-login", p.PolFastLogin);
+            }
+            if (p.PolNoThrottle)
+            {
+                yield return new XElement("pol-no-throttle", p.PolNoThrottle);
+            }
         }
 
         private static Profile DeserializeProfile(XElement e)
@@ -219,6 +232,7 @@ namespace Windower.Core
                 ExecutableArgs = ConvertString(e.Element("executable-args")),
                 RunAsAdmin = Convert(e.Element("run-as-admin"), false),
                 WindowType = Convert(e.Element("window-type"), WindowType.Borderless),
+                SelectedEngine = Convert(e.Element("graphics-engine"), Profile.GraphicsEngine.Legacy),
                 Display = ConvertString(e.Element("display")),
                 Resolution = DeserializeDimension(e.Element("resolution")),
                 Position = DeserializePoint(e.Element("position")),
@@ -242,6 +256,9 @@ namespace Windower.Core
                 UserPath = ConvertString(e.Element("user-path")),
                 TempPath = ConvertString(e.Element("temp-path")),
                 AccessControlPrompt = Convert(e.Element("access-control-prompt"), true),
+                PolAccountLimit = Convert(e.Element("pol-account-limit"), false),
+                PolFastLogin = Convert(e.Element("pol-fast-login"), false),
+                PolNoThrottle = Convert(e.Element("pol-no-throttle"), false),
             };
             return builder.Get();
         }

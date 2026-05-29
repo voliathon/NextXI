@@ -46,42 +46,6 @@
 namespace
 {
 
-class heap
-{
-public:
-    static heap const& instance()
-    {
-        static heap const instance{HEAP_CREATE_ENABLE_EXECUTE};
-        return instance;
-    }
-
-    operator ::HANDLE() const noexcept { return m_handle; }
-
-private:
-    ::HANDLE m_handle;
-
-    heap(heap const&) = delete;
-    heap(heap&&)      = delete;
-    heap(::DWORD options) : m_handle{::HeapCreate(options, 0, 0)}
-    {
-        if (!m_handle)
-        {
-            windower::throw_system_error();
-        }
-    }
-
-    ~heap() noexcept
-    {
-        if (m_handle && !::HeapDestroy(m_handle))
-        {
-            windower::fail_fast();
-        }
-    }
-
-    heap& operator=(heap const&) = delete;
-    heap& operator=(heap&&) = delete;
-};
-
 template<typename T>
 class executable_allocator
 {
@@ -96,7 +60,7 @@ public:
 
     T* allocate(std::size_t n)
     {
-        auto ptr = ::HeapAlloc(heap::instance(), 0, n * sizeof(T));
+        auto ptr = ::VirtualAlloc(nullptr, n * sizeof(T), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
         if (!ptr)
         {
             throw std::bad_alloc{};
@@ -106,7 +70,7 @@ public:
 
     void deallocate(T* ptr, std::size_t)
     {
-        if (!::HeapFree(heap::instance(), 0, ptr))
+        if (!::VirtualFree(ptr, 0, MEM_RELEASE))
         {
             windower::throw_system_error();
         }
@@ -150,7 +114,7 @@ public:
         }
 
         if (!::VirtualProtect(
-                target, target_size, PAGE_EXECUTE_READWRITE, &m_original))
+                target, target_size, PAGE_READWRITE, &m_original))
         {
             windower::throw_system_error();
         }
@@ -431,6 +395,12 @@ public:
             std::fill(
                 std::next(m_target, sizeof(x86::jump)),
                 std::next(m_target, m_size), x86::trap_instruction);
+        }
+
+        ::DWORD oldProtect;
+        if (!::VirtualProtect(this, sizeof(block), PAGE_EXECUTE_READ, &oldProtect))
+        {
+            windower::throw_system_error();
         }
     }
 

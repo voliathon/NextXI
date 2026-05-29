@@ -59,6 +59,10 @@ namespace Windower.Core
         private Maybe<string> userPath;
         private Maybe<string> tempPath;
         private Maybe<bool> accessControlPrompt;
+        private Maybe<Profile.GraphicsEngine> selectedEngine;
+        private Maybe<bool> polAccountLimit;
+        private Maybe<bool> polFastLogin;
+        private Maybe<bool> polNoThrottle;
 
         public string Name
         {
@@ -248,6 +252,30 @@ namespace Windower.Core
             set => accessControlPrompt = value;
         }
 
+        public Profile.GraphicsEngine SelectedEngine
+        {
+            get => selectedEngine.Default(Profile.GraphicsEngine.Legacy);
+            set => selectedEngine = value;
+        }
+
+        public bool PolAccountLimit
+        {
+            get => polAccountLimit.Default(false);
+            set => polAccountLimit = value;
+        }
+
+        public bool PolFastLogin
+        {
+            get => polFastLogin.Default(false);
+            set => polFastLogin = value;
+        }
+
+        public bool PolNoThrottle
+        {
+            get => polNoThrottle.Default(false);
+            set => polNoThrottle = value;
+        }
+
         public Profile Get() => Get(default(Profile));
 
         public Profile Get(Profile baseValue)
@@ -256,7 +284,7 @@ namespace Windower.Core
             return baseValue.With(name, region, useSteam, executable, executableArgs, runAsAdmin, windowType, display, resolution, position,
                 samplesPerPixel, uiScale, hardwareMouse, maxSounds, playSoundWhenUnfocused, mipmapping, bumpMapping, mapCompression,
                 textureCompression, environmentAnimation, fontType, gamma, driverStability, playIntro, debug, developerMode, userPath, userPath,
-                tempPath, accessControlPrompt);
+                tempPath, accessControlPrompt, selectedEngine, polAccountLimit, polFastLogin, polNoThrottle);
         }
     }
 }
