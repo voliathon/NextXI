@@ -72,6 +72,16 @@ windower::direct_3d_device::direct_3d_device(
         core.script_environment.reset();
         core.addon_manager = std::make_unique<addon_manager>();
 
+        // Run the init script
+        try
+        {
+            core.script_environment.execute(u8"init");
+        }
+        catch (std::exception const& e)
+        {
+            ::windower::core::error(u8"core", e, ::windower::command_source::console);
+        }
+
         });
 }
 
@@ -397,6 +407,17 @@ windower::direct_3d_device::CreateDepthStencilSurface(
 ::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::SetTransform(
     ::D3DTRANSFORMSTATETYPE State, ::D3DMATRIX const* pMatrix) noexcept
 {
+    if (pMatrix)
+    {
+        if (State == D3DTS_VIEW)
+        {
+            core::instance().view_matrix = *pMatrix;
+        }
+        else if (State == D3DTS_PROJECTION)
+        {
+            core::instance().projection_matrix = *pMatrix;
+        }
+    }
     return m_impl->SetTransform(State, pMatrix);
 }
 
@@ -415,6 +436,10 @@ windower::direct_3d_device::CreateDepthStencilSurface(
 ::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::SetViewport(
     ::D3DVIEWPORT8 const* pViewport) noexcept
 {
+    if (pViewport)
+    {
+        core::instance().viewport = *pViewport;
+    }
     return m_impl->SetViewport(pViewport);
 }
 

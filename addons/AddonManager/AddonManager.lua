@@ -15,18 +15,17 @@ local math = require('math')
 local addon = {
     name = 'AddonManager',
     author = 'Voliathon of Bahamut',
-    version = '1.3'
+    version = '2.1'
 }
 
 -- ============================================================================
--- 1. NATIVE SETTINGS & PERSISTENCE 
+-- 1. NATIVE SETTINGS & PERSISTENCE
 -- ============================================================================
 local defaults = {
-    addons = {} -- Stores boolean states for the active character
+    -- We now store settings per-character. 'Global' is the fallback.
+    Global = { addons = {} }
 }
 
--- The settings library automatically intercepts this and saves to: 
--- addons/AddonManager/data/<CharName_Server>/profiles.lua
 local profile_settings = settings.load(defaults, 'profiles')
 
 local state = {
@@ -36,14 +35,38 @@ local state = {
     show_readme = false,
     readme_title = "Readme",
     readme_content = "",
-    current_character = "Global", 
-    show_official_addons = true,    -- Opens automatically
-    show_third_party_addons = false, 
-    show_dev_tools = false, 
-    show_dependencies = false 
+    current_character = "Global",
+    show_official_addons = true,
+    show_third_party_addons = true,
+    show_dev_tools = false,
+    show_dependencies = false
 }
 
 local version_cache = {}
+
+-- Elite UI Colors
+local COLOR_ACCENT = ui.color.rgb(100, 200, 255)
+local COLOR_ON = ui.color.rgb(40, 200, 100)
+local COLOR_OFF = ui.color.rgb(220, 80, 80)
+local COLOR_TEXT = ui.color.rgb(230, 230, 230)
+local COLOR_MUTED = ui.color.rgb(140, 140, 140)
+local COLOR_WARN = ui.color.rgb(255, 180, 50)
+local COLOR_BG = ui.color.fade(ui.color.system_black, 230)
+local COLOR_BORDER = ui.color.rgb(80, 120, 160)
+
+local ELITE_STYLE = {
+    text_color = COLOR_TEXT,
+    background_color = COLOR_BG,
+    border_color = COLOR_BORDER,
+    opacity = 0.95
+}
+
+-- Helper to get the active character's addons table
+local function get_char_addons()
+    local c = state.current_character
+    if not profile_settings[c] then profile_settings[c] = { addons = {} } end
+    return profile_settings[c].addons
+end
 
 -- ============================================================================
 -- 2. NETWORK LISTENER (Autoloads on Login)
@@ -60,46 +83,44 @@ coroutine.schedule(function()
                 if name ~= "" and name:lower() ~= "global" and state.current_character ~= name then
                     state.current_character = name
                     
-                    -- Wait 1 second for the account_service to register the server ID.
-                    -- This triggers settings.lua to dynamically swap your profile_settings 
-                    -- object to the newly logged-in character's file.
                     coroutine.schedule(function()
                         coroutine.sleep(1)
                         
-                        -- Execute the user's saved loadout
-                        if profile_settings.addons then
-                            -- Normalize old boolean settings
-                            for k, v in pairs(profile_settings.addons) do
-                                if type(v) == "boolean" then
-                                    profile_settings.addons[k] = v and "login" or "off"
-                                end
+                        -- Print Banner on Zone In
+                        chat.success("====================================================")
+                        chat.success(" [ NextXI AddonManager 2.1 ] System Online")
+                        chat.success(" Profile Loaded: " .. name)
+                        chat.success(" Type /addon to configure your dashboard.")
+                        chat.success("====================================================")
+                        
+                        local addons = get_char_addons()
+                        for k, v in pairs(addons) do
+                            if type(v) == "boolean" then
+                                addons[k] = v and "login" or "off"
                             end
+                        end
 
-                            -- Load 'login' addons immediately
-                            for addon_id, state_val in pairs(profile_settings.addons) do
-                                if state_val == "login" then
-                                    core_command.input('/load ' .. addon_id)
-                                end
+                        for addon_id, state_val in pairs(addons) do
+                            if state_val == "login" then
+                                core_command.input('/load ' .. addon_id)
                             end
+                        end
 
-                            -- Schedule 'delayed' addons
-                            coroutine.schedule(function()
-                                local expected_character = name
-                                coroutine.sleep(5)
-                                if state.current_character == expected_character then
-                                    for addon_id, state_val in pairs(profile_settings.addons) do
-                                        if state_val == "delayed" then
-                                            core_command.input('/load ' .. addon_id)
-                                        end
+                        coroutine.schedule(function()
+                            local expected_character = name
+                            coroutine.sleep(5)
+                            if state.current_character == expected_character then
+                                for addon_id, state_val in pairs(addons) do
+                                    if state_val == "delayed" then
+                                        core_command.input('/load ' .. addon_id)
                                     end
                                 end
-                            end)
-                        end
+                            end
+                        end)
                         
                         state.scanned = false 
                         
-                        -- COUNTER-MEASURE: Defeat the account_service forced load
-                        local config_state = profile_settings.addons and profile_settings.addons['config'] or "off"
+                        local config_state = addons['config'] or "off"
                         if config_state == "off" then
                             core_command.input('/unload config')
                         end
@@ -111,97 +132,43 @@ coroutine.schedule(function()
 end)
 
 -- ============================================================================
--- 3. MARKDOWN TRANSLATOR
+-- 3. README MARKDOWN PARSER
 -- ============================================================================
-local function parse_markdown_to_windower(text)
-    if not text or text == "" then return "No content found." end
-    text = text:gsub("^# (.-)\n", "[%1]{size:xx-large weight:bold color:skin_accent}\n")
-    text = text:gsub("\n# (.-)\n", "\n[%1]{size:xx-large weight:bold color:skin_accent}\n")
-    text = text:gsub("^## (.-)\n", "[%1]{size:x-large weight:bold}\n")
-    text = text:gsub("\n## (.-)\n", "\n[%1]{size:x-large weight:bold}\n")
-    text = text:gsub("^### (.-)\n", "[%1]{size:large weight:bold color:system_gray}\n")
-    text = text:gsub("\n### (.-)\n", "\n[%1]{size:large weight:bold color:system_gray}\n")
-    text = text:gsub("%*%*(.-)%*%*", "[%1]{weight:bold}")
-    text = text:gsub("%*(.-)%*", "[%1]{style:italic}")
-    text = text:gsub("`(.-)`", "[%1]{color:system_white}")
-    return text
-end
-
--- ============================================================================
--- 4. DYNAMIC SCROLL BAR & PACKAGE SCANNER
--- ============================================================================
-local scroll_view_content_height = 360
-local scroll_view = ui.scroll_panel_state(430, scroll_view_content_height)
-
-local function update_scroll_canvas()
-    local required_height = 10 
-
-    -- Accordion Headers take ~30px space each (4 headers = 120px)
-    
-    required_height = required_height + 30
-    if state.show_official_addons then
-        for _, pkg in ipairs(state.packages) do
-            if pkg.group == "official" then required_height = required_height + 65 end
-        end
-    end
-    required_height = required_height + 20 -- Spacer
-    
-    required_height = required_height + 30
-    if state.show_third_party_addons then
-        for _, pkg in ipairs(state.packages) do
-            if pkg.group == "third_party" then required_height = required_height + 65 end
-        end
-    end
-    required_height = required_height + 20 
-
-    required_height = required_height + 30
-    if state.show_dev_tools then
-        for _, pkg in ipairs(state.packages) do
-            if pkg.group == "dev" then required_height = required_height + 65 end
-        end
-    end
-    required_height = required_height + 20 
-
-    required_height = required_height + 30
-    if state.show_dependencies then
-        for _, pkg in ipairs(state.packages) do
-            if pkg.group == "core" or pkg.group == "dependency" then required_height = required_height + 60 end
-        end
-    end
-
-    local final_height = math.max(360, required_height)
-    if final_height ~= scroll_view_content_height then
-        scroll_view_content_height = final_height
-        scroll_view = ui.scroll_panel_state(430, scroll_view_content_height)
-    end
+local function parse_markdown_to_windower(md_text)
+    if not md_text or md_text == "" then return "No documentation available." end
+    local parsed = md_text:gsub("\r\n", "\n")
+    parsed = parsed:gsub("^#+ ", ""):gsub("\n#+ ", "\n")
+    parsed = parsed:gsub("%*%*(.-)%*%*", "%1")
+    parsed = parsed:gsub("%*(.-)%*", "%1")
+    parsed = parsed:gsub("%[(.-)%]%((.-)%)", "%1 (%2)")
+    return parsed
 end
 
 local function calculate_readme_height(text)
-    if not text or text == "" then return 460 end
-    local total_height = 0
-    for line in text:gmatch("([^\n]*)\n?") do
-        if line == "" then
-            total_height = total_height + 15 
-        elseif line:match("^# ") then
-            total_height = total_height + 45 
-        elseif line:match("^## ") then
-            total_height = total_height + 35 
-        elseif line:match("^### ") then
-            total_height = total_height + 25 
-        else
-            local chars = #line
-            local wraps = math.max(1, math.ceil(chars / 85))
-            total_height = total_height + (wraps * 20)
+    if not text then return 460 end
+    local lines = 1
+    for i in text:gmatch("\n") do lines = lines + 1 end
+    local total_height = lines * 22
+    local code_blocks = 0
+    for block in text:gmatch("`") do
+        code_blocks = code_blocks + 1
+        if code_blocks % 2 == 1 then
+            total_height = total_height + 20 
         end
     end
-    return math.max(460, total_height + 50)
+    return math.max(610, total_height + 50)
 end
 
+-- ============================================================================
+-- 4. MANIFEST SCANNER
+-- ============================================================================
 local function scan_packages()
     state.packages = {}
     
     local raw_data = core_windower.get_package_list()
     if not raw_data then return end
+
+    local char_addons = get_char_addons()
 
     for pkg_str in raw_data:gmatch("([^;]+)") do
         local raw_name, pkg_version, pkg_path, has_readme_str = pkg_str:match("([^|]+)|([^|]+)|([^|]+)|([^|]+)")
@@ -212,6 +179,9 @@ local function scan_packages()
             local is_dev = false
             local is_official = false
             local engine_support = "DX8/DX11"
+            local author = "Unknown"
+            local description = "No description provided."
+            
             if pkg_name == "config" then is_official = true end 
             
             if version_cache[pkg_path] then
@@ -219,6 +189,8 @@ local function scan_packages()
                 is_dev = version_cache[pkg_path .. "_dev"] or false
                 is_official = version_cache[pkg_path .. "_off"] or is_official
                 engine_support = version_cache[pkg_path .. "_eng"] or "DX8/DX11"
+                author = version_cache[pkg_path .. "_auth"] or "Unknown"
+                description = version_cache[pkg_path .. "_desc"] or "No description provided."
             else
                 local manifest_file = file.new(pkg_path .. "\\manifest.xml")
                 if manifest_file:exists() then
@@ -227,22 +199,26 @@ local function scan_packages()
                         local raw_v = content:match("<version>%s*(.-)%s*</version>")
                         if raw_v then exact_version = raw_v end
                         
+                        local raw_author = content:match("<author>%s*(.-)%s*</author>")
+                        if raw_author then author = raw_author end
+                        
                         local raw_desc = content:match("<description>%s*(.-)%s*</description>")
                         if raw_desc then
                             if raw_desc:match("^%[DEV%]") then is_dev = true end
                             if raw_desc:match("^%[OFFICIAL%]") then is_official = true end
+                            description = raw_desc:gsub("^%[DEV%]%s*", ""):gsub("^%[OFFICIAL%]%s*", "")
                         end
 
                         local raw_engine = content:match("<engine>%s*(.-)%s*</engine>")
-                        if raw_engine then 
-                            engine_support = raw_engine 
-                        end
+                        if raw_engine then engine_support = raw_engine end
                     end
                 end
                 version_cache[pkg_path] = exact_version
                 version_cache[pkg_path .. "_dev"] = is_dev
                 version_cache[pkg_path .. "_off"] = is_official
                 version_cache[pkg_path .. "_eng"] = engine_support
+                version_cache[pkg_path .. "_auth"] = author
+                version_cache[pkg_path .. "_desc"] = description
             end
             
             local cat = "addon"
@@ -259,25 +235,20 @@ local function scan_packages()
                 cat = "dependency"
                 grp = "dependency"
             else
-                if is_dev then
-                    grp = "dev"
-                elseif is_official then
-                    grp = "official"
-                else
-                    grp = "third_party"
-                end
+                if is_dev then grp = "dev"
+                elseif is_official then grp = "official" end
             end
-
+            
             local current_state = "off"
-            if profile_settings.addons and profile_settings.addons[pkg_name] ~= nil then
-                local s = profile_settings.addons[pkg_name]
+            if char_addons[pkg_name] ~= nil then
+                local s = char_addons[pkg_name]
                 if type(s) == "boolean" then
                     current_state = s and "login" or "off"
                 else
                     current_state = s
                 end
             end
-            
+
             table.insert(state.packages, {
                 id = pkg_name, 
                 name = pkg_name,
@@ -288,206 +259,228 @@ local function scan_packages()
                 lifecycle = current_state,
                 category = cat,
                 group = grp,
-                engine = engine_support or "DX8/DX11"
+                engine = engine_support or "DX8/DX11",
+                author = author,
+                description = description
             })
         end
     end
     
-    table.sort(state.packages, function(a, b) return a.name < b.name end)
+    table.sort(state.packages, function(a, b) 
+        if a.loaded ~= b.loaded then return a.loaded end
+        return a.name:lower() < b.name:lower() 
+    end)
     state.scanned = true
-    
-    update_scroll_canvas()
 end
 
 -- ============================================================================
--- 5. UI RENDERING 
+-- 5. ELITE UI RENDERING
 -- ============================================================================
 local market_window = ui.window_state()
-market_window.title = "Addon Manager    |    ACTIVE PROFILE: " .. state.current_character:upper()
-market_window.size = {width = 450, height = 550}
-market_window.resizable = false
+market_window.title = " NEXTXI ADDON MANAGER"
+market_window.size = {width = 760, height = 750}
 market_window.visible = false
 
 local readme_window = ui.window_state()
-readme_window.title = "Readme Viewer"
-readme_window.size = {width = 600, height = 500}
-readme_window.resizable = false
+readme_window.title = " Documentation"
+readme_window.size = {width = 750, height = 650}
 readme_window.visible = false
-local readme_scroll = ui.scroll_panel_state(580, 460)
+local readme_scroll = ui.scroll_panel_state(730, 610)
 
--- Centralized rendering logic to keep the scroll loop clean
-local function draw_package(canvas, pkg)
-    if pkg.group == "core" or pkg.group == "dependency" then
-        canvas:label(pkg.name .. "  v" .. pkg.version, ui.color.system_gray)
-        canvas:same_line(220)
-        
-        if pkg.group == "core" then
-            canvas:label("  🔒 CORE SYSTEM", ui.color.system_white)
-        else
-            canvas:label("  [ LIBRARY ]", ui.color.system_disabled)
+local scroll_view_content_height = 620
+local scroll_view = ui.scroll_panel_state(730, scroll_view_content_height)
+
+local function update_scroll_canvas()
+    local required_height = 20 
+    
+    if state.show_official_addons then
+        required_height = required_height + 40
+        for _, pkg in ipairs(state.packages) do
+            if pkg.group == "official" then required_height = required_height + 80 end
         end
-        
+    end
+    if state.show_third_party_addons then
+        required_height = required_height + 40
+        for _, pkg in ipairs(state.packages) do
+            if pkg.group == "third_party" then required_height = required_height + 80 end
+        end
+    end
+    if state.show_dev_tools then
+        required_height = required_height + 40
+        for _, pkg in ipairs(state.packages) do
+            if pkg.group == "dev" then required_height = required_height + 80 end
+        end
+    end
+    if state.show_dependencies then
+        required_height = required_height + 40
+        for _, pkg in ipairs(state.packages) do
+            if pkg.group == "core" or pkg.group == "dependency" then required_height = required_height + 80 end
+        end
+    end
+
+    local final_height = math.max(620, required_height)
+    if final_height ~= scroll_view_content_height then
+        scroll_view_content_height = final_height
+        scroll_view = ui.scroll_panel_state(730, scroll_view_content_height)
+    end
+end
+
+-- Draw a single addon row
+local function draw_package(canvas, pkg)
+    canvas:space(8)
+
+    local c_state = pkg.lifecycle or "off"
+    local is_on = (c_state == "login" or c_state == "boot" or c_state == "delayed")
+
+    -- ROW 1: Name colored green if ENABLED, muted gray if DISABLED
+    local name_color = is_on and COLOR_ON or COLOR_MUTED
+    canvas:label("  " .. pkg.name .. "  (v" .. pkg.version .. ")", name_color)
+    canvas:same_line()
+
+    if pkg.group == "core" or pkg.group == "dependency" then
+        -- System packages: badge only, no toggle
+        if pkg.group == "core" then
+            canvas:width(160):label("[ CORE SYSTEM ]", COLOR_WARN)
+        else
+            canvas:width(160):label("[ DEPENDENCY  ]", COLOR_MUTED)
+        end
+    else
+        -- Status badge: green ENABLED / red DISABLED
+        if is_on then
+            canvas:width(120):label("  [● ENABLED ]", COLOR_ON)
+        else
+            canvas:width(120):label("  [○ DISABLED]", COLOR_OFF)
+        end
+
+        canvas:same_line()
+
+        -- Action button: clearly labeled, wide enough to always fit text
+        local btn_label = is_on and "  Disable  " or "  Enable  "
+        local btn_color = is_on and COLOR_OFF or COLOR_ON
+        local clicked = canvas:width(110):button("act_" .. pkg.id, btn_label, false)
+
+        -- Readme button
         if pkg.has_readme then
-            local clicked_readme = canvas:button("btn_rm_" .. pkg.id, "📄 ReadMe", false)
-            if clicked_readme then
-                state.readme_title = pkg.name .. " Readme"
+            canvas:same_line()
+            if canvas:width(90):button("btn_rm_" .. pkg.id, "  Readme  ", false) then
+                state.readme_title = " " .. pkg.name .. " - Documentation"
                 local raw_text = core_windower.get_package_readme(pkg.id) or ""
                 state.readme_content = parse_markdown_to_windower(raw_text)
-                
                 local dynamic_h = calculate_readme_height(raw_text)
-                readme_scroll = ui.scroll_panel_state(580, dynamic_h)
-                
+                readme_scroll = ui.scroll_panel_state(730, dynamic_h)
                 state.show_readme = true
             end
         end
-        canvas:space(20) 
-    else
-        canvas:label(pkg.name .. "  v" .. pkg.version)
-        canvas:same_line(150)
-        
-        if pkg.engine == "DX11" then
-            canvas:label("[DX11/dgVoodoo2]", ui.color.skin_accent)
-        else
-            canvas:label("[DX8 / DX11]", ui.color.system_gray)
-        end
-        
-        canvas:same_line(230)
-        local c_state = pkg.lifecycle or "off"
 
-        local btn_off_col = (c_state == "off") and ui.color.system_red or ui.color.system_gray
-        local btn_boot_col = (c_state == "boot") and ui.color.system_green or ui.color.system_gray
-        local btn_log_col = (c_state == "login") and ui.color.system_green or ui.color.system_gray
-        local btn_del_col = (c_state == "delayed") and ui.color.system_green or ui.color.system_gray
-
-        local clicked_off = canvas:button("off_" .. pkg.id, "Off", false, btn_off_col)
-        canvas:same_line()
-        local clicked_boot = canvas:button("boot_" .. pkg.id, "Boot", false, btn_boot_col)
-        canvas:same_line()
-        local clicked_login = canvas:button("log_" .. pkg.id, "Login", false, btn_log_col)
-        canvas:same_line()
-        local clicked_delayed = canvas:button("del_" .. pkg.id, "Delayed", false, btn_del_col)
-
-        local new_state = c_state
-        if clicked_off and not pkg.locked then new_state = "off" end
-        if clicked_boot and not pkg.locked then new_state = "boot" end
-        if clicked_login and not pkg.locked then new_state = "login" end
-        if clicked_delayed and not pkg.locked then new_state = "delayed" end
-
-        if new_state ~= c_state then
-            pkg.locked = true
+        if clicked then
+            -- Toggle state immediately in the data model
+            local new_state = is_on and "off" or "login"
             pkg.lifecycle = new_state
             pkg.loaded = (new_state ~= "off")
 
-            if not profile_settings.addons then profile_settings.addons = {} end
-            profile_settings.addons[pkg.id] = new_state
+            -- Persist to profile
+            local char_addons = get_char_addons()
+            char_addons[pkg.id] = new_state
+            settings.save('profiles')
 
+            -- Issue the engine command
             if new_state == "off" then
-                coroutine.schedule(function()
-                    core_command.input('/unload ' .. pkg.id)
-                    chat.warning("AddonManager: Unloaded '" .. pkg.name .. "'")
-                    pkg.locked = false 
-                end)
-            elseif c_state == "off" then
-                -- Immediately load it if we just turned it on manually
-                coroutine.schedule(function()
-                    core_command.input('/load ' .. pkg.id) 
-                    chat.success("AddonManager: Loaded '" .. pkg.name .. "'")
-                    pkg.locked = false 
-                end)
+                core_command.input('/unload ' .. pkg.id)
+                chat.warning("AddonManager: Unloaded [" .. pkg.name .. "]")
             else
-                pkg.locked = false
-            end
-            settings.save('profiles') 
-        end
-
-        if pkg.has_readme then
-            local clicked_readme = canvas:button("btn_rm_" .. pkg.id, "📄 ReadMe", false)
-            if clicked_readme then
-                state.readme_title = pkg.name .. " Readme"
-                local raw_text = core_windower.get_package_readme(pkg.id) or ""
-                state.readme_content = parse_markdown_to_windower(raw_text)
-                
-                local dynamic_h = calculate_readme_height(raw_text)
-                readme_scroll = ui.scroll_panel_state(580, dynamic_h)
-                
-                state.show_readme = true
+                core_command.input('/load ' .. pkg.id)
+                chat.success("AddonManager: Loaded [" .. pkg.name .. "]")
             end
         end
-        canvas:space(25) 
     end
+
+    -- ROW 2: Author + description
+    canvas:space(2)
+    canvas:label("     Author: " .. (pkg.author or "Unknown") .. "  |  " .. pkg.group:upper(), COLOR_MUTED)
+    canvas:space(2)
+    canvas:label("     " .. (pkg.description or "No description provided."), COLOR_TEXT)
+
+    canvas:space(6)
+    canvas:label("-----------------------------------------------------------------------------------------------------------------------------------", COLOR_MUTED)
+end
+
+
+
+local function draw_section_header(canvas, title, var_name)
+    local is_open = state[var_name]
+    local icon = is_open and " [-] " or " [+] "
+    -- Use a wide fixed button so the full title text always fits
+    if canvas:width(710):button("hdr_" .. var_name, icon .. title, false) then
+        state[var_name] = not is_open
+        update_scroll_canvas()
+    end
+    canvas:space(6)
+    return state[var_name]
 end
 
 ui.display(function()
     local success, err = pcall(function()
-
         if state.show_ui then
             market_window.visible = true
             if not state.scanned then scan_packages() end
             
+            ui.push_style(ELITE_STYLE)
+            
             local window_still_open = ui.window(market_window, function(layout)
                 
+                layout:space(10)
+                layout:label("    Profile Management", COLOR_MUTED)
+                layout:space(5)
+                layout:label("    Active Profile:  " .. state.current_character:upper(), COLOR_ACCENT)
+                
+                layout:same_line()
+                layout:space(380)
+                if layout:button("btn_rescan", "   SCAN FOR NEW ADDONS   ", false) then
+                    scan_packages()
+                    chat.success("AddonManager: Packages rescanned dynamically.")
+                end
+                
+                layout:space(15)
+                layout:label("=============================================================================================================", COLOR_BORDER)
                 layout:space(5)
 
-                layout:height(440):scroll_panel(scroll_view, function(canvas)
+                layout:height(610):scroll_panel(scroll_view, function(canvas)
                     
                     -- Section 1: Official Addons
-                    local clk_off, _ = canvas:check("chk_off", "Official Addons", state.show_official_addons)
-                    if clk_off then state.show_official_addons = not state.show_official_addons; update_scroll_canvas() end
-                    
-                    if state.show_official_addons then
-                        canvas:space(10)
+                    if draw_section_header(canvas, "NEXTXI OFFICIAL ADDONS", "show_official_addons") then
                         for _, pkg in ipairs(state.packages) do
                             if pkg.group == "official" then draw_package(canvas, pkg) end
                         end
+                        canvas:space(20)
                     end
-                    
-                    canvas:space(10)
-                    canvas:label("──────────────────────────────────────────", ui.color.system_gray)
-                    canvas:space(5)
 
                     -- Section 2: Third-Party Addons
-                    local clk_3p, _ = canvas:check("chk_3p", "Third-Party Addons", state.show_third_party_addons)
-                    if clk_3p then state.show_third_party_addons = not state.show_third_party_addons; update_scroll_canvas() end
-                    
-                    if state.show_third_party_addons then
-                        canvas:space(10)
+                    if draw_section_header(canvas, "COMMUNITY ADDONS", "show_third_party_addons") then
                         for _, pkg in ipairs(state.packages) do
                             if pkg.group == "third_party" then draw_package(canvas, pkg) end
                         end
+                        canvas:space(20)
                     end
 
-                    canvas:space(10)
-                    canvas:label("──────────────────────────────────────────", ui.color.system_gray)
-                    canvas:space(5)
-
                     -- Section 3: Developer Tools
-                    local clk_dev, _ = canvas:check("chk_dev", "Developer Tools", state.show_dev_tools)
-                    if clk_dev then state.show_dev_tools = not state.show_dev_tools; update_scroll_canvas() end
-                    
-                    if state.show_dev_tools then
-                        canvas:space(10)
+                    if draw_section_header(canvas, "DEVELOPER TOOLS", "show_dev_tools") then
                         for _, pkg in ipairs(state.packages) do
                             if pkg.group == "dev" then draw_package(canvas, pkg) end
                         end
+                        canvas:space(20)
                     end
 
-                    canvas:space(10)
-                    canvas:label("──────────────────────────────────────────", ui.color.system_gray)
-                    canvas:space(5)
-
                     -- Section 4: Core Systems & Libraries
-                    local clk_dep, _ = canvas:check("chk_dep", "Core Systems & Libraries", state.show_dependencies)
-                    if clk_dep then state.show_dependencies = not state.show_dependencies; update_scroll_canvas() end
-                    
-                    if state.show_dependencies then
-                        canvas:space(10)
+                    if draw_section_header(canvas, "CORE SYSTEMS & DEPENDENCIES", "show_dependencies") then
                         for _, pkg in ipairs(state.packages) do
                             if pkg.group == "core" or pkg.group == "dependency" then draw_package(canvas, pkg) end
                         end
+                        canvas:space(20)
                     end
                     
                 end) 
             end)
+            ui.pop_style()
             if not window_still_open then state.show_ui = false end
         else
             market_window.visible = false
@@ -497,11 +490,14 @@ ui.display(function()
             readme_window.visible = true
             readme_window.title = state.readme_title
             
+            ui.push_style(ELITE_STYLE)
             local rm_still_open = ui.window(readme_window, function(layout)
-                layout:height(460):scroll_panel(readme_scroll, function(canvas)
-                    canvas:label(state.readme_content)
+                layout:height(610):scroll_panel(readme_scroll, function(canvas)
+                    canvas:space(10)
+                    canvas:label("  " .. state.readme_content)
                 end)
             end)
+            ui.pop_style()
             if not rm_still_open then state.show_readme = false end
         else
             readme_window.visible = false
@@ -521,7 +517,7 @@ command.register({'addon', 'addons'}, function(args)
     local success, err = pcall(function()
         if args[1] == "rescan" then
             scan_packages()
-            chat.success("AddonManager: Addons rescanned.")
+            chat.success("AddonManager: Packages rescanned dynamically.")
         elseif args[1] == "reload" and args[2] then
             core_command.input('/reload ' .. args[2])
             chat.success("AddonManager: Reloading package '" .. args[2] .. "'...")
@@ -538,20 +534,16 @@ addon.unload = function()
 end
 
 -- ============================================================================
--- 7. BOOT EXECUTION (Runs immediately when AddonManager loads)
+-- 7. BOOT EXECUTION (Core Addons)
 -- ============================================================================
 coroutine.schedule(function()
     coroutine.sleep_frame()
-    if profile_settings.addons then
-        for addon_id, state_val in pairs(profile_settings.addons) do
-            if state_val == "boot" then
-                core_command.input('/load ' .. addon_id)
-            end
+    local global_addons = profile_settings["Global"] and profile_settings["Global"].addons or {}
+    for addon_id, state_val in pairs(global_addons) do
+        if state_val == "boot" then
+            core_command.input('/load ' .. addon_id)
         end
     end
 end)
 
-chat.success("----------------------------------------------------")
-chat.success("AddonManager Initialized. Type /addon to continue...")
-chat.success("----------------------------------------------------")
 return addon

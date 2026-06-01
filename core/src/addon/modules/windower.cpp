@@ -32,10 +32,14 @@
 #include "utility.hpp"
 #include "version.hpp"
 
+#include "../../scanner.hpp"
+#include <windows.h>
+
 #include <string>
 
 #include <filesystem>
 #include <fstream>
+
 
 // Bridge functions for the windower module. These are used to expose core
 // functionality to addons, and are not intended for use by addons directly.
@@ -150,6 +154,102 @@ extern "C" char const* get_ffxi_spells_ffi()
     static std::string spells_json = "[ 1, 2, 3, 4, 5 ]";
     return spells_json.c_str();
 }
+
+extern "C" char const* get_ffxi_entities_ffi()
+{
+    static std::string entities_json;
+    static void** entity_array_ptr = nullptr;
+    static bool scanned = false;
+
+    if (!scanned)
+    {
+        if (::GetModuleHandleW(L"FFXiMain.dll"))
+        {
+            scanned = true;
+            windower::signature sig{u8"8B560C8B042A8B0485"};
+            auto results = windower::scan<1>(u8"FFXiMain.dll", sig);
+            // Guard: only dereference if the signature scan returned a valid (non-null) address.
+            // If results[0] is null (module not found or signature mismatch), (char*)null + 9
+            // equals 0x9, which causes an access violation (crash at address 0x9).
+            if (results[0])
+            {
+                void* match_addr = static_cast<void*>(results[0]);
+                // The instruction is: mov eax, [eax*4 + XXXXXXXX]  (8B 04 85 XX XX XX XX)
+                // The embedded 4-byte absolute address XXXXXXXX sits at byte offset 9 from
+                // the start of our matched pattern (3 bytes for 8B56 0C + 3 bytes for 8B04 2A
+                // + 3 bytes for 8B04 85 = 9 bytes before the address operand).
+                entity_array_ptr = *reinterpret_cast<void***>(
+                    static_cast<char*>(match_addr) + 9);
+            }
+        }
+    }
+
+    entities_json = "[";
+    if (entity_array_ptr && !::IsBadReadPtr(entity_array_ptr, 2304 * sizeof(void*)))
+    {
+        bool first = true;
+        for (int i = 0; i < 2304; ++i)
+        {
+            void* ent = entity_array_ptr[i];
+            if (ent && !::IsBadReadPtr(ent, 0x0A0))
+            {
+                uint32_t id = *(uint32_t*)((char*)ent + 0x078);
+                if (id == 0) continue;
+
+                char name[24] = {0};
+                memcpy(name, (char*)ent + 0x07C, 24);
+                name[23] = '\0'; // ensure null termination
+                if (strlen(name) == 0) continue;
+
+                float x = *(float*)((char*)ent + 0x004);
+                float z = *(float*)((char*)ent + 0x008);
+                float y = *(float*)((char*)ent + 0x00C);
+
+                if (!first) entities_json += ",";
+                first = false;
+
+                char buffer[256];
+                snprintf(buffer, sizeof(buffer), "{\"id\":%u,\"name\":\"%s\",\"x\":%f,\"y\":%f,\"z\":%f,\"target_id\":0}", id, name, x, y, z);
+                entities_json += buffer;
+            }
+        }
+    }
+    entities_json += "]";
+
+    return entities_json.c_str();
+}
+
+extern "C" void project_ffi(float const* in_pos, float* out_screen)
+{
+    auto const& core = windower::core::instance();
+    auto const& v = core.view_matrix;
+    auto const& p = core.projection_matrix;
+    auto const& vp = core.viewport;
+
+    // View Transform
+    float vx = in_pos[0]*v.m[0][0] + in_pos[1]*v.m[1][0] + in_pos[2]*v.m[2][0] + v.m[3][0];
+    float vy = in_pos[0]*v.m[0][1] + in_pos[1]*v.m[1][1] + in_pos[2]*v.m[2][1] + v.m[3][1];
+    float vz = in_pos[0]*v.m[0][2] + in_pos[1]*v.m[1][2] + in_pos[2]*v.m[2][2] + v.m[3][2];
+    float vw = in_pos[0]*v.m[0][3] + in_pos[1]*v.m[1][3] + in_pos[2]*v.m[2][3] + v.m[3][3];
+
+    // Projection Transform
+    float cx = vx*p.m[0][0] + vy*p.m[1][0] + vz*p.m[2][0] + vw*p.m[3][0];
+    float cy = vx*p.m[0][1] + vy*p.m[1][1] + vz*p.m[2][1] + vw*p.m[3][1];
+    float cw = vx*p.m[0][3] + vy*p.m[1][3] + vz*p.m[2][3] + vw*p.m[3][3];
+
+    if (cw < 0.1f) // Behind camera
+    {
+        out_screen[0] = -1.0f;
+        out_screen[1] = -1.0f;
+        return;
+    }
+
+    float ndcx = cx / cw;
+    float ndcy = cy / cw;
+
+    out_screen[0] = vp.X + (1.0f + ndcx) * vp.Width / 2.0f;
+    out_screen[1] = vp.Y + (1.0f - ndcy) * vp.Height / 2.0f;
+}
 }
 
 int windower::load_windower_module(lua::state s)
@@ -206,9 +306,11 @@ int windower::load_windower_module(lua::state s)
     lua::push(guard, &get_ffxi_player_ffi);
     lua::push(guard, &get_ffxi_items_ffi);
     lua::push(guard, &get_ffxi_spells_ffi);
+    lua::push(guard, &get_ffxi_entities_ffi);
+    lua::push(guard, &project_ffi);
 
-    // The windower module expects 23 upvalues, which are the values we just pushed
-    lua::call(guard, 23);
+    // The windower module expects 25 upvalues, which are the values we just pushed
+    lua::call(guard, 25);
 
     return guard.release();
 }

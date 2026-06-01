@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package name="EquipViewer" version="1.0.0">
+  <description>Open source equipment viewer rebuilt with ImGui.</description>
+  <author>NextXI</author>
+  <engine>DX11</engine>
+  <dependencies>
+    <dependency name="ui" />
+  </dependencies>
+</package>

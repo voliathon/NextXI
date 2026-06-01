@@ -62,6 +62,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="build\**" />
+    <Compile Remove="obj\**" />
+    <Compile Remove="bin\**" />
+    <Page Remove="build\**" />
+    <Page Remove="obj\**" />
+    <Page Remove="bin\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <CodeAnalysisDictionary Include="CustomDictionary.xml" />
   </ItemGroup>
 

@@ -162,48 +162,60 @@ void windower::addon_manager::raise_error(
 void windower::addon_manager::load(
     std::vector<std::shared_ptr<package const>> const& packages)
 {
-    // 1. Create a temporary staging area (The Transaction)
-    std::vector<std::unique_ptr<addon>> staging_area;
+    // 1. Track which packages we load in this transaction
+    std::vector<std::u8string> loaded_in_transaction;
 
-    // 2. Attempt to construct/boot every addon in the request
-    for (auto const& package : packages)
+    try
     {
-        if (package->type() != package_type::library)
+        // 2. Attempt to construct/boot every addon in the request
+        for (auto const& package : packages)
         {
-            std::lock_guard<std::mutex> lock{m_mutex};
-            auto it = std::find_if(
-                m_loaded_addons.begin(), m_loaded_addons.end(),
-                [=](auto const& addon) {
-                    return addon->package()->name() == package->name();
-                });
-
-            if (it == m_loaded_addons.end())
+            if (package->type() != package_type::library)
             {
-                try
+                std::lock_guard<std::mutex> lock{m_mutex};
+                auto it = std::find_if(
+                    m_loaded_addons.begin(), m_loaded_addons.end(),
+                    [=](auto const& addon) {
+                        return addon->package()->name() == package->name();
+                    });
+
+                if (it == m_loaded_addons.end())
                 {
-                    // If the addon has a Lua syntax error, this constructor
-                    // throws!
-                    staging_area.emplace_back(std::make_unique<addon>(package));
-                }
-                catch (...)
-                {
-                    // THE ROLLBACK: If ANY addon fails, the loop aborts.
-                    // 'staging_area' falls out of scope here. The C++
-                    // unique_ptr automatically destroys any addons that
-                    // successfully booted earlier in the loop, leaving the live
-                    // game completely untouched.
-                    throw;
+                    // If the addon has a Lua syntax error, this constructor throws!
+                    auto ptr = std::make_unique<addon>(package);
+                    
+                    core::output(u8"", ptr->package()->name() + u8" loaded");
+                    
+                    // Immediately add to loaded list so dependent addons
+                    // in this same transaction can discover it!
+                    loaded_in_transaction.push_back(ptr->package()->name());
+                    m_loaded_addons.emplace_back(std::move(ptr));
                 }
             }
         }
     }
-
-    // 3. The Commit (Only reached if NO exceptions were thrown)
-    std::lock_guard<std::mutex> lock{m_mutex};
-    for (auto& ptr : staging_area)
+    catch (std::exception const& e)
     {
-        core::output(u8"", ptr->package()->name() + u8" loaded");
-        m_loaded_addons.emplace_back(std::move(ptr));
+        core::error(u8"addon manager", u8"Error loading addon: " + windower::to_u8string(e.what()));
+        
+        // THE ROLLBACK: If ANY addon fails, the loop aborts.
+        // We carefully unload all the packages we successfully loaded earlier in this transaction.
+        std::lock_guard<std::mutex> lock{m_mutex};
+        for (auto const& name : loaded_in_transaction)
+        {
+            auto it = std::find_if(
+                m_loaded_addons.begin(), m_loaded_addons.end(),
+                [&name](auto const& addon) {
+                    return addon->package()->name() == name;
+                });
+            if (it != m_loaded_addons.end())
+            {
+                core::output(u8"", name + u8" aborted");
+                m_loaded_addons.erase(it);
+                command_manager::instance().purge();
+            }
+        }
+        throw;
     }
 }
 

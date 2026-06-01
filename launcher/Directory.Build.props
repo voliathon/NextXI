@@ -24,6 +24,7 @@ SOFTWARE.
 <Project>
 
   <PropertyGroup>
+    <SolutionDir Condition="'$(SolutionDir)' == '' or '$(SolutionDir)' == '*Undefined*'">$(MSBuildThisFileDirectory)..\</SolutionDir>
     <BaseOutputPath>$(SolutionDir)build/bin/$(Configuration)/$(MSBuildProjectName)</BaseOutputPath>
     <BaseIntermediateOutputPath>$(SolutionDir)build/obj/$(Configuration)/$(MSBuildProjectName)</BaseIntermediateOutputPath>
   </PropertyGroup>
