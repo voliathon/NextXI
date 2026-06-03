@@ -135,14 +135,22 @@ namespace Windower.Core
                 {
                     var status = profile.Region?.IsInstalled() == true ? LaunchStatus.Launching : LaunchStatus.Installing;
                     progress?.Report(ProgressDetail.Create(status));
+                    
+                    var region = (Region)profile.Region;
+                    GraphicsUpdater.ApplyGraphicsEngine(profile.SelectedEngine, region.GetPOLInstallDirectory());
+                    
+                    // Fetch resources before booting FFXI
+                    await ResourceManager.CheckAndDownloadResourcesAsync(Path.GetDirectoryName(Path.GetDirectoryName(CorePath)));
+
                     using (var injector = await CreateInjectorAsync(profile, token))
                     {
                         process = injector.Process;
 
                         using (var settings = new SettingsChannel(injector.Process, profile.Settings))
                         {
+                            await injector.Inject(Path.Combine(Path.GetDirectoryName(CorePath), "lua51.dll"));
                             await injector.Inject(CorePath);
-
+                            injector.ResumeProcess();
                             progress?.Report(ProgressDetail.Create(LaunchStatus.TransferringSettings));
                             await settings.FinishAsync(token);
                         }

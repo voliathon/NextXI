@@ -43,6 +43,10 @@ namespace Windower.Core
         private readonly EnvironmentAnimation? environmentAnimation;
         private readonly FontType? fontType;
         private readonly bool? accessControlPrompt;
+        private readonly GraphicsEngine? selectedEngine;
+        private readonly bool? polAccountLimit;
+        private readonly bool? polFastLogin;
+        private readonly bool? polNoThrottle;
 
         public static Profile Default { get; } = default(Profile);
 
@@ -51,7 +55,8 @@ namespace Windower.Core
             bool hardwareMouse, int maxSounds, bool playSoundWhenUnfocused, int mipmapping, bool bumpMapping, bool mapCompression,
             TextureCompression textureCompression, EnvironmentAnimation environmentAnimation, FontType fontType, float? gamma,
             bool driverStability, bool playIntro, bool debug, bool developerMode, string settingsPath, string userPath,
-            string tempPath, bool accessControlPrompt)
+            string tempPath, bool accessControlPrompt, GraphicsEngine selectedEngine,
+            bool polAccountLimit, bool polFastLogin, bool polNoThrottle)
         {
             this.name = name?.Trim() ?? throw new ArgumentNullException(nameof(name));
             this.samplesPerPixel = samplesPerPixel;
@@ -62,6 +67,10 @@ namespace Windower.Core
             this.environmentAnimation = environmentAnimation;
             this.fontType = fontType;
             this.accessControlPrompt = accessControlPrompt;
+            this.selectedEngine = selectedEngine;
+            this.polAccountLimit = polAccountLimit;
+            this.polFastLogin = polFastLogin;
+            this.polNoThrottle = polNoThrottle;
 
             Region = region;
             UseSteam = useSteam;
@@ -87,6 +96,8 @@ namespace Windower.Core
         }
 
         public string Name => name ?? string.Empty;
+
+        public GraphicsEngine SelectedEngine => selectedEngine ?? GraphicsEngine.Legacy;
 
         public Region? Region { get; }
 
@@ -146,6 +157,18 @@ namespace Windower.Core
 
         public bool AccessControlPrompt => accessControlPrompt ?? true;
 
+        public bool PolAccountLimit => polAccountLimit ?? false;
+
+        public bool PolFastLogin => polFastLogin ?? false;
+
+        public bool PolNoThrottle => polNoThrottle ?? false;
+
+        public enum GraphicsEngine
+        {
+            Legacy = 0,
+            dgVoodoo2 = 1
+        }
+
         [SuppressMessage("Microsoft.Design", "CA1006")]
         [SuppressMessage("Microsoft.Design", "CA1026")]
         [SuppressMessage("Microsoft.Maintainability", "CA1502")]
@@ -180,7 +203,11 @@ namespace Windower.Core
             Maybe<string> SettingsPath = new Maybe<string>(),
             Maybe<string> UserPath = new Maybe<string>(),
             Maybe<string> TempPath = new Maybe<string>(),
-            Maybe<bool> AccessControlPrompt = new Maybe<bool>())
+            Maybe<bool> AccessControlPrompt = new Maybe<bool>(),
+            Maybe<GraphicsEngine> SelectedEngine = new Maybe<GraphicsEngine>(),
+            Maybe<bool> PolAccountLimit = new Maybe<bool>(),
+            Maybe<bool> PolFastLogin = new Maybe<bool>(),
+            Maybe<bool> PolNoThrottle = new Maybe<bool>())
         {
             if (Name != this.Name || Region != this.Region || UseSteam != this.UseSteam || Executable != this.Executable ||
                 ExecutableArgs != this.ExecutableArgs || RunAsAdmin != this.RunAsAdmin || WindowType != this.WindowType ||
@@ -192,7 +219,8 @@ namespace Windower.Core
                 FontType != this.FontType || Gamma != this.Gamma || DriverStability != this.DriverStability ||
                 PlayIntro != this.PlayIntro || Debug != this.Debug || DeveloperMode != this.DeveloperMode ||
                 SettingsPath != this.SettingsPath || UserPath != this.UserPath || TempPath != this.TempPath ||
-                AccessControlPrompt != this.AccessControlPrompt)
+                AccessControlPrompt != this.AccessControlPrompt || SelectedEngine != this.SelectedEngine ||
+                PolAccountLimit != this.PolAccountLimit || PolFastLogin != this.PolFastLogin || PolNoThrottle != this.PolNoThrottle)
             {
                 return new Profile(
                     Name.Default(this.Name),
@@ -224,7 +252,11 @@ namespace Windower.Core
                     SettingsPath.Default(this.SettingsPath),
                     UserPath.Default(this.UserPath),
                     TempPath.Default(this.TempPath),
-                    AccessControlPrompt.Default(this.AccessControlPrompt));
+                    AccessControlPrompt.Default(this.AccessControlPrompt),
+                    SelectedEngine.Default(this.SelectedEngine),
+                    PolAccountLimit.Default(this.PolAccountLimit),
+                    PolFastLogin.Default(this.PolFastLogin),
+                    PolNoThrottle.Default(this.PolNoThrottle));
             }
 
             return this;
@@ -235,6 +267,7 @@ namespace Windower.Core
         {
             get
             {
+                yield return Pair("graphics_engine", SelectedEngine.ToString());
                 yield return Pair("window_type", WindowType);
                 yield return Pair("display_device_name", Display);
                 yield return Pair("width", Resolution?.Width);
@@ -260,6 +293,9 @@ namespace Windower.Core
                 yield return Pair("settings_path", Paths.ExpandPath(SettingsPath ?? Paths.GlobalSettingsPath));
                 yield return Pair("user_path", Paths.ExpandPath(UserPath ?? Paths.GlobalUserPath));
                 yield return Pair("temp_path", Paths.ExpandPath(TempPath ?? Paths.GlobalTempPath));
+                yield return Pair("pol_account_limit", PolAccountLimit);
+                yield return Pair("pol_fast_login", PolFastLogin);
+                yield return Pair("pol_no_throttle", PolNoThrottle);
                 yield return Pair("command_line_args", With(UseSteam: false).ArgString);
                 yield return Pair("verbose_logging", true);
             }
@@ -271,6 +307,7 @@ namespace Windower.Core
             get
             {
                 var builder = new StringBuilder("launch");
+                AddOption(builder, p => p.SelectedEngine, "engine");
                 AddOption(builder, p => p.Region, "region");
                 AddOption(builder, p => p.UseSteam, "steam");
                 AddOption(builder, p => p.Executable, "executable");
@@ -298,6 +335,9 @@ namespace Windower.Core
                 AddOption(builder, p => p.SettingsPath, "settings-path");
                 AddOption(builder, p => p.UserPath, "user-path");
                 AddOption(builder, p => p.TempPath, "temp-path");
+                AddOption(builder, p => p.PolAccountLimit, "pol-account-limit");
+                AddOption(builder, p => p.PolFastLogin, "pol-fast-login");
+                AddOption(builder, p => p.PolNoThrottle, "pol-no-throttle");
                 return builder.ToString();
             }
         }

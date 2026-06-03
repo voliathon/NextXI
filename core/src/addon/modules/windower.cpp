@@ -75,7 +75,7 @@ extern "C" char const* read_market_file_ffi(char const* filename)
     content.clear();
 
     // Call the standalone windower::user_path() function
-    auto dir  = windower::user_path() / u8"addons" / u8"FenestraMarket";
+    auto dir  = windower::user_path() / u8"addons" / u8"NextXIMarket";
     auto path = dir / reinterpret_cast<const char8_t*>(filename);
 
     std::ifstream file(path, std::ios::binary);
@@ -91,7 +91,7 @@ extern "C" char const* read_market_file_ffi(char const* filename)
 extern "C" void write_market_file_ffi(char const* filename, char const* data)
 {
     // Call the standalone windower::user_path() function
-    auto dir = windower::user_path() / u8"addons" / u8"FenestraMarket";
+    auto dir = windower::user_path() / u8"addons" / u8"NextXIMarket";
     std::filesystem::create_directories(dir);
 
     auto path = dir / reinterpret_cast<const char8_t*>(filename);
@@ -125,6 +125,31 @@ extern "C" char const* get_package_readme_ffi(char const* pkg_name)
     }
     return content.c_str();
 }
+
+extern "C" char const* get_ffxi_player_ffi()
+{
+    // MOCK IMPLEMENTATION: In the future, this will read the player struct from FFXI memory
+    static std::string player_json = 
+        "{ \"name\": \"NextXIPlayer\", \"hp\": 1000, \"mp\": 500, \"tp\": 3000, "
+        "\"main_job_id\": 1, \"main_job_level\": 99, \"sub_job_id\": 4, \"sub_job_level\": 49 }";
+    return player_json.c_str();
+}
+
+extern "C" char const* get_ffxi_items_ffi()
+{
+    // MOCK IMPLEMENTATION: Will read inventory memory
+    static std::string items_json = 
+        "{ \"inventory\": [ { \"id\": 4100, \"count\": 1 }, { \"id\": 4101, \"count\": 99 } ], "
+        "\"equipment\": { \"main\": 4100, \"sub\": 0 } }";
+    return items_json.c_str();
+}
+
+extern "C" char const* get_ffxi_spells_ffi()
+{
+    // MOCK IMPLEMENTATION: Will read spells memory array
+    static std::string spells_json = "[ 1, 2, 3, 4, 5 ]";
+    return spells_json.c_str();
+}
 }
 
 int windower::load_windower_module(lua::state s)
@@ -139,7 +164,7 @@ int windower::load_windower_module(lua::state s)
     lua::push(guard, WINDOWER_VERSION_BUILD_STRING); // version_build
     lua::push(guard, WINDOWER_BUILD_TAG_STRING); // build_tag
 
-    auto const scripts = user_path() / u8"scripts";
+    auto const scripts = windower_path() / u8"scripts";
 
     lua::push(guard, client_path().u8string()); // client_path
     lua::push(guard, scripts.u8string()); // scripts_path
@@ -177,9 +202,13 @@ int windower::load_windower_module(lua::state s)
     lua::push(guard, &get_package_readme_ffi);
     lua::push(guard, &read_market_file_ffi); 
     lua::push(guard, &write_market_file_ffi); 
+    
+    lua::push(guard, &get_ffxi_player_ffi);
+    lua::push(guard, &get_ffxi_items_ffi);
+    lua::push(guard, &get_ffxi_spells_ffi);
 
-    // The windower module expects 20 upvalues, which are the values we just pushed
-    lua::call(guard, 20);
+    // The windower module expects 23 upvalues, which are the values we just pushed
+    lua::call(guard, 23);
 
     return guard.release();
 }

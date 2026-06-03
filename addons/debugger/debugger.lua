@@ -15,7 +15,7 @@ local state = {
 }
 
 local debug_window = ui.window_state()
-debug_window.title = "Fenestra Live Debugger"
+debug_window.title = "NextXI Live Debugger"
 debug_window.size = {width = 460, height = 480}
 debug_window.resizable = false
 debug_window.visible = false
@@ -37,7 +37,7 @@ ui.display(function()
                 state.peak_memory = current_memory
             end
             
-            layout:label("[FENESTRA ENGINE MONITOR]{size:large weight:bold color:skin_accent}")
+            layout:label("[NextXI ENGINE MONITOR]{size:large weight:bold color:skin_accent}")
             layout:label("─────────────────────────────────────────", ui.color.system_gray)
             layout:space(5)
             

@@ -77,56 +77,11 @@ namespace Windower.Core
 
         public static async Task Update(IProgress<ProgressDetail<UpdateStatus>> progress)
         {
-#if DEBUG
-            await Task.FromResult(false);
-#else
-            progress?.Report(ProgressDetail.Create(0, 0, UpdateStatus.Checking));
-            var info = await GetUpdateInfo();
+            // NEXTXI: We have completely severed the legacy Windower 5 auto-updater.
+            // We do not want files.windower.net overwriting our custom NextXI.exe and core.dll.
+            // In the future, we can point this to our own NextXI GitHub Releases URL.
 
-            var launcherVersion = new Version((string)info?.Element("launcher")?.Attribute("version") ?? "0.0.0.0");
-            var coreVersion = new Version((string)info?.Element("core")?.Attribute("version") ?? "0.0.0.0");
-
-            var updateLauncher = GetLauncherVersion() < launcherVersion;
-            var updateCore = GetCoreVersion() < coreVersion;
-
-            var launcherSize = (long?)info?.Element("launcher")?.Attribute("size") ?? 0;
-            var coreSize = (long?)info?.Element("core")?.Attribute("size") ?? 0;
-            var totalSize = (updateLauncher ? launcherSize : 0) + (updateCore ? coreSize : 0);
-            var downloaded = 0L;
-
-            string launcherTempPath = null;
-            string coreTempPath = null;
-
-            if (updateLauncher)
-            {
-                progress?.Report(ProgressDetail.Create(downloaded, totalSize, UpdateStatus.DownloadingLauncher));
-                launcherTempPath = await DownloadToTemporaryFile(new Uri(updateUrl + "windower.exe"),
-                    progress == null ? null : new Progress<long>(p =>
-                    {
-                        progress?.Report(ProgressDetail.Create(downloaded + p, totalSize, UpdateStatus.DownloadingLauncher));
-                    }));
-                downloaded += launcherSize;
-            }
-
-            if (updateCore)
-            {
-                progress?.Report(ProgressDetail.Create(downloaded, totalSize, UpdateStatus.DownloadingCore));
-                coreTempPath = await DownloadToTemporaryFile(new Uri(updateUrl + "core.dll"),
-                    progress == null ? null : new Progress<long>(p =>
-                    {
-                        progress?.Report(ProgressDetail.Create(downloaded + p, totalSize, UpdateStatus.DownloadingCore));
-                    }));
-                downloaded += coreSize;
-            }
-
-            progress?.Report(ProgressDetail.Create(0, 0, UpdateStatus.Installing));
-            if (await InstallUpdatesAsync(launcherTempPath, coreTempPath))
-            {
-                progress?.Report(ProgressDetail.Create(0, 0, UpdateStatus.Restarting));
-                Process.Start(Environment.ProcessPath, EscapeArguments(Environment.GetCommandLineArgs().Skip(1)));
-                Environment.Exit(0);
-            }
-#endif
+            await Task.CompletedTask;
         }
 
         public static void CleanUp()

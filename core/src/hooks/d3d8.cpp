@@ -71,7 +71,7 @@ void windower::d3d8::install()
 {
     if (!hooks::Direct3DCreate8)
     {
-        hooks::Direct3DCreate8 = hooklib::make_hook(
+        hooks::Direct3DCreate8 = hooklib::make_hook<false>(
             u8"d3d8.dll", u8"Direct3DCreate8", callbacks::Direct3DCreate8);
     }
 }

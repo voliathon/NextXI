@@ -19,13 +19,13 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='debug|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
-    <UsedebugLibraries>true</UsedebugLibraries>
+    <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='release|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
-    <UsedebugLibraries>false</UsedebugLibraries>
+    <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
@@ -73,76 +73,4 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
-  <UsingTask TaskName="RunLuaJITBuild" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
-    <ParameterGroup>
-      <Root ParameterType="System.String" Required="true" />
-      <CompileOptions ParameterType="System.String" />
-      <LinkOptions ParameterType="System.String" />
-      <Arguments ParameterType="System.String" />
-    </ParameterGroup>
-    <Task>
-      <Using Namespace="System.Text.RegularExpressions" />
-      <Code Type="Fragment" Language="cs">
-        var compilePattern = new Regex(@"^@set LJCOMPILE=cl\b");
-        var linkPattern = new Regex(@"^@set LJLINK=link\b");
-        var removePattern = new Regex(@"\B(?:/MD)\b\s*");
-
-        var path = Path.Combine(Root, "msvcbuild.bat");
-        File.WriteAllLines(path, File.ReadAllLines(path).Select(line =&gt;
-        {
-            line = removePattern.Replace(line, "");
-            
-            if (!string.IsNullOrWhiteSpace(CompileOptions) &amp;&amp;
-                compilePattern.IsMatch(line))
-            {
-              line += " " + CompileOptions;
-            }
-
-            if (!string.IsNullOrWhiteSpace(LinkOptions) &amp;&amp;
-                linkPattern.IsMatch(line))
-            {
-              line += " " + LinkOptions;
-            }
-
-            return line;
-        }).ToArray());
-
-        var process = new System.Diagnostics.Process();
-        process.StartInfo.WorkingDirectory = Root;
-        process.StartInfo.FileName = "cmd.exe";
-        process.StartInfo.Arguments = "/C prompt $_&amp;\"" + Path.Combine(Root, "msvcbuild.bat") + "\" " + Arguments;
-        process.StartInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
-        process.StartInfo.UseShellExecute = false;
-        process.StartInfo.RedirectStandardOutput = true;
-
-        process.Start();
-        while (!process.StandardOutput.EndOfStream)
-        {
-            var line = process.StandardOutput.ReadLine();
-            if (!string.IsNullOrWhiteSpace(line))
-            {
-              Log.LogMessage(MessageImportance.High, line);
-            }
-        }
-      </Code>
-    </Task>
-  </UsingTask>
-  <Target Name="BeforeClean">
-    <Delete Files="$(OutDir)lua51.lib;$(OutDir)luajit.exe" />
-    <RemoveDir Directories="$(IntDir)staging" />
-  </Target>
-  <Target Name="BeforeClCompile">
-    <ItemGroup>
-      <ProjectFiles Include="repo\**\*" />
-    </ItemGroup>
-    <Copy SourceFiles="@(ProjectFiles)" DestinationFolder="$(IntDir)staging\%(RecursiveDir)" />
-    <RunLuaJITBuild Root="$(IntDir)staging\src" Arguments="static" Condition="'$(Configuration)|$(Platform)'=='debug|Win32'" CompileOptions="/DLUAJIT_ENABLE_LUA52COMPAT /MTd" />
-    <RunLuaJITBuild Root="$(IntDir)staging\src" Arguments="static" Condition="'$(Configuration)|$(Platform)'=='release|Win32'" CompileOptions="/DLUAJIT_ENABLE_LUA52COMPAT /MT" />
-    <ItemGroup>
-      <LuaFile Include="$(IntDir)staging\src\jit\**\*.*" />
-    </ItemGroup>
-    <Copy SourceFiles="$(IntDir)staging\src\luajit.exe" DestinationFiles="$(OutDir)\luajit.exe" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="$(IntDir)staging\src\lua51.lib" DestinationFiles="$(OutDir)\lua51.static.lib" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(LuaFile)" DestinationFolder="$(OutDir)\lua\jit\%(RecursiveDir)" SkipUnchangedFiles="true" />
-  </Target>
 </Project>

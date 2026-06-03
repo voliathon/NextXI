@@ -25,7 +25,9 @@
 #include "addon/modules/packet.hpp"
 
 #include "addon/lua.hpp"
+#include "addon/error.hpp"
 #include "addon/modules/packet.lua.hpp"
+#include "core.hpp"
 #include "hooks/ffximain.hpp"
 
 #include <cstdint>
@@ -117,20 +119,32 @@ windower::packet_result windower::trigger_packet(
         lua::push(guard, static_cast<double>(timestamp));
         lua::push(guard, blocked);
         lua::push(guard, injected_by);
-        lua::call(guard, 9, 2);
-        if (blocked)
+        try
         {
-            return;
+            lua::call(guard, 9, 2);
+            if (blocked)
+            {
+                return;
+            }
+            switch (lua::typeof(guard, -2))
+            {
+            case lua::type::nil: break;
+            case lua::type::boolean: blocked = true; break;
+            default:
+                unchanged   = false;
+                result_id   = lua::get<std::uint16_t>(guard, -2);
+                result_data = lua::get<std::vector<std::byte>>(guard, -1);
+                break;
+            }
         }
-        switch (lua::typeof(guard, -2))
+        catch (windower::lua::error const& e)
         {
-        case lua::type::nil: break;
-        case lua::type::boolean: blocked = true; break;
-        default:
-            unchanged   = false;
-            result_id   = lua::get<std::uint16_t>(guard, -2);
-            result_data = lua::get<std::vector<std::byte>>(guard, -1);
-            break;
+            // If an addon throws an exception during packet processing, log it and prevent game crash
+            windower::core::instance().error(u8"packet", e);
+        }
+        catch (...)
+        {
+            windower::core::instance().error(u8"packet", std::current_exception());
         }
     });
 

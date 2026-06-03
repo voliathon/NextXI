@@ -61,25 +61,18 @@ windower::direct_3d_device::direct_3d_device(
 
         core.ui.initialize(
             hwnd, impl,
-            {gsl::narrow_cast<float>(core.settings.window_bounds.size.width),
-             gsl::narrow_cast<float>(core.settings.window_bounds.size.height)},
-            {gsl::narrow_cast<float>(core.settings.ui_size.width),
-             gsl::narrow_cast<float>(core.settings.ui_size.height)},
-            {gsl::narrow_cast<float>(core.settings.render_size.width),
-             gsl::narrow_cast<float>(core.settings.render_size.height)});
+            { gsl::narrow_cast<float>(core.settings.window_bounds.size.width),
+             gsl::narrow_cast<float>(core.settings.window_bounds.size.height) },
+            { gsl::narrow_cast<float>(core.settings.ui_size.width),
+             gsl::narrow_cast<float>(core.settings.ui_size.height) },
+            { gsl::narrow_cast<float>(core.settings.render_size.width),
+             gsl::narrow_cast<float>(core.settings.render_size.height) });
 
+        // Initialize the Lua state and C++ Addon Manager memory...
         core.script_environment.reset();
         core.addon_manager = std::make_unique<addon_manager>();
 
-        std::vector<std::u8string> names;
-        for (auto const& p :
-             core.package_manager->installed_packages(package_type::service))
-        {
-            names.push_back(p->name());
-        }
-        core.addon_manager->load(names);
-        core.script_environment.execute(u8"init");
-    });
+        });
 }
 
 windower::direct_3d_device::~direct_3d_device()

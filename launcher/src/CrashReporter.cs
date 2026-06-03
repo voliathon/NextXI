@@ -203,6 +203,16 @@ namespace Windower
             environment = environment.Add(Tuple.Create(".NET Framework", GetFramework()));
             environment = environment.Add(Tuple.Create("Launcher Version", GetLauncherVersion()));
             environment = environment.Add(Tuple.Create("Core Version", GetCoreVersion()));
+            environment = environment.Add(Tuple.Create("Launcher Path", System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? "Unknown"));
+            environment = environment.Add(Tuple.Create("Process Architecture", Environment.Is64BitProcess ? "64-bit" : "32-bit"));
+            environment = environment.Add(Tuple.Create("Processor Count", Environment.ProcessorCount.ToString()));
+            
+            try 
+            {
+                var currentProcess = System.Diagnostics.Process.GetCurrentProcess();
+                environment = environment.Add(Tuple.Create("Memory Usage", (currentProcess.WorkingSet64 / 1024 / 1024) + " MB"));
+            } 
+            catch { }
 
             return environment;
         }

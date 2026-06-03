@@ -221,6 +221,7 @@
     <ClCompile Include="src\hooks\d3d8.cpp" />
     <ClCompile Include="src\hooks\kernel32.cpp" />
     <ClCompile Include="src\hooks\user32.cpp" />
+    <ClCompile Include="src\hooks\ws2_32.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\settings_channel.cpp" />
     <ClCompile Include="src\ui\bitmap.cpp" />
@@ -258,6 +259,8 @@
     <ClCompile Include="src\ui\window.cpp" />
     <ClCompile Include="src\ui\window_manager.cpp" />
     <ClCompile Include="src\unicode.cpp" />
+    <ClCompile Include="src\utilities\pol_hacks.cpp" />
+    <ClCompile Include="src\utilities\sigscan.cpp" />
     <ClCompile Include="src\utilities\xml.cpp" />
     <ClCompile Include="src\utility.cpp" />
     <ClCompile Include="src\wrappers\direct_3d.cpp" />
@@ -380,23 +383,25 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='debug|Win32'">
     <OutDir>$(SolutionDir)build\bin\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\obj\$(ProjectName)\$(Configuration)\</IntDir>
-    <CodeAnalysisRuleSet>$(SolutionDir)\fenestra.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>$(SolutionDir)\nextxi.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <CodeAnalysisTreatWarningsAsErrors>false</CodeAnalysisTreatWarningsAsErrors>
+    <IncludePath>$(UniversalCRTSdkDir)Include\$(TargetPlatformVersion)\ucrt;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='release|Win32'">
     <OutDir>$(SolutionDir)build\bin\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\obj\$(ProjectName)\$(Configuration)\</IntDir>
-    <CodeAnalysisRuleSet>$(SolutionDir)\fenestra.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>$(SolutionDir)\nextxi.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
+    <IncludePath>$(UniversalCRTSdkDir)Include\$(TargetPlatformVersion)\ucrt;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='debug|Win32'">
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WINDOWER_AUTO_VERSION;$(ReleaseConstants);WIN32_LEAN_AND_MEAN;NOMINMAX;WINVER=_WIN32_WINNT_WIN8;_WIN32_WINNT=_WIN32_WINNT_WIN8;PSAPI_VERSION=1;_HAS_AUTO_PTR_ETC=0;_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;NDEBUG;_DEBUG;gsl_FEATURE_WITH_CONTAINER_TO_STD=14;gsl_FEATURE_MAKE_SPAN_TO_STD=14;gsl_FEATURE_BYTE_SPAN_TO_STD=14;gsl_FEATURE_OWNER_MACRO=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(IntDir)src;$(ProjectDir)src;$(ProjectDir)lib;$(SolutionDir)extern\luajit\repo\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(IntDir)src;$(ProjectDir)src;$(ProjectDir)lib;$(SolutionDir)extern\luajit\src\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <EnablePREfast>true</EnablePREfast>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -414,13 +419,23 @@
     <Link>
       <AdditionalLibraryDirectories>$(SolutionDir)build\lib\luajit\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ModuleDefinitionFile>$(ProjectName).def</ModuleDefinitionFile>
-      <AdditionalDependencies>lua51.static.lib;shlwapi.lib;dbghelp.lib;winhttp.lib;imm32.lib;dwrite.lib;d2d1.lib;windowscodecs.lib;icu.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>lua51.static.lib;shlwapi.lib;dbghelp.lib;winhttp.lib;imm32.lib;dwrite.lib;d2d1.lib;windowscodecs.lib;icu.lib;psapi.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(IntDir)src;$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WINDOWER_AUTO_VERSION;$(ReleaseConstants);%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalOptions>/c 1252</AdditionalOptions>
     </ResourceCompile>
+    <PreBuildEvent>
+      <Command>if not exist "$(SolutionDir)build\lib\luajit\$(Configuration)\lua\jit" mkdir "$(SolutionDir)build\lib\luajit\$(Configuration)\lua\jit"
+if not exist "$(SolutionDir)build\bin\$(Configuration)" mkdir "$(SolutionDir)build\bin\$(Configuration)"
+
+copy /Y "$(SolutionDir)extern\luajit\src\luajit.exe" "$(SolutionDir)build\lib\luajit\$(Configuration)\luajit.exe"
+copy /Y "$(SolutionDir)extern\luajit\src\lua51.lib" "$(SolutionDir)build\lib\luajit\$(Configuration)\lua51.static.lib"
+copy /Y "$(SolutionDir)extern\luajit\src\lua51.dll" "$(SolutionDir)build\lib\luajit\$(Configuration)\lua51.dll"
+copy /Y "$(SolutionDir)extern\luajit\src\lua51.dll" "$(SolutionDir)build\bin\$(Configuration)\lua51.dll"
+xcopy /E /I /Y "$(SolutionDir)extern\luajit\src\jit\*" "$(SolutionDir)build\lib\luajit\$(Configuration)\lua\jit\"</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='release|Win32'">
     <ClCompile>
@@ -430,7 +445,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WINDOWER_AUTO_VERSION;$(ReleaseConstants);WIN32_LEAN_AND_MEAN;NOMINMAX;WINVER=_WIN32_WINNT_WIN8;_WIN32_WINNT=_WIN32_WINNT_WIN8;PSAPI_VERSION=1;_HAS_AUTO_PTR_ETC=0;_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;NDEBUG;gsl_FEATURE_WITH_CONTAINER_TO_STD=14;gsl_FEATURE_MAKE_SPAN_TO_STD=14;gsl_FEATURE_BYTE_SPAN_TO_STD=14;gsl_FEATURE_OWNER_MACRO=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(IntDir)src;$(ProjectDir)src;$(ProjectDir)lib;$(SolutionDir)extern\luajit\repo\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(IntDir)src;$(ProjectDir)src;$(ProjectDir)lib;$(SolutionDir)extern\luajit\src\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <EnablePREfast>true</EnablePREfast>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -454,7 +469,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>$(SolutionDir)build\lib\luajit\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ModuleDefinitionFile>$(ProjectName).def</ModuleDefinitionFile>
-      <AdditionalDependencies>lua51.static.lib;shlwapi.lib;dbghelp.lib;winhttp.lib;imm32.lib;dwrite.lib;d2d1.lib;windowscodecs.lib;icu.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>lua51.static.lib;shlwapi.lib;dbghelp.lib;winhttp.lib;imm32.lib;dwrite.lib;d2d1.lib;windowscodecs.lib;icu.lib;psapi.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <GenerateMapFile>true</GenerateMapFile>
     </Link>
@@ -463,6 +478,16 @@
       <PreprocessorDefinitions>WINDOWER_AUTO_VERSION;$(ReleaseConstants);%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalOptions>/c 1252</AdditionalOptions>
     </ResourceCompile>
+    <PreBuildEvent>
+      <Command>if not exist "$(SolutionDir)build\lib\luajit\$(Configuration)\lua\jit" mkdir "$(SolutionDir)build\lib\luajit\$(Configuration)\lua\jit"
+if not exist "$(SolutionDir)build\bin\$(Configuration)" mkdir "$(SolutionDir)build\bin\$(Configuration)"
+
+copy /Y "$(SolutionDir)extern\luajit\src\luajit.exe" "$(SolutionDir)build\lib\luajit\$(Configuration)\luajit.exe"
+copy /Y "$(SolutionDir)extern\luajit\src\lua51.lib" "$(SolutionDir)build\lib\luajit\$(Configuration)\lua51.static.lib"
+copy /Y "$(SolutionDir)extern\luajit\src\lua51.dll" "$(SolutionDir)build\lib\luajit\$(Configuration)\lua51.dll"
+copy /Y "$(SolutionDir)extern\luajit\src\lua51.dll" "$(SolutionDir)build\bin\$(Configuration)\lua51.dll"
+xcopy /E /I /Y "$(SolutionDir)extern\luajit\src\jit\*" "$(SolutionDir)build\lib\luajit\$(Configuration)\lua\jit\"</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

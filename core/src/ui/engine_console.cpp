@@ -160,6 +160,27 @@ engine_console::process_message(::MSG const& message) noexcept
             {
                 m_scroll_state.offset.y += 100.f;
             }
+            else if (message.wParam == VK_TAB) // Tab Completion
+            {
+                if (!m_input_buffer.empty())
+                {
+                    std::vector<std::u8string> const commands = {
+                        u8"clear", u8"export", u8"help", u8"/pkg reload", 
+                        u8"/load", u8"/unload", u8"/reload",
+                        u8"/load config", u8"/load Timers", u8"/load EquipViewer", u8"/load Gearswap"
+                    };
+
+                    for (auto const& cmd : commands)
+                    {
+                        if (cmd.starts_with(m_input_buffer))
+                        {
+                            m_input_buffer = cmd;
+                            m_cursor_position = m_input_buffer.size();
+                            break;
+                        }
+                    }
+                }
+            }
             else if (message.wParam == VK_RETURN) // Enter Key
             {
                 if (!m_input_buffer.empty())
@@ -408,7 +429,7 @@ void engine_console::push_log(std::u8string_view text) noexcept
             if (line.find(u8"_service") != std::u8string::npos ||
                 line.find(u8"_data") != std::u8string::npos ||
                 line.find(u8"AddonManager") != std::u8string::npos ||
-                line.find(u8"FenestraSDK") != std::u8string::npos ||
+                line.find(u8"NextXISDK") != std::u8string::npos ||
                 line.find(u8"mime") != std::u8string::npos ||
                 line.find(u8"socket") != std::u8string::npos)
             {

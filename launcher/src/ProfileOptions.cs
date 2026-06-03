@@ -56,6 +56,13 @@ namespace Windower
             set => builder.WindowType = (WindowType)value;
         }
 
+        [Option("engine")]
+        public GraphicsEngineInternal GraphicsEngine
+        {
+            get => (GraphicsEngineInternal)builder.SelectedEngine;
+            set => builder.SelectedEngine = (Profile.GraphicsEngine)value;
+        }
+
         [Option("executable")]
         public string Executable
         {
@@ -282,6 +289,14 @@ namespace Windower
             borderless = Core.WindowType.Borderless,
             window = Core.WindowType.Window,
             fullscreen = Core.WindowType.FullScreen,
+        }
+
+        // HACK: Marked as generated code to shut up Code Analysis.
+        [GeneratedCode("", "")]
+        public enum GraphicsEngineInternal
+        {
+            legacy = Profile.GraphicsEngine.Legacy,
+            dgVoodoo2 = Profile.GraphicsEngine.dgVoodoo2
         }
     }
 }

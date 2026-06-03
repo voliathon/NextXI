@@ -327,7 +327,7 @@ void windower::crash_handler::crash(void* exception) const
     auto dmp_path = windower_path() / u8"crash.dmp";
     ::write_dump(dmp_path, m_dump_type, exception);
 
-    auto reporter = windower_path() / u8"windower.exe";
+    auto reporter = windower_path() / u8"NextXI.exe";
 
     // Pass the new dmp_path to the C# Launcher so it stops throwing
     // exceptions!

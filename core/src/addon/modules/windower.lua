@@ -1,27 +1,3 @@
---[[
-Copyright © Windower Dev Team
-
-Permission is hereby granted, free of charge, to any person
-obtaining a copy of this software and associated documentation files
-(the "Software"),to deal in the Software without restriction,
-including without limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of the Software,
-and to permit persons to whom the Software is furnished to do so,
-subject to the following conditions:
-
-The above copyright notice and this permission notice shall be
-included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
-BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
-ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-]]
-
 -- LuaFormatter off
 local -- params
     version,
@@ -42,8 +18,11 @@ local -- params
     package_name,
     get_package_list_ptr,
     get_package_readme_ptr,
-    read_market_file_ptr,    -- Must be here to catch arg 19!
-    write_market_file_ptr = ... -- Must be here to catch arg 20!
+    read_market_file_ptr,    
+    write_market_file_ptr, 
+    get_ffxi_player_ptr,
+    get_ffxi_items_ptr,
+    get_ffxi_spells_ptr = ...
 -- LuaFormatter on
 
 local ffi = require('ffi')
@@ -77,6 +56,28 @@ local function write_file(name, data)
     write_market_file_c(name, data)
 end
 
+local get_ffxi_player_c = ffi.typeof('char const*(*)()')(get_ffxi_player_ptr)
+local get_ffxi_items_c = ffi.typeof('char const*(*)()')(get_ffxi_items_ptr)
+local get_ffxi_spells_c = ffi.typeof('char const*(*)()')(get_ffxi_spells_ptr)
+
+local function get_player()
+    local ptr = get_ffxi_player_c()
+    if ptr ~= nil then return ffi.string(ptr) end
+    return "{}"
+end
+
+local function get_items()
+    local ptr = get_ffxi_items_c()
+    if ptr ~= nil then return ffi.string(ptr) end
+    return "{}"
+end
+
+local function get_spells()
+    local ptr = get_ffxi_spells_c()
+    if ptr ~= nil then return ffi.string(ptr) end
+    return "[]"
+end
+
 -- Expose to the Engine
 local windower = {
     version = version,
@@ -91,7 +92,7 @@ local windower = {
     package_path = package_path,
     package_name = package_name,
     
-    -- Expose all 4 bridges to your FenestraSDK!
+    -- Expose all 4 bridges to your NextXISDK!
     get_package_list = get_package_list, 
     get_package_readme = get_package_readme,
     read_file = read_file,   
@@ -101,7 +102,77 @@ local windower = {
         client_size = {width = client_width, height = client_height},
         ui_size = {width = ui_width, height = ui_height}
     },
-    client_hwnd = client_hwnd
+    client_hwnd = client_hwnd,
+    
+    ffxi = {
+        get_player = get_player,
+        get_items = get_items,
+        get_spells = get_spells
+    }
 }
+
+-- Windower 4 Compatibility Layer
+local event_registry = {
+    ['load'] = {},
+    ['unload'] = {},
+    ['addon command'] = {},
+    ['incoming chunk'] = {},
+    ['outgoing chunk'] = {},
+    ['status change'] = {},
+    ['login'] = {}
+}
+
+windower.register_event = function(event_name, callback)
+    if event_registry[event_name] then
+        table.insert(event_registry[event_name], callback)
+    end
+end
+
+-- Used by the NextXI engine internally to trigger these legacy events
+windower.trigger_event = function(event_name, ...)
+    local blocked = false
+    local modified_str = nil
+    if event_registry[event_name] then
+        for _, cb in ipairs(event_registry[event_name]) do
+            local success, result = pcall(cb, ...)
+            if not success then
+                print("Error in event '" .. event_name .. "': " .. tostring(result))
+            else
+                if result == true then
+                    blocked = true
+                elseif type(result) == "string" then
+                    modified_str = result
+                end
+            end
+        end
+    end
+    return blocked, modified_str
+end
+
+windower.add_to_chat = function(mode, text)
+    print(text)
+end
+
+windower.file_exists = function(path)
+    local f = io.open(path, "r")
+    if f ~= nil then
+        io.close(f)
+        return true
+    else
+        return false
+    end
+end
+
+windower.debug = function(...)
+    -- Stubbed out to avoid log spam
+end
+
+windower.send_command = function(cmd)
+    -- Stubbed: In a full implementation, this routes back to command_manager.hpp
+    print("Command Sent: " .. tostring(cmd))
+end
+
+windower.from_shift_jis = function(str) return str end
+windower.convert_auto_trans = function(str) return str end
 
 return windower

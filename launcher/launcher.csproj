@@ -8,6 +8,7 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
+    <PlatformTarget>x86</PlatformTarget>
     <Nullable>disable</Nullable>
     <SatelliteResourceLanguages>en-US</SatelliteResourceLanguages>
     <ReleaseBuild Condition=" '$(ReleaseBuild)' == '' ">true</ReleaseBuild>
@@ -18,8 +19,8 @@
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <SupportedCultures>en-US</SupportedCultures>
     <OutputType>WinExe</OutputType>
-    <RootNamespace>Windower</RootNamespace>
-    <AssemblyName>windower</AssemblyName>
+    <RootNamespace>NextXI</RootNamespace>
+    <AssemblyName>NextXI</AssemblyName>
     <UseWindowsForms>true</UseWindowsForms>
     <UseWPF>true</UseWPF>
     <ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
@@ -27,7 +28,7 @@
     <ApplicationManifest>launcher.manifest</ApplicationManifest>
     <StartupObject />
     <AssemblyOriginatorKeyFile />
-    <ApplicationIcon>res\Icon.ico</ApplicationIcon>
+    <ApplicationIcon>res\favicon.ico</ApplicationIcon>
     <EnableUnsafeBinaryFormatterSerialization>true</EnableUnsafeBinaryFormatterSerialization>
   </PropertyGroup>
 
@@ -65,14 +66,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="res\Icon.ico" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Resource Include="FodyWeavers.xml" />
   </ItemGroup>
 
-<Target Name="DeployEngineAssets" AfterTargets="Build">
+  <Target Name="DeployEngineAssets" AfterTargets="Build">
     <Copy SourceFiles="..\paths.xml" DestinationFolder="$(OutDir)" />
     <ItemGroup>
       <MarkdownDocs Include="..\*.md" />
@@ -84,6 +81,18 @@
       <MyAddons Include="..\addons\**\*" />
     </ItemGroup>
     <Copy SourceFiles="@(MyAddons)" DestinationFolder="$(OutDir)addons\%(RecursiveDir)" />
+
+    <MakeDir Directories="$(OutDir)scripts" />
+    <ItemGroup>
+      <MyScripts Include="..\scripts\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(MyScripts)" DestinationFolder="$(OutDir)scripts\%(RecursiveDir)" />
+
+    <MakeDir Directories="$(OutDir)res" />
+    <ItemGroup>
+      <MyRes Include="res\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(MyRes)" DestinationFolder="$(OutDir)res\%(RecursiveDir)" />
   </Target>
 
   <Target Name="CopyFileResources" AfterTargets="CoreCompile" Inputs="@(FileResource)" Outputs="@(FileResource->'$(OutDir)%(filename)%(extension)')">
