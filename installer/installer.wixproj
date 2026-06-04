@@ -40,9 +40,9 @@
   <ItemGroup>
     <Content Include="packages.config" />
     <Content Include="res\branding.wxi" />
-    <Content Include="res\license.rtf" />
-    <Content Include="res\banner.bmp" />
-    <Content Include="res\dialog.bmp" />
+    <!-- <Content Include="res\license.rtf" /> -->
+    <!-- <Content Include="res\banner.bmp" /> -->
+    <!-- <Content Include="res\dialog.bmp" /> -->
   </ItemGroup>
 <UsingTask TaskName="WriteVersionInfo" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
     <ParameterGroup>
@@ -88,9 +88,9 @@
   <Target Name="BuildZips" BeforeTargets="Build" Outputs="$(OutDir)windower.zip">
 	<ItemGroup>
       <ZipFiles Include="$(OutDir)core.dll" />
-      <ZipFiles Include="$(OutDir)windower.exe" />
-      <ZipFiles Include="$(OutDir)windower.dll" />
-      <ZipFiles Include="$(OutDir)windower.runtimeconfig.json" />
+      <ZipFiles Include="$(OutDir)NextXI.exe" />
+      <ZipFiles Include="$(OutDir)NextXI.dll" />
+      <ZipFiles Include="$(OutDir)NextXI.runtimeconfig.json" />
       <ZipFiles Include="$(SolutionDir)LICENSE.md" />
 	  <ZipFiles Include="$(SolutionDir)paths.xml" />
     </ItemGroup>
@@ -101,7 +101,7 @@
     </ItemGroup>
     <Copy SourceFiles="@(ZipFiles)" DestinationFolder="$(IntermediateOutputPath)/windower.portable" />
     <ZipDirectory SourceDirectory="$(IntermediateOutputPath)/windower.portable" DestinationFile="$(OutDir)windower.portable.zip" Overwrite="true" />
-    <WriteVersionInfo OutputPath="$(OutDir)version.xml" LauncherPath="$(OutDir)windower.exe" CorePath="$(OutDir)core.dll" />
+    <WriteVersionInfo OutputPath="$(OutDir)version.xml" LauncherPath="$(OutDir)NextXI.exe" CorePath="$(OutDir)core.dll" />
   </Target>
   <Target Name="CleanZips" BeforeTargets="Clean">
     <Delete Files="$(OutDir)windower.zip;$(OutDir)windower.portable.zip" />

@@ -6,14 +6,14 @@
     <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine"/>
     <MediaTemplate EmbedCab="yes"/>
     <UIRef Id="WixUI_InstallDir"/>
-    <Icon Id="windower.exe" SourceFile="$(var.SolutionDir)build\bin\$(var.Configuration)\windower.exe"/>
+    <Icon Id="windower.exe" SourceFile="$(var.SolutionDir)build\bin\$(var.Configuration)\NextXI.exe"/>
     <Property Id="ARPPRODUCTICON" Value="windower.exe"/>
     <Property Id="ARPURLINFOABOUT" Value="http://windower.net"/>
     <Property Id="ARPNOREPAIR" Value="yes"/>
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER"/>
-    <WixVariable Id="WixUIDialogBmp" Value="res\dialog.bmp"/>
-    <WixVariable Id="WixUIBannerBmp" Value="res\banner.bmp"/>
-    <WixVariable Id="WixUILicenseRtf" Value="res\license.rtf"/>
+    <!-- <WixVariable Id="WixUIDialogBmp" Value="res\dialog.bmp"/> -->
+    <!-- <WixVariable Id="WixUIBannerBmp" Value="res\banner.bmp"/> -->
+    <!-- <WixVariable Id="WixUILicenseRtf" Value="res\license.rtf"/> -->
 	<Condition Message="This application is only supported on Windows 10 or higher.">
       <![CDATA[Installed OR (VersionNT >= 1000)]]>
     </Condition>
@@ -33,15 +33,15 @@
   <Fragment>
     <ComponentGroup Id="Components" Directory="INSTALLFOLDER">
       <Component>
-        <File Source="$(var.SolutionDir)build\bin\$(var.Configuration)\windower.exe"/>
+        <File Source="$(var.SolutionDir)build\bin\$(var.Configuration)\NextXI.exe"/>
       </Component>
 
       <Component>
-        <File Source="$(var.SolutionDir)build\bin\$(var.Configuration)\windower.dll"/>
+        <File Source="$(var.SolutionDir)build\bin\$(var.Configuration)\NextXI.dll"/>
       </Component>
 
       <Component>
-        <File Source="$(var.SolutionDir)build\bin\$(var.Configuration)\windower.runtimeconfig.json"/>
+        <File Source="$(var.SolutionDir)build\bin\$(var.Configuration)\NextXI.runtimeconfig.json"/>
       </Component>
 
       <Component>
