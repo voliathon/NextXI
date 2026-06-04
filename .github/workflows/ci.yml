@@ -2,10 +2,10 @@ name: Build Project
 
 on:
   push:
-    branches: [ 'main', 'stable' ]
+    branches: [ 'main', 'dev' ]
     tags: [ 'v*' ] # <-- Tells GitHub to listen for version tags
   pull_request:
-    branches: [ 'main', 'stable' ]
+    branches: [ 'main', 'dev' ]
   workflow_dispatch: 
 
 defaults:
@@ -47,14 +47,11 @@ jobs:
           .\bootstrap-vcpkg.bat
           .\vcpkg integrate install
 
-      # 4. Install Lua (Required for the CompileLua task)
-      - name: Install Lua
-        run: choco install lua --no-progress
-
-      # 5. Build Core Application
+      # 4. Build Core Application
       - name: Build Core Application
         run: |
-          msbuild nextxi.sln -t:'restore;build' -p:configuration=release -p:PlatformToolset=v143 -p:TreatWarningsAsErrors=false -p:RunCodeAnalysis=false -p:ReleaseBuild=true -m -nowarn:NU1503          
+          msbuild nextxi.sln -t:'restore;build' -p:configuration=release -p:PlatformToolset=v143 -p:TreatWarningsAsErrors=false -p:RunCodeAnalysis=false -p:ReleaseBuild=true -m -nowarn:NU1503
+          
       - name: Build Installer
         run: |
           nuget restore installer.sln
