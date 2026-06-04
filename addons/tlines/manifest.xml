@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package>
+    <id>tlines</id>
+    <version>1.0.0</version>
+    <author>Voliathon</author>
+    <description>Next-Gen Target Lines using DX11 3D-to-2D spatial projection.</description>
+</package>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package name="Timers" version="1.0.0">
+  <description>Open source visual spell timers rebuilt with ImGui.</description>
+  <author>NextXI</author>
+  <engine>DX11</engine>
+  <dependencies>
+    <dependency name="ui" />
+    <dependency name="packets" />
+  </dependencies>
+</package>

@@ -40,6 +40,7 @@
 #include <queue>
 #include <tuple>
 #include <vector>
+#include <d3d8.h>
 
 namespace windower
 {
@@ -76,6 +77,10 @@ public:
     std::unique_ptr<addon_manager> addon_manager;
 
     void* client_hwnd;
+
+    ::D3DMATRIX view_matrix = {};
+    ::D3DMATRIX projection_matrix = {};
+    ::D3DVIEWPORT8 viewport = {};
 
     bool render_ui   = false;
     int render_phase = 0;

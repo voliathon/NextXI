@@ -22,7 +22,9 @@ local -- params
     write_market_file_ptr, 
     get_ffxi_player_ptr,
     get_ffxi_items_ptr,
-    get_ffxi_spells_ptr = ...
+    get_ffxi_spells_ptr,
+    get_ffxi_entities_ptr,
+    project_ptr = ...
 -- LuaFormatter on
 
 local ffi = require('ffi')
@@ -59,6 +61,8 @@ end
 local get_ffxi_player_c = ffi.typeof('char const*(*)()')(get_ffxi_player_ptr)
 local get_ffxi_items_c = ffi.typeof('char const*(*)()')(get_ffxi_items_ptr)
 local get_ffxi_spells_c = ffi.typeof('char const*(*)()')(get_ffxi_spells_ptr)
+local get_ffxi_entities_c = ffi.typeof('char const*(*)()')(get_ffxi_entities_ptr)
+local project_c = ffi.typeof('void(*)(float const*, float*)')(project_ptr)
 
 local function get_player()
     local ptr = get_ffxi_player_c()
@@ -78,6 +82,21 @@ local function get_spells()
     return "[]"
 end
 
+local function get_entities()
+    local ptr = get_ffxi_entities_c()
+    if ptr ~= nil then return ffi.string(ptr) end
+    return "[]"
+end
+
+local in_vec = ffi.new('float[3]')
+local out_vec = ffi.new('float[2]')
+local function project(x, y, z)
+    in_vec[0] = x; in_vec[1] = y; in_vec[2] = z;
+    project_c(in_vec, out_vec)
+    if out_vec[0] < 0 and out_vec[1] < 0 then return nil, nil end
+    return out_vec[0], out_vec[1]
+end
+
 -- Expose to the Engine
 local windower = {
     version = version,
@@ -91,7 +110,12 @@ local windower = {
     user_path = user_path,
     package_path = package_path,
     package_name = package_name,
-    
+
+    -- Windower 4 compat: addon_path points to this addon's directory.
+    -- In NextXI, package_path is the addon root (e.g. .../addons/GearSwap/).
+    -- We ensure it has a trailing separator so string concatenation works.
+    addon_path = (package_path or ''):gsub('[/\\]+$', '') .. '/',
+
     -- Expose all 4 bridges to your NextXISDK!
     get_package_list = get_package_list, 
     get_package_readme = get_package_readme,
@@ -104,10 +128,15 @@ local windower = {
     },
     client_hwnd = client_hwnd,
     
+    math = {
+        project = project
+    },
+
     ffxi = {
         get_player = get_player,
         get_items = get_items,
-        get_spells = get_spells
+        get_spells = get_spells,
+        get_entities = get_entities
     }
 }
 
@@ -153,14 +182,35 @@ windower.add_to_chat = function(mode, text)
     print(text)
 end
 
+pcall(function()
+    ffi.cdef[[
+        uint32_t GetFileAttributesA(const char* lpFileName);
+        bool CreateDirectoryA(const char* lpPathName, void* lpSecurityAttributes);
+    ]]
+end)
+local bit = require('bit')
+
 windower.file_exists = function(path)
-    local f = io.open(path, "r")
-    if f ~= nil then
-        io.close(f)
-        return true
-    else
-        return false
-    end
+    if type(path) ~= 'string' or path == '' then return false end
+    local success, attrs = pcall(function() return ffi.C.GetFileAttributesA(path) end)
+    if not success or attrs == 0xFFFFFFFF then return false end
+    -- Check if it's NOT a directory (FILE_ATTRIBUTE_DIRECTORY is 16)
+    return bit.band(attrs, 16) == 0
+end
+
+-- Windower 4 compat: check if a directory exists.
+windower.dir_exists = function(path)
+    if type(path) ~= 'string' or path == '' then return false end
+    local success, attrs = pcall(function() return ffi.C.GetFileAttributesA(path) end)
+    if not success or attrs == 0xFFFFFFFF then return false end
+    return bit.band(attrs, 16) == 16
+end
+
+-- Windower 4 compat: create a directory.
+windower.create_dir = function(path)
+    if type(path) ~= 'string' or path == '' then return false end
+    local success, res = pcall(function() return ffi.C.CreateDirectoryA(path, nil) end)
+    return success and res
 end
 
 windower.debug = function(...)

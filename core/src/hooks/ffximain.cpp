@@ -283,10 +283,19 @@ void input_command(
     auto const end = utf8_command.size();
 
     auto const first = next_code_point(utf8_command, it);
-    if (first == U'/' && it != end &&
-        !is_whitespace(next_code_point(utf8_command, it)))
+    if (first == U'/' && it != end)
     {
-        is_command = true;
+        auto const second_it = it;
+        auto const second = next_code_point(utf8_command, it);
+        if (second == U'/' && it != end && !is_whitespace(next_code_point(utf8_command, it)))
+        {
+            utf8_command.erase(0, second_it);
+            is_command = true;
+        }
+        else if (second != U'/' && !is_whitespace(second))
+        {
+            is_command = true;
+        }
     }
     else if (first >= U'\U000F0000' && first <= U'\U000F7FFD')
     {

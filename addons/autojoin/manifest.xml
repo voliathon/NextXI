@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package>
+    <id>autojoin</id>
+    <version>1.0.0</version>
+    <author>Voliathon</author>
+    <description>Automatically accepts party invites from whitelisted players.</description>
+</package>

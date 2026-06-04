@@ -76,122 +76,117 @@ coroutine.schedule(function()
 end)
 
 -- ============================================================================
--- 2. IMGUI DASHBOARD (Compact Layout)
+-- 2. CONFIG DASHBOARD
 -- ============================================================================
 local config_window = ui.window_state()
-config_window.title = "Client Configuration"
-config_window.size = {width = 380, height = 480} 
-config_window.resizable = false
+config_window.title = " NextXI Client Configuration"
+config_window.size = {width = 420, height = 520}
 config_window.visible = false
+
+local cfg_scroll = ui.scroll_panel_state(400, 900)
+local COLOR_HEADER = ui.color.rgb(100, 200, 255)
+local COLOR_MUTED  = ui.color.rgb(140, 140, 140)
 
 ui.display(function()
     local success, err = pcall(function()
         if state.show_ui then
             config_window.visible = true
-            
-            local window_still_open = ui.window(config_window, function(layout)
-                layout:begin_tab_bar("ConfigTabs")
 
-                if layout:begin_tab_item("Graphics & Audio") then
-                    layout:label("[GRAPHICS & PERFORMANCE]{color:skin_accent weight:bold}")
-                    layout:space(5)
-                    
-                    -- Framerate Row
-                    layout:label("Camera FPS (Cur: " .. tostring(options.graphics.framerate) .. ")")
-                    local c30 = layout:button("btn_fps_30", "  30 FPS  ", false); layout:same_line()
-                    local c60 = layout:button("btn_fps_60", "  60 FPS  ", false)
-                    
+            local window_still_open = ui.window(config_window, function(layout)
+
+                layout:height(480):scroll_panel(cfg_scroll, function(c)
+
+                    -- ── GRAPHICS & PERFORMANCE ──────────────────────────────
+                    c:space(6)
+                    c:label("  GRAPHICS & PERFORMANCE", COLOR_HEADER)
+                    c:label("  ──────────────────────────────────────────────", COLOR_MUTED)
+                    c:space(4)
+
+                    -- Camera FPS
+                    c:label("  Camera FPS  (current: " .. tostring(options.graphics.framerate) .. ")")
+                    local c30 = c:width(100):button("btn_fps_30", "  30 FPS  ", false)
+                    c:same_line()
+                    local c60 = c:width(100):button("btn_fps_60", "  60 FPS  ", false)
                     if c30 then options.graphics.framerate = 30; apply_settings(); settings.save() end
                     if c60 then options.graphics.framerate = 60; apply_settings(); settings.save() end
-                    
-                    layout:space(5)
-                    
-                    -- Animation Row
-                    layout:label("Animation FPS (Cur: " .. tostring(options.graphics.animation_framerate) .. ")")
-                    local a30 = layout:button("btn_afps_30", "  30 FPS  ", false); layout:same_line()
-                    local a60 = layout:button("btn_afps_60", "  60 FPS  ", false)
-                    
+
+                    c:space(6)
+
+                    -- Animation FPS
+                    c:label("  Animation FPS  (current: " .. tostring(options.graphics.animation_framerate) .. ")")
+                    local a30 = c:width(100):button("btn_afps_30", "  30 FPS  ", false)
+                    c:same_line()
+                    local a60 = c:width(100):button("btn_afps_60", "  60 FPS  ", false)
                     if a30 then options.graphics.animation_framerate = 30; apply_settings(); settings.save() end
                     if a60 then options.graphics.animation_framerate = 60; apply_settings(); settings.save() end
 
-                    layout:space(5)
-                    
-                    -- Graphics Sliders
-                    layout:label("[Draw Distance / Clipping Plane (" .. string.format("%.1f", options.graphics.clipping_plane) .. ")]{color:system_white}")
-                    local new_clip = layout:slider("sld_clip", options.graphics.clipping_plane, 1.0, 25.0)
-                    if new_clip ~= options.graphics.clipping_plane then options.graphics.clipping_plane = new_clip; apply_settings(); settings.save() end
+                    c:space(10)
 
-                    layout:label("[Gamma - Red (" .. string.format("%.2f", options.graphics.gamma.red) .. ")]{color:red}")
-                    local new_r = layout:slider("sld_gamma_r", options.graphics.gamma.red, 0.5, 3.0)
-                    if new_r ~= options.graphics.gamma.red then options.graphics.gamma.red = new_r; apply_settings(); settings.save() end
+                    -- Draw Distance
+                    c:label("  Draw Distance / Clipping Plane  (" .. string.format("%.1f", options.graphics.clipping_plane) .. ")")
+                    local new_clip = c:slider("sld_clip", options.graphics.clipping_plane, 1.0, 25.0)
+                    if new_clip ~= options.graphics.clipping_plane then
+                        options.graphics.clipping_plane = new_clip; apply_settings(); settings.save()
+                    end
 
-                    layout:label("[Gamma - Green (" .. string.format("%.2f", options.graphics.gamma.green) .. ")]{color:green}")
-                    local new_g = layout:slider("sld_gamma_g", options.graphics.gamma.green, 0.5, 3.0)
-                    if new_g ~= options.graphics.gamma.green then options.graphics.gamma.green = new_g; apply_settings(); settings.save() end
+                    c:space(10)
 
-                    layout:label("[Gamma - Blue (" .. string.format("%.2f", options.graphics.gamma.blue) .. ")]{color:dodgerblue}")
-                    local new_b = layout:slider("sld_gamma_b", options.graphics.gamma.blue, 0.5, 3.0)
-                    if new_b ~= options.graphics.gamma.blue then options.graphics.gamma.blue = new_b; apply_settings(); settings.save() end
+                    -- Gamma sliders
+                    c:label("  Gamma - Red  (" .. string.format("%.2f", options.graphics.gamma.red) .. ")", ui.color.rgb(255, 100, 100))
+                    local new_r = c:slider("sld_gamma_r", options.graphics.gamma.red, 0.5, 3.0)
+                    if new_r ~= options.graphics.gamma.red then
+                        options.graphics.gamma.red = new_r; apply_settings(); settings.save()
+                    end
 
-                    layout:space(15)
-                    layout:label("[AUDIO & EFFECTS]{color:skin_accent weight:bold}")
-                    layout:space(5)
+                    c:label("  Gamma - Green  (" .. string.format("%.2f", options.graphics.gamma.green) .. ")", ui.color.rgb(100, 220, 100))
+                    local new_g = c:slider("sld_gamma_g", options.graphics.gamma.green, 0.5, 3.0)
+                    if new_g ~= options.graphics.gamma.green then
+                        options.graphics.gamma.green = new_g; apply_settings(); settings.save()
+                    end
 
-                    -- Condensed Checkboxes
-                    local particle_clicked, _ = layout:check("chk_particles", "Enable Visual Footstep Dust Particles", options.graphics.footstep_effects)
-                    if particle_clicked then options.graphics.footstep_effects = not options.graphics.footstep_effects; apply_settings(); settings.save() end
+                    c:label("  Gamma - Blue  (" .. string.format("%.2f", options.graphics.gamma.blue) .. ")", ui.color.rgb(80, 160, 255))
+                    local new_b = c:slider("sld_gamma_b", options.graphics.gamma.blue, 0.5, 3.0)
+                    if new_b ~= options.graphics.gamma.blue then
+                        options.graphics.gamma.blue = new_b; apply_settings(); settings.save()
+                    end
 
-                    local foot_clicked, _ = layout:check("chk_foot", "Enable Physical Footstep Sound Volume", options.audio.footstep_effects)
-                    if foot_clicked then options.audio.footstep_effects = not options.audio.footstep_effects; apply_settings(); settings.save() end
-                    
-                    layout:end_tab_item()
-                end
+                    c:space(14)
 
-                if layout:begin_tab_item("Addon Manager") then
-                    layout:label("[LOADED ADDONS]{color:skin_accent weight:bold}")
-                    layout:space(5)
-                    layout:label("Use the command '/load <addon>' to load others.")
-                    layout:space(5)
+                    -- ── AUDIO & EFFECTS ─────────────────────────────────────
+                    c:label("  AUDIO & EFFECTS", COLOR_HEADER)
+                    c:label("  ──────────────────────────────────────────────", COLOR_MUTED)
+                    c:space(6)
 
-                    -- Provide buttons to load/unload some of the big addons
-                    layout:label("Gearswap")
-                    local load_gs = layout:button("btn_load_gs", "  Load  ", false); layout:same_line()
-                    local unload_gs = layout:button("btn_unload_gs", "  Unload  ", false)
-                    if load_gs then command.input('/load gearswap') end
-                    if unload_gs then command.input('/unload gearswap') end
+                    local pc, _ = c:check("chk_particles", "  Enable Visual Footstep Dust Particles", options.graphics.footstep_effects)
+                    if pc then
+                        options.graphics.footstep_effects = not options.graphics.footstep_effects
+                        apply_settings(); settings.save()
+                    end
 
-                    layout:space(5)
-                    layout:label("Timers")
-                    local load_tmr = layout:button("btn_load_tmr", "  Load  ", false); layout:same_line()
-                    local unload_tmr = layout:button("btn_unload_tmr", "  Unload  ", false)
-                    if load_tmr then command.input('/load timers') end
-                    if unload_tmr then command.input('/unload timers') end
+                    c:space(4)
 
-                    layout:space(5)
-                    layout:label("EquipViewer")
-                    local load_eq = layout:button("btn_load_eq", "  Load  ", false); layout:same_line()
-                    local unload_eq = layout:button("btn_unload_eq", "  Unload  ", false)
-                    if load_eq then command.input('/load equipviewer') end
-                    if unload_eq then command.input('/unload equipviewer') end
-                    
-                    layout:end_tab_item()
-                end
-                
-                layout:end_tab_bar()
+                    local fc, _ = c:check("chk_foot", "  Enable Footstep Sound Effects", options.audio.footstep_effects)
+                    if fc then
+                        options.audio.footstep_effects = not options.audio.footstep_effects
+                        apply_settings(); settings.save()
+                    end
+
+                    c:space(20)
+                end)
             end)
-            
-            if not window_still_open then 
-                state.show_ui = false 
+
+            if not window_still_open then
+                state.show_ui = false
                 chat.print("Config UI Closed.", ui.color.system_gray)
             end
         else
             config_window.visible = false
         end
     end)
-    
-    if not success then 
-        state.show_ui = false 
-        chat.print("Config UI Crash: " .. tostring(err), ui.color.system_error) 
+
+    if not success then
+        state.show_ui = false
+        chat.print("Config UI Crash: " .. tostring(err), ui.color.system_error)
     end
 end)
 

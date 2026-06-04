@@ -1,7 +1,18 @@
-# NextXI (Totally Not Windower5)
+# NextXI
 
-Congratulations!  You found a hidden repository that will be for my personal 'Windower' named NextXI. It is a work in progress and will be updated as I work on it. 
-If Windower 5 was ever fleshed out from Fenestra, this is my interpretation.
-I wanted all new stuff.
-It does have a working dgVoodoo2 Game Engine that target DX11 instead of DX8/DX9. If you want to play the game in Vanilla mode you could with NextXI but there will be no supported Addons.
-In the future I will dabble into Vulkan... When I get an updated PC.
+NextXI is an advanced addon framework and launcher tailored for the game environment.
+
+## Running in Visual Studio Insiders
+
+To run and debug the NextXI application locally:
+
+1. Open the **NextXI** project folder in **Visual Studio Insiders**.
+2. Set the build configuration to `Debug` or `Release` according to your needs.
+3. If building for the first time, ensure all project dependencies are restored.
+4. Press `F5` to build the solution and launch the debugger, or `Ctrl+F5` to run without debugging.
+5. The `build/bin/debug` (or release) directory will be populated with the executable and required core scripts.
+
+### Note on Directory Structure
+- All core binaries are built into the `build/` folder.
+- Addon source code is kept in the `/addons/` directory. 
+- Shared libraries are located in `/addons/libs/` so all addons can utilize them universally.

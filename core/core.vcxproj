@@ -669,4 +669,11 @@ xcopy /E /I /Y "$(SolutionDir)extern\luajit\src\jit\*" "$(SolutionDir)build\lib\
     </ItemGroup>
     <GenerateVersionNumber File="$(IntDir)src\version.auto.hpp" />
   </Target>
+  <ItemGroup>
+    <ProjectReference Include="..\extern\luajit\luajit.vcxproj">
+      <Project>{3FB96E59-838D-43BD-B72B-225C6D6526C0}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
 </Project>

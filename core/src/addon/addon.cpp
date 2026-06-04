@@ -82,12 +82,44 @@ int load_internal_module(windower::lua::state s)
     }
     catch (package_error const& e)
     {
-        std::u8string error;
-        error.append(u8"\n    [");
-        error.append(e.error_code());
-        error.append(u8"] ");
-        error.append(e.message());
-        lua::push(guard, error);
+        // ── Global libs fallback ──────────────────────────────────────────
+        // If a module isn't found in the addon's own directory, transparently
+        // fall back to addons/libs/ so every addon can share Windower 4
+        // compatibility libraries without needing local copies.
+        //
+        // Resolution order:
+        //   1. addons/libs/<file>.lua          (flat lib:  strings.lua)
+        //   2. addons/libs/<module>/<file>.lua (dir pkg:   socket/socket.lua)
+        auto const libs_root =
+            package->path().parent_path() / u8"libs";
+
+        // 1. Flat file in libs root
+        if (auto flat = std::ifstream{libs_root / file_name, std::ios::binary};
+            flat.is_open())
+        {
+            lua::load(guard, flat, u8"@libs:" + file_name.u8string());
+        }
+        // 2. Directory package: libs/<stem>/<stem>.lua
+        else if (auto dir = std::ifstream{
+                     libs_root / file_name.stem() / file_name,
+                     std::ios::binary};
+                 dir.is_open())
+        {
+            lua::load(
+                guard, dir,
+                u8"@libs/" + file_name.stem().u8string() + u8":" +
+                    file_name.u8string());
+        }
+        else
+        {
+            // Module not found anywhere — report original error
+            std::u8string error;
+            error.append(u8"\n    [");
+            error.append(e.error_code());
+            error.append(u8"] ");
+            error.append(e.message());
+            lua::push(guard, error);
+        }
     }
 
     return guard.release();
