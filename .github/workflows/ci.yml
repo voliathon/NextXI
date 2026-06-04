@@ -24,7 +24,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: recursive
           fetch-depth: 0 
 
       # 2. Setup build tools
@@ -34,9 +33,16 @@ jobs:
       - name: Set up NuGet
         uses: nuget/setup-nuget@v2
 
-      # 3. Bootstrap vcpkg
-      - name: Bootstrap vcpkg
+      # 3. Clone and Bootstrap vcpkg
+      - name: Setup and Bootstrap vcpkg
         run: |
+          # Create the directory if it doesn't exist
+          New-Item -ItemType Directory -Force -Path extern
+          
+          # Clone vcpkg directly
+          git clone https://github.com/microsoft/vcpkg.git extern/vcpkg
+          
+          # Bootstrap and integrate
           cd extern\vcpkg
           .\bootstrap-vcpkg.bat
           .\vcpkg integrate install
