@@ -20,18 +20,28 @@ jobs:
       !contains(github.event.head_commit.message, '***NO_CI***') &&
       !contains(github.event.head_commit.message, '[skip ci]')
     steps:
-      - name: Set up build environment
-        uses: microsoft/setup-msbuild@v2
-        
-      - name: Set up NuGet
-        uses: nuget/setup-nuget@v2
-        
+      # 1. Checkout repository first
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0 
 
+      # 2. Setup build tools
+      - name: Set up build environment
+        uses: microsoft/setup-msbuild@v2
+        
+      - name: Set up NuGet
+        uses: nuget/setup-nuget@v2
+
+      # 3. Bootstrap vcpkg
+      - name: Bootstrap vcpkg
+        run: |
+          cd extern\vcpkg
+          .\bootstrap-vcpkg.bat
+          .\vcpkg integrate install
+
+      # 4. Build Core Application
       - name: Build Core Application
         run: |
           msbuild nextxi.sln -t:'restore;build' -p:configuration=release -p:PlatformToolset=v143 -p:TreatWarningsAsErrors=false -p:RunCodeAnalysis=false -p:ReleaseBuild=true -m -nowarn:NU1503

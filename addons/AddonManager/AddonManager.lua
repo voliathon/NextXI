@@ -347,22 +347,28 @@ local function draw_package(canvas, pkg)
     else
         -- Status badge: green ENABLED / red DISABLED
         if is_on then
-            canvas:width(120):label("  [● ENABLED ]", COLOR_ON)
+            canvas:width(110):label("  [● AUTO: ON ]", COLOR_ON)
         else
-            canvas:width(120):label("  [○ DISABLED]", COLOR_OFF)
+            canvas:width(110):label("  [○ AUTO: OFF]", COLOR_OFF)
         end
 
         canvas:same_line()
 
-        -- Action button: clearly labeled, wide enough to always fit text
-        local btn_label = is_on and "  Disable  " or "  Enable  "
-        local btn_color = is_on and COLOR_OFF or COLOR_ON
-        local clicked = canvas:width(110):button("act_" .. pkg.id, btn_label, false)
+        -- Auto-Load Toggle
+        local auto_label = is_on and "  Disable  " or "  Enable  "
+        local auto_clicked = canvas:width(80):button("auto_" .. pkg.id, auto_label, false)
+
+        canvas:same_line()
+        
+        -- Start/Stop buttons
+        local start_clicked = canvas:width(60):button("start_" .. pkg.id, " Start ", false)
+        canvas:same_line()
+        local stop_clicked = canvas:width(60):button("stop_" .. pkg.id, " Stop ", false)
 
         -- Readme button
         if pkg.has_readme then
             canvas:same_line()
-            if canvas:width(90):button("btn_rm_" .. pkg.id, "  Readme  ", false) then
+            if canvas:width(80):button("btn_rm_" .. pkg.id, " Readme ", false) then
                 state.readme_title = " " .. pkg.name .. " - Documentation"
                 local raw_text = core_windower.get_package_readme(pkg.id) or ""
                 state.readme_content = parse_markdown_to_windower(raw_text)
@@ -372,7 +378,7 @@ local function draw_package(canvas, pkg)
             end
         end
 
-        if clicked then
+        if auto_clicked then
             -- Toggle state immediately in the data model
             local new_state = is_on and "off" or "login"
             pkg.lifecycle = new_state
@@ -382,15 +388,16 @@ local function draw_package(canvas, pkg)
             local char_addons = get_char_addons()
             char_addons[pkg.id] = new_state
             settings.save('profiles')
+        end
 
-            -- Issue the engine command
-            if new_state == "off" then
-                core_command.input('/unload ' .. pkg.id)
-                chat.warning("AddonManager: Unloaded [" .. pkg.name .. "]")
-            else
-                core_command.input('/load ' .. pkg.id)
-                chat.success("AddonManager: Loaded [" .. pkg.name .. "]")
-            end
+        if start_clicked then
+            core_command.input('/load ' .. pkg.id)
+            chat.success("AddonManager: Started [" .. pkg.name .. "]")
+        end
+
+        if stop_clicked then
+            core_command.input('/unload ' .. pkg.id)
+            chat.warning("AddonManager: Stopped [" .. pkg.name .. "]")
         end
     end
 

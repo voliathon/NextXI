@@ -523,7 +523,7 @@ function assemble_menu_item_packet(target_id,target_index,...)
     -- Message is coming out too short by 12 characters
 
     -- Target ID
-    outstr = outstr.."I":pack(target_id)
+    outstr = outstr..string.pack("I", target_id)
     local item_ids,counts,count = {...},{},0
     for i,v in pairs(item_ids) do
         if res.items[v] then
@@ -534,7 +534,7 @@ function assemble_menu_item_packet(target_id,target_index,...)
 
     local unique_items = 0
     for i,v in pairs(counts) do
-        outstr = outstr.."I":pack(v)
+        outstr = outstr..string.pack("I", v)
         unique_items = unique_items + 1
     end
     if unique_items > 9 then
@@ -560,7 +560,7 @@ function assemble_menu_item_packet(target_id,target_index,...)
         outstr = outstr..string.char(0)
     end
     -- Target Index
-    outstr = outstr.."H":pack(target_index)
+    outstr = outstr..string.pack("H", target_index)
     -- Only one item being traded
     outstr = outstr..string.char(unique_items,0,0,0)
     return outstr
