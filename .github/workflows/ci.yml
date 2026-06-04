@@ -2,10 +2,10 @@ name: Build Project
 
 on:
   push:
-    branches: [ 'main', 'stable' ]
+    branches: [ 'main', 'dev' ]
     tags: [ 'v*' ] # <-- Tells GitHub to listen for version tags
   pull_request:
-    branches: [ 'main', 'stable' ]
+    branches: [ 'main', 'dev' ]
   workflow_dispatch: 
 
 defaults:

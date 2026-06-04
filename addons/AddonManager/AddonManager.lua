@@ -102,7 +102,8 @@ coroutine.schedule(function()
 
                         for addon_id, state_val in pairs(addons) do
                             if state_val == "login" then
-                                core_command.input('/load ' .. addon_id)
+                                local ok, err = pcall(core_command.input, '/load ' .. addon_id)
+                                if not ok then chat.error("AddonManager: Failed to load " .. addon_id .. " (" .. tostring(err) .. ")") end
                             end
                         end
 
@@ -112,7 +113,8 @@ coroutine.schedule(function()
                             if state.current_character == expected_character then
                                 for addon_id, state_val in pairs(addons) do
                                     if state_val == "delayed" then
-                                        core_command.input('/load ' .. addon_id)
+                                        local ok, err = pcall(core_command.input, '/load ' .. addon_id)
+                                        if not ok then chat.error("AddonManager: Failed to load " .. addon_id .. " (" .. tostring(err) .. ")") end
                                     end
                                 end
                             end
@@ -122,7 +124,7 @@ coroutine.schedule(function()
                         
                         local config_state = addons['config'] or "off"
                         if config_state == "off" then
-                            core_command.input('/unload config')
+                            pcall(core_command.input, '/unload config')
                         end
                     end)
                 end
@@ -391,13 +393,21 @@ local function draw_package(canvas, pkg)
         end
 
         if start_clicked then
-            core_command.input('/load ' .. pkg.id)
-            chat.success("AddonManager: Started [" .. pkg.name .. "]")
+            local ok, err = pcall(core_command.input, '/load ' .. pkg.id)
+            if ok then
+                chat.success("AddonManager: Started [" .. pkg.name .. "]")
+            else
+                chat.error("AddonManager: Failed to start [" .. pkg.name .. "] (" .. tostring(err) .. ")")
+            end
         end
 
         if stop_clicked then
-            core_command.input('/unload ' .. pkg.id)
-            chat.warning("AddonManager: Stopped [" .. pkg.name .. "]")
+            local ok, err = pcall(core_command.input, '/unload ' .. pkg.id)
+            if ok then
+                chat.warning("AddonManager: Stopped [" .. pkg.name .. "]")
+            else
+                chat.error("AddonManager: Failed to stop [" .. pkg.name .. "] (" .. tostring(err) .. ")")
+            end
         end
     end
 
@@ -526,8 +536,12 @@ command.register({'addon', 'addons'}, function(args)
             scan_packages()
             chat.success("AddonManager: Packages rescanned dynamically.")
         elseif args[1] == "reload" and args[2] then
-            core_command.input('/reload ' .. args[2])
-            chat.success("AddonManager: Reloading package '" .. args[2] .. "'...")
+            local ok, err = pcall(core_command.input, '/reload ' .. args[2])
+            if ok then
+                chat.success("AddonManager: Reloading package '" .. args[2] .. "'...")
+            else
+                chat.error("AddonManager: Failed to reload [" .. args[2] .. "] (" .. tostring(err) .. ")")
+            end
         else
             state.show_ui = not state.show_ui
             if state.show_ui then state.scanned = false end 
@@ -548,7 +562,7 @@ coroutine.schedule(function()
     local global_addons = profile_settings["Global"] and profile_settings["Global"].addons or {}
     for addon_id, state_val in pairs(global_addons) do
         if state_val == "boot" then
-            core_command.input('/load ' .. addon_id)
+            pcall(core_command.input, '/load ' .. addon_id)
         end
     end
 end)
