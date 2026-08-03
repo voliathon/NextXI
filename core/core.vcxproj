@@ -157,6 +157,7 @@
     <ClInclude Include="src\unicode.hpp" />
     <ClInclude Include="src\utilities\coroutine.hpp" />
     <ClInclude Include="src\utilities\debug_helpers.hpp" />
+    <ClInclude Include="src\utilities\logger.hpp" />
     <ClInclude Include="src\utilities\null_output.hpp" />
     <ClInclude Include="src\utilities\paths.hpp" />
     <ClInclude Include="src\utilities\string_helpers.hpp" />
@@ -266,6 +267,7 @@
     <ClCompile Include="src\ui\window_manager.cpp" />
     <ClCompile Include="src\unicode.cpp" />
     <ClCompile Include="src\utilities\debug_helpers.cpp" />
+    <ClCompile Include="src\utilities\logger.cpp" />
     <ClCompile Include="src\utilities\module_info.cpp" />
     <ClCompile Include="src\utilities\paths.cpp" />
     <ClCompile Include="src\utilities\pol_hacks.cpp" />
