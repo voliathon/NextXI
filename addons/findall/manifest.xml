@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<package>
-    <id>findall</id>
-    <version>1.0.0</version>
-    <author>Voliathon</author>
-    <description>Searches all your characters' inventories for a specific item.</description>
-</package>
