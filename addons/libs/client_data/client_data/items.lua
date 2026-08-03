@@ -46,7 +46,6 @@ local file_handles = setmetatable({}, {
         end
 
         local handle = c.CreateFileW(to_utf16(path), --[[GENERIC_READ]] 0x80000000, --[[FILE_SHARE_READ]] 0x1, nil,
-        --[[OPEN_EXISTING]] 3, --[[FILE_ATTRIBUTE_NORMAL]] 128, nil)
         if handle == nil or handle == invalid_handle then
             error('error opening file "' .. path .. '" [error code: ' .. c.GetLastError() .. '; dat id: ' .. dat_id .. ']')
         end

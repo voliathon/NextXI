@@ -1,10 +1,8 @@
--- LuaFormatter off
 local -- params
     registry,
     remote_pcall_key,
     get_remote_handle,
     remote_pcall_native_ptr = ...
--- LuaFormatter on
 
 local ffi = require('ffi')
 

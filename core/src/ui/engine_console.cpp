@@ -34,13 +34,11 @@ engine_console::process_message(::MSG const& message) noexcept
 {
     if (message.message == WM_KEYDOWN || message.message == WM_SYSKEYDOWN)
     {
-        // Insert toggles the console open and closed
         if (message.wParam == VK_INSERT)
         {
             toggle();
             return 0;
         }
-        // Escape ONLY closes the console, never opens it
         if (message.wParam == VK_ESCAPE && m_visible)
         {
             m_visible = false;
@@ -192,8 +190,6 @@ engine_console::process_message(::MSG const& message) noexcept
                             m_history.pop_front();
                     }
                     m_history_index = m_history.size();
-
-                    // --- NATIVE CONSOLE COMMANDS ---
                     if (m_input_buffer == u8"clear")
                     {
                         std::lock_guard<std::mutex> lock{g_console_mutex};
@@ -202,18 +198,12 @@ engine_console::process_message(::MSG const& message) noexcept
                     else if (m_input_buffer == u8"export")
                     {
                         bool success = false;
-
-                        // Force the path to the Windows Temp folder so it is
-                        // always easy to find
                         auto export_path =
                             core::instance().settings.user_path.parent_path() /
                             "console_export.log";
 
                         {
                             std::lock_guard<std::mutex> lock{g_console_mutex};
-
-                            // Ensure the Windower temp directory actually
-                            // exists
                             std::error_code ec;
                             std::filesystem::create_directories(
                                 export_path.parent_path(), ec);
@@ -235,8 +225,6 @@ engine_console::process_message(::MSG const& message) noexcept
 
                         if (success)
                         {
-                            // Dynamically print the exact path to the console
-                            // so you can see where it went
                             std::u8string success_msg = u8"--- Exported to: " +
                                                         export_path.u8string() +
                                                         u8" ---";
@@ -321,7 +309,6 @@ void engine_console::render(context& ctx) noexcept
 
     if (widget::begin_window(ctx, m_window_state))
     {
-        // --- 1. RENDER SCROLL PANEL ---
         ctx.bounds({0.f, 0.f, screen_width, console_height - input_height});
 
         constexpr float line_height = 16.f;
@@ -353,17 +340,12 @@ void engine_console::render(context& ctx) noexcept
             }
         }
         widget::end_scroll_panel(ctx);
-
-        // --- 2. RENDER CUSTOM INPUT LINE ---
         auto const input_bounds = rectangle{
             0.f, console_height - input_height, screen_width, console_height};
 
         primitive::set_texture(ctx, u8":system");
         primitive::rectangle(
             ctx, input_bounds, windower::ui::color{0, 0, 0, 255});
-
-        // Split the string based on the cursor position to insert the blinking
-        // caret
         bool const blink = (::GetTickCount64() / 500) % 2 == 0;
         std::u8string const display_text =
             u8"> " + m_input_buffer.substr(0, m_cursor_position) +
@@ -393,14 +375,10 @@ void engine_console::push_log(std::u8string_view text) noexcept
             line.pop_back();
         if (line.empty())
             return;
-
-        // 1. Filter standard background services
         if (line.find(u8"packet_service") != std::u8string::npos)
             return;
         if (line.find(u8"linkshell_service") != std::u8string::npos)
             return;
-
-        // 2. Filter early IPC network errors and package warnings
         if (line.find(u8"windower::package") != std::u8string::npos)
             return;
         if (line.find(u8"PKG:P2") != std::u8string::npos)
@@ -409,8 +387,6 @@ void engine_console::push_log(std::u8string_view text) noexcept
             return;
         if (line.find(u8"channel 'packets' not found") != std::u8string::npos)
             return;
-
-        // 3. Filter Lua Stack Trace Dumps
         if (line.find(u8"(global)<unknown>") != std::u8string::npos)
             return;
         if (line.find(u8"(method)<unknown>") != std::u8string::npos)
@@ -421,8 +397,6 @@ void engine_console::push_log(std::u8string_view text) noexcept
             return; // Swallows indented Lua variables
         if (line.find(u8"[core] \t") != std::u8string::npos)
             return; // Swallows tabbed Lua variables
-
-        // 4. Handle Core & Addon Loading Labels
         if (line.find(u8"[core]") != std::u8string::npos &&
             line.find(u8"loaded") != std::u8string::npos)
         {

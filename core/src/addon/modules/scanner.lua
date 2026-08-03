@@ -6,12 +6,9 @@ local error = error
 local type = type
 
 local args = {...}
-
--- LuaFormatter off
 local scan_native = ffi.new(
     'void*(*)(char const*,size_t,char const*,size_t)',
     args[1])
--- LuaFormatter on
 
 local scan = function(signature, module)
     if type(signature) ~= 'string' then

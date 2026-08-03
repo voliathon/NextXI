@@ -1,4 +1,3 @@
--- LuaFormatter off
 local -- params
     version,
     version_major,
@@ -25,17 +24,12 @@ local -- params
     get_ffxi_spells_ptr,
     get_ffxi_entities_ptr,
     project_ptr = ...
--- LuaFormatter on
 
 local ffi = require('ffi')
-
--- FFI Signatures
 local get_package_list_c = ffi.typeof('char const*(*)()')(get_package_list_ptr)
 local get_package_readme_c = ffi.typeof('char const*(*)(char const*)')(get_package_readme_ptr)
 local read_market_file_c = ffi.typeof('char const*(*)(char const*)')(read_market_file_ptr)
 local write_market_file_c = ffi.typeof('void(*)(char const*, char const*)')(write_market_file_ptr)
-
--- Clean Lua Wrappers
 local function get_package_list()
     local ptr = get_package_list_c()
     if ptr ~= nil then return ffi.string(ptr) end
@@ -63,10 +57,6 @@ local get_ffxi_items_c = ffi.typeof('char const*(*)()')(get_ffxi_items_ptr)
 local get_ffxi_spells_c = ffi.typeof('char const*(*)()')(get_ffxi_spells_ptr)
 local get_ffxi_entities_c = ffi.typeof('char const*(*)()')(get_ffxi_entities_ptr)
 local project_c = ffi.typeof('void(*)(float const*, float*)')(project_ptr)
-
-
--- Lightweight inline JSON decoder (pure Lua, no external module required)
--- Handles objects {}, arrays [], strings, numbers, booleans, null
 local json_decode
 do
     local function skip_ws(s, i)
@@ -212,8 +202,6 @@ local function project(x, y, z)
     if out_vec[0] < 0 and out_vec[1] < 0 then return nil, nil end
     return out_vec[0], out_vec[1]
 end
-
--- Expose to the Engine
 local windower = {
     version = version,
     version_major = version_major,
@@ -226,13 +214,7 @@ local windower = {
     user_path = user_path,
     package_path = package_path,
     package_name = package_name,
-
-    -- Windower 4 compat: addon_path points to this addon's directory.
-    -- In NextXI, package_path is the addon root (e.g. .../addons/GearSwap/).
-    -- We ensure it has a trailing separator so string concatenation works.
     addon_path = (package_path or ''):gsub('[/\\]+$', '') .. '/',
-
-    -- Expose all 4 bridges to your NextXISDK!
     get_package_list = get_package_list, 
     get_package_readme = get_package_readme,
     read_file = read_file,   
@@ -256,8 +238,6 @@ local windower = {
         get_bag_info = function() return {} end
     }
 }
-
--- Windower 4 Compatibility Layer
 local event_registry = {
     ['load'] = {},
     ['unload'] = {},
@@ -273,8 +253,6 @@ windower.register_event = function(event_name, callback)
         table.insert(event_registry[event_name], callback)
     end
 end
-
--- Used by the NextXI engine internally to trigger these legacy events
 windower.trigger_event = function(event_name, ...)
     local blocked = false
     local modified_str = nil
@@ -311,19 +289,14 @@ windower.file_exists = function(path)
     if type(path) ~= 'string' or path == '' then return false end
     local success, attrs = pcall(function() return ffi.C.GetFileAttributesA(path) end)
     if not success or attrs == 0xFFFFFFFF then return false end
-    -- Check if it's NOT a directory (FILE_ATTRIBUTE_DIRECTORY is 16)
     return bit.band(attrs, 16) == 0
 end
-
--- Windower 4 compat: check if a directory exists.
 windower.dir_exists = function(path)
     if type(path) ~= 'string' or path == '' then return false end
     local success, attrs = pcall(function() return ffi.C.GetFileAttributesA(path) end)
     if not success or attrs == 0xFFFFFFFF then return false end
     return bit.band(attrs, 16) == 16
 end
-
--- Windower 4 compat: create a directory.
 windower.create_dir = function(path)
     if type(path) ~= 'string' or path == '' then return false end
     local success, res = pcall(function() return ffi.C.CreateDirectoryA(path, nil) end)
@@ -331,11 +304,9 @@ windower.create_dir = function(path)
 end
 
 windower.debug = function(...)
-    -- Stubbed out to avoid log spam
 end
 
 windower.send_command = function(cmd)
-    -- Stubbed: In a full implementation, this routes back to command_manager.hpp
     print("Command Sent: " .. tostring(cmd))
 end
 

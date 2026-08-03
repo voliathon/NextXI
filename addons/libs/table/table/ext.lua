@@ -39,7 +39,6 @@ do
         end
 
 		prefix_search = function(entries, prefix, from, to)
-            -- MOVED BOUNDS CHECK TO THE TOP TO PREVENT NIL CRASHES
             if from > to then
                 return
             end

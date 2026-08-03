@@ -1,204 +1,59 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "command_handlers.hpp"
 
 #include "command_manager.hpp"
 #include "core.hpp"
 #include "errors/command_error.hpp"
 #include "unicode.hpp"
-#include "utilities/coroutine.hpp"
 #include "utility.hpp"
+#include "utilities/module_info.hpp"
 
 #include <limits>
 
 namespace
 {
-constexpr auto unlimited = std::numeric_limits<std::size_t>::max();
+    constexpr auto unlimited = std::numeric_limits<std::size_t>::max();
 
-void check_args(
-    std::u8string_view command_name, std::vector<std::u8string> const& args,
-    std::size_t min, std::size_t max)
-{
-    using namespace windower;
-
-    auto const count = args.size();
-    if (count < min)
+    // Helper: Validates argument counts for incoming user commands.
+    void check_args(
+        std::u8string_view command_name, std::vector<std::u8string> const& args,
+        std::size_t min, std::size_t max)
     {
-        std::u8string message;
-        message.append(u8"Too few arguments; expected: ");
-        message.append(to_u8string(min));
-        message.append(u8", got: ");
-        message.append(to_u8string(count));
+        using namespace windower;
 
-        throw command_error{message, command_name};
-    }
-    else if (count > max)
-    {
-        std::u8string message;
-        message.append(u8"Too many arguments; expected: ");
-        message.append(to_u8string(min));
-        message.append(u8", got: ");
-        message.append(to_u8string(count));
-
-        throw command_error{message, command_name};
-    }
-}
-
-void check_args(
-    std::u8string_view command_name, std::vector<std::u8string> const& args,
-    std::size_t expected)
-{
-    check_args(command_name, args, expected, expected);
-}
-
-// PILLAR 3: Network functions wrapped with Error Handling and Success Feedback
-std::future<void> install_impl(std::vector<std::u8string> const& args)
-{
-    try
-    {
-        check_args(u8"/install", args, 1, unlimited);
-        auto const& core = windower::core::instance();
-        auto updated     = co_await core.package_manager->install(args);
-        if (core.addon_manager)
+        auto const count = args.size();
+        if (count < min)
         {
-            core.addon_manager->reload(updated);
-        }
-        windower::core::output(
-            u8"System", u8"Packages successfully installed.");
-    }
-    catch (std::exception const& e)
-    {
-        std::string err_str = e.what();
-        std::u8string err_u8(err_str.begin(), err_str.end());
-        windower::core::error(u8"Downloader", u8"Install failed: " + err_u8);
-    }
-}
+            std::u8string message;
+            message.append(u8"Too few arguments; expected: ");
+            message.append(to_u8string(min));
+            message.append(u8", got: ");
+            message.append(to_u8string(count));
 
-std::future<void> update_impl(std::vector<std::u8string> const& args)
-{
-    try
-    {
-        check_args(u8"/update", args, 1, unlimited);
-        auto const& core = windower::core::instance();
-        auto updated     = co_await core.package_manager->update(args);
-        if (core.addon_manager)
+            throw command_error{ message, command_name };
+        }
+        else if (count > max)
         {
-            core.addon_manager->reload(updated);
+            std::u8string message;
+            message.append(u8"Too many arguments; expected: ");
+            message.append(to_u8string(min));
+            message.append(u8", got: ");
+            message.append(to_u8string(count));
+
+            throw command_error{ message, command_name };
         }
-        windower::core::output(u8"System", u8"Packages successfully updated.");
     }
-    catch (std::exception const& e)
+
+    void check_args(
+        std::u8string_view command_name, std::vector<std::u8string> const& args,
+        std::size_t expected)
     {
-        std::string err_str = e.what();
-        std::u8string err_u8(err_str.begin(), err_str.end());
-        windower::core::error(u8"Downloader", u8"Update failed: " + err_u8);
+        check_args(command_name, args, expected, expected);
     }
-}
+} // namespace
 
-std::future<void> updateall_impl(std::vector<std::u8string> const& args)
-{
-    try
-    {
-        check_args(u8"/updateall", args, 0, 1);
-        auto const& core = windower::core::instance();
-        auto const force = !args.empty() && gsl::at(args, 0) == u8"force";
-        auto updated     = co_await core.package_manager->update_all(force);
-        if (core.addon_manager)
-        {
-            core.addon_manager->reload(updated);
-        }
-        windower::core::output(
-            u8"System", u8"All packages successfully updated.");
-    }
-    catch (std::exception const& e)
-    {
-        std::string err_str = e.what();
-        std::u8string err_u8(err_str.begin(), err_str.end());
-        windower::core::error(u8"Downloader", u8"Update All failed: " + err_u8);
-    }
-}
-};
-
-void windower::command_handlers::install(
-    std::vector<std::u8string> const& args, windower::command_source)
-{
-    install_impl(args);
-}
-
-void windower::command_handlers::uninstall(
-    std::vector<std::u8string> const& args, windower::command_source)
-{
-    check_args(u8"/uninstall", args, 1, unlimited);
-
-    auto const& core = core::instance();
-    auto packages    = core.package_manager->unload_order(args);
-    std::vector<std::shared_ptr<windower::package const>> dependents;
-    while (!packages.empty())
-    {
-        if (std::find(args.begin(), args.end(), packages.back()->name()) ==
-            args.end())
-        {
-            dependents.push_back(packages.back());
-        }
-        packages.pop_back();
-    }
-
-    if (!dependents.empty())
-    {
-        std::u8string message = u8"Uninstall failed.\n The following ";
-        message += dependents.size() == 1 ? u8"package depends on "
-                                          : u8"packages depend on ";
-        message += args.size() == 1 ? u8"this package:\n"
-                                    : u8"one or more of these packages:\n";
-        for (auto const& package : dependents)
-        {
-            message += u8"    ";
-            message += package->name();
-        }
-        throw windower_error{message};
-    }
-
-    if (core.addon_manager)
-    {
-        core.addon_manager->unload(args);
-    }
-
-    core.package_manager->uninstall(args);
-}
-
-void windower::command_handlers::update(
-    std::vector<std::u8string> const& args, windower::command_source)
-{
-    update_impl(args);
-}
-
-void windower::command_handlers::updateall(
-    std::vector<std::u8string> const& args, windower::command_source)
-{
-    updateall_impl(args);
-}
+// ==========================================
+// ADDON LIFECYCLE COMMANDS
+// ==========================================
 
 void windower::command_handlers::load(
     std::vector<std::u8string> const& args, windower::command_source)
@@ -211,7 +66,7 @@ void windower::command_handlers::load(
     }
     else
     {
-        throw command_error{u8"Addon manager is not initialized", u8"/load"};
+        throw command_error{ u8"Addon manager is not initialized", u8"/load" };
     }
 }
 
@@ -226,7 +81,7 @@ void windower::command_handlers::unload(
     }
     else
     {
-        throw command_error{u8"Addon manager is not initialized", u8"/unload"};
+        throw command_error{ u8"Addon manager is not initialized", u8"/unload" };
     }
 }
 
@@ -241,7 +96,7 @@ void windower::command_handlers::reload(
     }
     else
     {
-        throw command_error{u8"Addon manager is not initialized", u8"/reload"};
+        throw command_error{ u8"Addon manager is not initialized", u8"/reload" };
     }
 }
 
@@ -257,7 +112,7 @@ void windower::command_handlers::unloadall(
     else
     {
         throw command_error{
-            u8"Addon manager is not initialized", u8"/unloadall"};
+            u8"Addon manager is not initialized", u8"/unloadall" };
     }
 }
 
@@ -273,9 +128,13 @@ void windower::command_handlers::reloadall(
     else
     {
         throw command_error{
-            u8"Addon manager is not initialized", u8"/reloadall"};
+            u8"Addon manager is not initialized", u8"/reloadall" };
     }
 }
+
+// ==========================================
+// ALIAS & BINDING COMMANDS
+// ==========================================
 
 void windower::command_handlers::alias(
     std::vector<std::u8string> const& args, command_source)
@@ -285,8 +144,8 @@ void windower::command_handlers::alias(
         auto parsed = command_manager::get_arguments(args.at(0).substr(7), 1);
         check_args(u8"/alias", parsed, 2);
         std::u8string_view command = gsl::at(parsed, 1);
-        auto index                 = std::size_t{};
-        auto next_index            = index;
+        auto index = std::size_t{};
+        auto next_index = index;
         while (is_whitespace(next_code_point(command, next_index)))
         {
             index = next_index;
@@ -340,6 +199,10 @@ void windower::command_handlers::listbinds(
     }
 }
 
+// ==========================================
+// SCRIPTING & UI COMMANDS
+// ==========================================
+
 void windower::command_handlers::exec(
     std::vector<std::u8string> const& args, command_source)
 {
@@ -350,7 +213,7 @@ void windower::command_handlers::exec(
 void windower::command_handlers::eval(
     std::vector<std::u8string> const& args, command_source)
 {
-    auto arg = std::u8string_view{args.at(0)};
+    auto arg = std::u8string_view{ args.at(0) };
     if (arg.length() > 5)
     {
         arg.remove_prefix(6);
@@ -363,49 +226,6 @@ void windower::command_handlers::reset(
 {
     check_args(u8"/reset", args, 0);
     core::instance().script_environment.reset();
-}
-
-void windower::command_handlers::pkg(
-    std::vector<std::u8string> const& args, command_source source)
-{
-    check_args(u8"/pkg", args, 1, unlimited);
-    auto const& core = core::instance();
-    if (gsl::at(args, 0) == u8"reload")
-    {
-        check_args(u8"/pkg", args, 1);
-        core.package_manager->reset();
-        // PILLAR 3: Success Feedback for pkg reload
-        windower::core::output(
-            u8"System", u8"Package cache successfully reloaded.", source);
-    }
-    else if (gsl::at(args, 0) == u8"listsrc")
-    {
-        check_args(u8"/pkg", args, 1);
-        core::output(u8"package manager", u8"listing sources...", source);
-        for (auto const& s : core.package_manager->sources())
-        {
-            windower::core::output(u8"package manager", s, source);
-        }
-    }
-    else if (gsl::at(args, 0) == u8"addsrc")
-    {
-        check_args(u8"/pkg", args, 2);
-        core.package_manager->add_source(gsl::at(args, 1));
-    }
-    else if (gsl::at(args, 0) == u8"removesrc")
-    {
-        check_args(u8"/pkg", args, 2);
-        core.package_manager->remove_source(gsl::at(args, 1));
-    }
-    else
-    {
-        std::u8string message;
-        message.append(u8"Unrecognized package manager sub-command \"");
-        message.append(gsl::at(args, 0));
-        message.append(u8"\"");
-
-        throw command_error{message, u8"/pkg"};
-    }
 }
 
 void windower::command_handlers::nextwindow(

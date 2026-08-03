@@ -1,4 +1,3 @@
---[[
     A library providing advanced list support and better optimizations for list-based operations.
 ]]
 
@@ -299,7 +298,6 @@ function list.slice(l, from, to)
 end
 
 function list.splice(l1, from, to, l2)
-    -- TODO
     (_raw.error or error)('list.splice is not yet implemented.')
 end
 
@@ -442,8 +440,6 @@ function list.format(l, trail, subs)
 
     return res
 end
-
---[[
 Copyright © 2013-2015, Windower
 All rights reserved.
 

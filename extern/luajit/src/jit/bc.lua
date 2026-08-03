@@ -1,8 +1,3 @@
-----------------------------------------------------------------------------
--- LuaJIT bytecode listing module.
---
-
--- Cache some library functions and objects.
 local jit = require("jit")
 local jutil = require("jit.util")
 local vmdef = require("jit.vmdef")
@@ -14,8 +9,6 @@ local funcuvname = jutil.funcuvname
 local bcnames = vmdef.bcnames
 local stdout, stderr = io.stdout, io.stderr
 
-------------------------------------------------------------------------------
-
 local function ctlsub(c)
   if c == "\n" then return "\\n"
   elseif c == "\r" then return "\\r"
@@ -23,8 +16,6 @@ local function ctlsub(c)
   else return format("\\%03d", byte(c))
   end
 end
-
--- Return one bytecode line.
 local function bcline(func, pc, prefix)
   local ins, m = funcbc(func, pc)
   if not ins then return end
@@ -73,8 +64,6 @@ local function bcline(func, pc, prefix)
   if mc == 7*128 and d > 32767 then d = d - 65536 end -- BCMlits
   return format("%s%3d\n", s, d)
 end
-
--- Collect branch targets of a function.
 local function bctargets(func)
   local target = {}
   for pc=1,1000000000 do
@@ -84,8 +73,6 @@ local function bctargets(func)
   end
   return target
 end
-
--- Dump bytecode instructions of a function.
 local function bcdump(func, out, all)
   if not out then out = stdout end
   local fi = funcinfo(func)
@@ -106,18 +93,10 @@ local function bcdump(func, out, all)
   out:write("\n")
   out:flush()
 end
-
-------------------------------------------------------------------------------
-
--- Active flag and output file handle.
 local active, out
-
--- List handler.
 local function h_list(func)
   return bcdump(func, out)
 end
-
--- Detach list handler.
 local function bclistoff()
   if active then
     active = false
@@ -126,8 +105,6 @@ local function bclistoff()
     out = nil
   end
 end
-
--- Open the output file and attach list handler.
 local function bcliston(outfile)
   if active then bclistoff() end
   if not outfile then outfile = os.getenv("LUAJIT_LISTFILE") end
@@ -139,8 +116,6 @@ local function bcliston(outfile)
   jit.attach(h_list, "bc")
   active = true
 end
-
--- Public module functions.
 return {
   line = bcline,
   dump = bcdump,

@@ -1,4 +1,3 @@
---[[
     A few string helper functions.
 ]]
 local debug = debug or require('debug')
@@ -40,28 +39,18 @@ local enum = function(...)
 end
 
 string.encoding = enum('ascii', 'utf8', 'shift_jis', 'binary')
-
--- Returns a function that returns the string when called.
 function string.fn(str)
     return functions.const(str)
 end
-
--- Returns true if the string contains a substring.
 function string.contains(str, sub)
     return str:find(sub, nil, true) ~= nil
 end
-
--- Alias to string.sub, with some syntactic sugar.
 function string.slice(str, from, to)
     return str:sub(from or 1, to or #str)
 end
-
--- Inserts a string into a given section of another string.
 function string.splice(str, from, to, str2)
     return str:sub(1, from - 1)..str2..str:sub(to + 1)
 end
-
--- Returns an iterator, that goes over every character of the string. Handles Japanese text as well as special characters and auto-translate.
 do
     local adjust_from = function(str, index)
         return
@@ -801,8 +790,6 @@ do
 
             return res, count
         end
-
-        -- Splits a string into a table by a separator string.
         function string.split(str, sep, encoding, maxsplit, include, raw, from, to)
             if type(encoding) ~= 'table' then
                 encoding, maxsplit, include, raw, from, to = string.encoding.ascii, encoding, maxsplit, include, raw, from
@@ -877,72 +864,46 @@ do
         end
     end
 end
-
--- Splits a string into a table by a separator pattern.
 function string.psplit(str, sep, maxsplit, include)
     maxsplit = maxsplit or 0
 
     return str:split(sep, maxsplit, include, false)
 end
-
--- Removes leading and trailing whitespaces and similar characters (tabs, newlines, etc.).
 function string.trim(str)
     return str:match('^%s*(.-)%s*$')
 end
-
--- Collapses all types of spaces into exactly one whitespace
 function string.spaces_collapse(str)
     return str:gsub('%s+', ' '):trim()
 end
-
--- Removes all characters in chars from str.
 function string.stripchars(str, chars)
     return (str:gsub('['..chars:escape()..']', ''))
 end
-
--- Returns the length of a string.
 function string.length(str)
     return #str
 end
-
--- Checks it the string starts with the specified substring.
 function string.startswith(str, substr)
     return str:sub(1, #substr) == substr
 end
-
--- Checks it the string ends with the specified substring.
 function string.endswith(str, substr)
     return str:sub(-#substr) == substr
 end
-
--- Checks if string is enclosed in start and finish. If only one argument is provided, it will check for that string both at the beginning and the end.
 function string.enclosed(str, start, finish)
     finish = finish or start
     return str:startswith(start) and str:endswith(finish)
 end
-
--- Returns a string with another string prepended.
 function string.prepend(str, pre)
     return pre..str
 end
-
--- Returns a string with another string appended.
 function string.append(str, post)
     return str..post
 end
-
--- Encloses a string in start and finish. If only one argument is provided, it will enclose it with that string both at the beginning and the end.
 function string.enclose(str, start, finish)
     finish = finish or start
     return start..str..finish
 end
-
--- Returns the same string with the first letter capitalized.
 function string.ucfirst(str)
     return str:sub(1, 1):upper()..str:sub(2)
 end
-
--- Returns the same string with the first letter of every word capitalized.
 function string.capitalize(str)
     local res = {}
 
@@ -952,41 +913,28 @@ function string.capitalize(str)
 
     return table.concat(res, ' ')
 end
-
--- Takes a padding character pad and pads the string str to the left of it, until len is reached.
 function string.lpad(str, pad, len)
     return (pad:rep(len) .. str):sub(-(len > #str and len or #str))
 end
-
--- Takes a padding character pad and pads the string str to the right of it, until len is reached.
 function string.rpad(str, pad, len)
     return (str .. pad:rep(len)):sub(1, len > #str and len or #str)
 end
-
--- Returns the string padded with zeroes until the length is len.
 function string.zfill(str, len)
     return str:lpad('0', len)
 end
-
--- Checks if a string is empty.
 function string.empty(str)
     return str == ''
 end
 
 (function()
-    -- Returns a monowidth hex representation of each character of a string, optionally with a separator between chars.
     local hex = string.zfill-{2} .. math.hex .. string.byte
     function string.hex(str, sep, from, to)
         return str:slice(from, to):split():map(hex):concat(sep or '')
     end
-
-    -- Returns a monowidth binary representation of every char of the string, optionally with a separator between chars.
     local binary = string.zfill-{8} .. math.binary .. string.byte
     function string.binary(str, sep, from, to)
         return str:slice(from, to):split():map(binary):concat(sep or '')
     end
-
-    -- Returns a string parsed from a hex-represented string.
     local hex_r = string.char .. tonumber-{16}
     function string.parse_hex(str)
         local interpreted_string = str:gsub('0x', ''):gsub('[^%w]', '')
@@ -996,8 +944,6 @@ end
 
         return (interpreted_string:gsub('%w%w', hex_r))
     end
-
-    -- Returns a string parsed from a binary-represented string.
     local binary_r = string.char .. tonumber-{2}
     local binary_pattern = string.rep('[01]', 8)
     function string.parse_binary(str)
@@ -1009,21 +955,13 @@ end
         return (interpreted_string:gsub(binary_pattern, binary_r))
     end
 end)()
-
--- Returns a string with Lua pattern characters escaped.
 function string.escape(str)
     return (str:gsub('[[%]%%^$*()%.%+?-]', '%%%1'))
 end
-
--- Returns a Lua pattern from a wildcard string (with ? and * as placeholders for one and many characters respectively).
 function string.wildcard(str)
     return (str:gsub('[[%]%%^$()%+-.]', '%%%1'):gsub('*', '.*'):gsub('?', '.'))
 end
-
--- Returns true if the string matches a wildcard pattern.
 string.wmatch = windower.wc_match
-
--- Includes the | operator in the pattern for alternative matches in string.find.
 function string.mfind(str, full_pattern, ...)
     local patterns = full_pattern:split('|')
 
@@ -1037,8 +975,6 @@ function string.mfind(str, full_pattern, ...)
 
     return unpack(found)
 end
-
--- Includes the | operator in the pattern for alternative matches in string.match.
 function string.mmatch(str, full_pattern, ...)
     local patterns = full_pattern:split('|')
 
@@ -1054,8 +990,6 @@ function string.mmatch(str, full_pattern, ...)
 
     return unpack(found)
 end
-
--- Includes the | operator in the pattern for alternative matches in string.gsub.
 function string.mgsub(str, full_pattern, ...)
     local patterns = full_pattern:split('|')
 
@@ -1065,33 +999,21 @@ function string.mgsub(str, full_pattern, ...)
 
     return str
 end
-
--- A string.find wrapper for wildcard patterns.
 function string.wcfind(str, pattern, ...)
     return str:find(pattern:wildcard(), ...)
 end
-
--- A string.match wrapper for wildcard patterns.
 function string.wcmatch(str, pattern, ...)
     return str:match(pattern:wildcard(), ...)
 end
-
--- A string.gmatch wrapper for wildcard patterns.
 function string.wcgmatch(str, pattern, ...)
     return str:gmatch(pattern:wildcard(), ...)
 end
-
--- A string.gsub wrapper for wildcard patterns.
 function string.wcgsub(str, pattern, ...)
     return str:gsub(pattern:wildcard(), ...)
 end
-
--- Returns a case-insensitive pattern for a given (non-pattern) string. For patterns, see string.ipattern.
 function string.istring(str)
     return (str:gsub('%a', function(c) return '['..c:upper()..c:lower()..']' end))
 end
-
--- Returns a case-insensitive pattern for a given pattern.
 function string.ipattern(str)
     local res = ''
     local percent = false
@@ -1115,63 +1037,39 @@ function string.ipattern(str)
 
     return res
 end
-
--- A string.find wrapper for case-insensitive patterns.
 function string.ifind(str, pattern, ...)
     return str:find(pattern:ipattern(), ...)
 end
-
--- A string.match wrapper for case-insensitive patterns.
 function string.imatch(str, pattern, ...)
     return str:match(pattern:ipattern(), ...)
 end
-
--- A string.gmatch wrapper for case-insensitive patterns.
 function string.igmatch(str, pattern, ...)
     return str:gmatch(pattern:ipattern(), ...)
 end
-
--- A string.gsub wrapper for case-insensitive patterns.
 function string.igsub(str, pattern, ...)
     return str:gsub(pattern:ipattern(), ...)
 end
-
--- A string.find wrapper for case-insensitive wildcard patterns.
 function string.iwcfind(str, pattern, ...)
     return str:wcfind(pattern:ipattern(), ...)
 end
-
--- A string.match wrapper for case-insensitive wildcard patterns.
 function string.iwcmatch(str, pattern, ...)
     return str:wcmatch(pattern:ipattern(), ...)
 end
-
--- A string.gmatch wrapper for case-insensitive wildcard patterns.
 function string.iwcgmatch(str, pattern, ...)
     return str:wcgmatch(pattern:ipattern(), ...)
 end
-
--- A string.gsub wrapper for case-insensitive wildcard patterns.
 function string.iwcgsub(str, pattern, ...)
     return str:wcgsub(pattern:ipattern(), ...)
 end
-
--- Returns a string with all instances of ${str} replaced with either a table or function lookup.
 function string.keysub(str, sub)
     return str:gsub('${(.-)}', sub)
 end
-
--- Counts the occurrences of a substring in a string.
 function string.count(str, sub)
     return str:pcount(sub:escape())
 end
-
--- Counts the occurrences of a pattern in a string.
 function string.pcount(str, pat)
     return string.gsub[2](str, pat, '')
 end
-
--- Splits the original string into substrings of equal size (except for possibly the last one)
 function string.chunks(str, size)
     local res = {}
     local key = 0
@@ -1187,13 +1085,9 @@ function string.chunks(str, size)
         return res
     end
 end
-
--- Returns a string decoded given the appropriate encoding.
 string.decode = function(str, encoding)
     return (str:binary():chunks(encoding.bits):map(table.get+{encoding.charset} .. tonumber-{2}):concat():gsub('%z.*$', ''))
 end
-
--- Returns a string encoded given the appropriate encoding.
 string.encode = function(str, encoding)
     local binary = str:map(string.zfill-{encoding.bits} .. math.binary .. table.find+{encoding.charset})
     if encoding.terminator then
@@ -1201,9 +1095,6 @@ string.encode = function(str, encoding)
     end
     return binary:rpad('0', (#binary / 8):ceil() * 8):parse_binary()
 end
-
--- Returns a plural version of a string, if the provided table contains more than one element.
--- Defaults to appending an s, but accepts an option string as second argument which it will the string with.
 function string.plural(str, t, replace)
     if type(t) == 'number' and t > 1 or #t > 1 then
         return replace or str..'s'
@@ -1211,18 +1102,9 @@ function string.plural(str, t, replace)
 
     return str
 end
-
--- tonumber wrapper
 function string.number(...)
     return tonumber(...)
 end
-
--- Returns a formatted item list for use in natural language representation of a number of items.
--- The second argument specifies how the trailing element is handled:
--- * and: Appends the last element with an "and" instead of a comma. [Default]
--- * csv: Appends the last element with a comma, like every other element.
--- * oxford: Appends the last element with a comma, followed by an and.
--- The third argument specifies an optional output, if the table is empty.
 function table.format(t, trail, subs)
     local first = next(t)
     if not first then
@@ -1272,8 +1154,6 @@ function table.format(t, trail, subs)
 
     return res
 end
-
---[[
 Copyright © 2013-2015, Windower
 All rights reserved.
 

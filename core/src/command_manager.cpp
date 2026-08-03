@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "command_manager.hpp"
 
 #include "addon/modules/command.hpp"
@@ -30,6 +6,8 @@
 #include "errors/windower_error.hpp"
 #include "hooks/ffximain.hpp"
 #include "unicode.hpp"
+
+#include "utilities/debug_helpers.hpp"
 
 #include <cstddef>
 #include <iterator>
@@ -46,33 +24,11 @@ std::pair<
     std::pair<std::size_t, std::size_t>>
 parse_command(std::u8string_view command_string)
 {
-    // command             → '/' command_name
-    // command_name        → name opt_q_name | q_name
-    //
-    // opt_q_name          → q_name | ε
-    // q_name              → ':' name
-    // opt_name            → name | ε
-    // name                → name_char opt_name
-    //
-    // name_char           → 'a' | 'b' | 'c' | 'd' | 'e'
-    //                     | 'f' | 'g' | 'h' | 'i' | 'j'
-    //                     | 'k' | 'l' | 'm' | 'n' | 'o'
-    //                     | 'p' | 'q' | 'r' | 's' | 't'
-    //                     | 'u' | 'v' | 'w' | 'x' | 'y' | 'z'
-    //                     | 'A' | 'B' | 'C' | 'D' | 'E'
-    //                     | 'F' | 'G' | 'H' | 'I' | 'J'
-    //                     | 'K' | 'L' | 'M' | 'N' | 'O'
-    //                     | 'P' | 'Q' | 'R' | 'S' | 'T'
-    //                     | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z'
-    //                     | '0' | '1' | '2' | '3' | '4'
-    //                     | '5' | '6' | '7' | '8' | '9'
-    //                     | '?' | '_' | '-'
 
     using namespace windower;
 
     constexpr std::array<std::array<std::pair<std::int8_t, std::int8_t>, 5>, 5>
         state_table{{
-            //  /       :      nm       *        $
             {{{1, 2}, {0, 4}, {0, 4}, {0, 4}, {-1, 4}}},
             {{{0, 7}, {2, 1}, {3, 0}, {0, 7}, {-1, 5}}},
             {{{0, 8}, {0, 6}, {4, 0}, {0, 8}, {-1, 6}}},
@@ -88,7 +44,6 @@ parse_command(std::u8string_view command_string)
         }
         switch (auto const c = windower::next_code_point(string, offset))
         {
-        // clang-format off
         case U'/': return 0;
         case U':': return 1;
         case U'a': case U'b': case U'c': case U'd': case U'e':
@@ -104,7 +59,6 @@ parse_command(std::u8string_view command_string)
         case U'0': case U'1': case U'2': case U'3': case U'4':
         case U'5': case U'6': case U'7': case U'8': case U'9':
         case U'?': case U'_': case U'-': return 2;
-        // clang-format on
         default: return windower::is_whitespace(c) ? 4 : 3;
         }
     };
@@ -151,27 +105,11 @@ constexpr std::u8string_view name_chars =
 
 std::u8string unescape(std::u8string_view string)
 {
-    // escape                   → '\' escape_sequence
-    // escape_sequence          → '\' | '{' | '}' | *
-    //                          | 'u' opt_code_point_sequence
-    // opt_code_point_sequence  → code_point_sequence | ε
-    // code_point_sequence      → hex hex hex hex | '{' hex opt_hex5 '}'
-    // opt_hex5                 → hex opt_hex4 | ε
-    // opt_hex4                 → hex opt_hex3 | ε
-    // opt_hex3                 → hex opt_hex2 | ε
-    // opt_hex2                 → hex opt_hex1 | ε
-    // opt_hex1                 → hex | ε
-    // hex                      → '0' | '1' | '2' | '3' | '4'
-    //                          | '5' | '6' | '7' | '8' | '9'
-    //                          | 'A' | 'B' | 'C' | 'D' | 'E' | 'F'
-    //                          | 'a' | 'b' | 'c' | 'd' | 'e' | 'f'
 
     using namespace windower;
 
     constexpr std::array<std::array<std::pair<std::int8_t, std::int8_t>, 7>, 13>
         state_table{{
-            // clang-format off
-            //  \       u       hex      {       }       *        $
             {{{1, 1}, {0, 0}, { 0, 0}, {0, 0}, {0, 0}, {0, 0}, {-1, 1}}},
             {{{0, 0}, {2, 2}, { 0, 0}, {0, 0}, {0, 0}, {0, 0}, {-1, 1}}},
             {{{1, 1}, {0, 0}, { 3, 3}, {4, 0}, {0, 0}, {0, 0}, {-1, 1}}},
@@ -185,7 +123,6 @@ std::u8string unescape(std::u8string_view string)
             {{{1, 1}, {0, 0}, {11, 3}, {0, 0}, {0, 5}, {0, 0}, {-1, 1}}},
             {{{1, 1}, {0, 0}, {12, 3}, {0, 0}, {0, 5}, {0, 0}, {-1, 1}}},
             {{{1, 1}, {0, 0}, { 0, 0}, {0, 0}, {0, 5}, {0, 0}, {-1, 1}}},
-            // clang-format on
         }};
 
     constexpr auto next = [](std::u8string_view::iterator it,
@@ -197,7 +134,6 @@ std::u8string unescape(std::u8string_view string)
         }
         switch (*it++)
         {
-            // clang-format off
         case u8'\\': return {0, it};
         case u8'u': return {1, it};
         case u8'0': case u8'1': case u8'2': case u8'3': case u8'4':
@@ -208,7 +144,6 @@ std::u8string unescape(std::u8string_view string)
         case u8'd': case u8'e': case u8'f': return {2, it};
         case u8'{': return {3, it};
         case u8'}': return {4, it};
-        // clang-format on
         default: return {5, it};
         }
     };
@@ -257,41 +192,11 @@ void parse_arguments(
     std::u8string_view argument_string, std::size_t count,
     std::vector<std::u8string>& output)
 {
-    // argument_string         → opt_whitespace opt_argument_list
-    //
-    // opt_argument_list       → argument_list | ε
-    // argument_list           → argument opt_whitespace opt_argument_list
-    //
-    // argument                → unquoted_arg
-    //                         | "'" opt_s_quoted_argument "'"
-    //                         | '"' opt_d_quoted_argument '"'
-    //                         | auto_translate_character
-    //
-    // opt_unquoted_argument   → unquoted_argument | ε
-    // unquoted_argument       → character opt_unquoted_argument
-    //
-    // opt_s_quoted_argument   → s_quote_argument | ε
-    // s_quoted_argument       → s_quote_character opt_s_quote_argument
-    // s_quoted_character      → '"' | W | character
-    //
-    // opt_d_quoted_argument   → d_quote_argument | ε
-    // d_quoted_argument       → d_quote_character opt_d_quote_argument
-    // d_quoted_character      → '"' | W | character
-    //
-    // opt_whitespace          → whitespace | ε
-    // whitespace              → whitespace_character opt_whitespace
-    //
-    // character               → '\' any | auto_translate_character | *
-    // any                     → '\' | "'" | '"'
-    //                         | auto_translate_character
-    //                         | whitespace_character
-    //                         | *
 
     using namespace windower;
 
     constexpr std::array<std::array<std::pair<std::int8_t, std::int8_t>, 7>, 6>
         state_table{{
-            //  \       '       "      at      ws       *        $
             {{{3, 0}, {2, 1}, {1, 1}, {0, 3}, {0, 1}, {0, 0}, {-1, 1}}},
             {{{4, 0}, {1, 0}, {0, 2}, {1, 0}, {1, 0}, {1, 0}, {-1, 2}}},
             {{{5, 0}, {0, 2}, {2, 0}, {2, 0}, {2, 0}, {2, 0}, {-1, 2}}},
@@ -334,14 +239,12 @@ void parse_arguments(
             if (allow_empty)
             {
                 output.emplace_back();
-                --count;
             }
         }
         else
         {
             auto const size = end_offset - begin_offset;
             output.push_back(::unescape(string.substr(begin_offset, size)));
-            --count;
         }
         return count != 0;
     };
@@ -716,19 +619,13 @@ std::weak_ordering windower::command_manager::name_view::operator<=>(
     name_view const& other) const noexcept
 {
     auto const result = command.compare(other.command);
-
-    // If the commands are not equal, return their ordering
     if (result != 0)
     {
         return result <=> 0;
     }
-
-    // If either component is missing, treat them as equivalent
     if (!component || !other.component)
     {
         return std::weak_ordering::equivalent;
     }
-
-    // Otherwise, compare the components safely
     return component->compare(*other.component) <=> 0;
 }

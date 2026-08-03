@@ -1,4 +1,3 @@
----@diagnostic disable: unused-local
 local serializer = require('core.serializer')
 
 local pin

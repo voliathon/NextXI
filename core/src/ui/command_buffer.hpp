@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #ifndef WINDOWER_UI_COMMAND_BUFFER_HPP
 #define WINDOWER_UI_COMMAND_BUFFER_HPP
 
@@ -45,31 +21,25 @@ class command_buffer;
 template<typename T>
 concept command = requires(T const& value, ::IDirect3DDevice8* d3d_device)
 {
-    // clang-format off
     requires sizeof(T) <= max_command_size;
     requires alignof(T) <= alignof(std::max_align_t);
     { value.execute(d3d_device) } noexcept;
-    // clang-format on
 };
 
 template<typename T, typename... A>
 concept stitchable_command = requires(T const& value, A&&... args)
 {
-    // clang-format off
     requires command<T>;
     { value.stitch(std::forward<A>(args)...) } noexcept;
-    // clang-format on
 };
 
 template<typename T, typename... A>
 concept stateful_command =
     requires(T const& value, command_buffer& command_bufer, A&&... args)
 {
-    // clang-format off
     requires command<T>;
     { T::check_state(command_bufer, std::forward<A>(args)...) } noexcept ->
         std::convertible_to<bool>;
-    // clang-format on
 };
 
 class command_buffer

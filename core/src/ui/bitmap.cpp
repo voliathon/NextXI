@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "ui/bitmap.hpp"
 
 #include "ui/color.hpp"
@@ -32,6 +8,7 @@
 #include "ui/texture_token.hpp"
 #include "unicode.hpp"
 #include "utility.hpp"
+#include "utilities/module_info.hpp"
 
 #include <windows.h>
 
@@ -57,7 +34,6 @@ using d3d_format        = std::tuple<::D3DFORMAT, guid>;
 using conversion_format = std::tuple<guid, guid>;
 
 static auto const supported_formats = std::array{
-    // clang-format off
     d3d_format{::D3DFMT_R8G8B8, ::GUID_WICPixelFormat24bppBGR},
     d3d_format{::D3DFMT_A8R8G8B8, ::GUID_WICPixelFormat32bppPBGRA},
     d3d_format{::D3DFMT_X8R8G8B8, ::GUID_WICPixelFormat32bppBGR},
@@ -65,11 +41,9 @@ static auto const supported_formats = std::array{
     d3d_format{::D3DFMT_X1R5G5B5, ::GUID_WICPixelFormat16bppBGR555},
     d3d_format{::D3DFMT_A8, ::GUID_WICPixelFormat8bppAlpha},
     d3d_format{::D3DFMT_L8, ::GUID_WICPixelFormat8bppGray},
-    // clang-format on
 };
 
 static auto const conversion_formats = std::array{
-    // clang-format off
     conversion_format{::GUID_WICPixelFormat32bppPBGRA, ::GUID_WICPixelFormat32bppBGRA},
     conversion_format{::GUID_WICPixelFormat32bppPBGRA, ::GUID_WICPixelFormat32bppRGBA},
     conversion_format{::GUID_WICPixelFormat32bppPBGRA, ::GUID_WICPixelFormat32bppPRGBA},
@@ -134,7 +108,6 @@ static auto const conversion_formats = std::array{
     conversion_format{::GUID_WICPixelFormat8bppGray, ::GUID_WICPixelFormat16bppGrayFixedPoint},
     conversion_format{::GUID_WICPixelFormat8bppGray, ::GUID_WICPixelFormat16bppGrayHalf},
     conversion_format{::GUID_WICPixelFormat8bppGray, ::GUID_WICPixelFormat32bppGrayFixedPoint},
-    // clang-format on
 };
 
 winrt::com_ptr<::IWICStream>

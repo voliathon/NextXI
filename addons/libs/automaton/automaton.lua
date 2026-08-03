@@ -22,7 +22,6 @@ ftype.fields.head = {
 ftype.fields.activated ={
     get = function (data)
         return player.pet_index ~= 0 --TODO: this does not allow swapping of attachment when your automaton is not the pet you have, which is wrong.
-                                     -- need to get the name of the pet and check if it matches automaton.name. getting the name seems best done a pet lib.
     end
 }
 

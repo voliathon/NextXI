@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "ui/context.hpp"
 
 #include "hooks/ffximain.hpp"
@@ -43,6 +19,7 @@
 #include "ui/vector.hpp"
 #include "ui/vertex.hpp"
 #include "utility.hpp"
+#include "utilities/paths.hpp"
 
 #include <windows.h>
 
@@ -116,7 +93,6 @@ context::context(
             ::CLSID_WICImagingFactory, nullptr, ::CLSCTX_INPROC_SERVER,
             ::IID_IWICImagingFactory, m_wic_factory.put_void())))
     {
-        // TODO: Handle Error
     }
 
     winrt::com_ptr<::IUnknown> unknown;
@@ -287,12 +263,8 @@ context::context(
     skin(u8":skin");
 
     auto const client = client_path();
-
-    // Basic
     gsl::at(m_cursors, 0) = cursor{client / u8"mousenor.ani"};
     gsl::at(m_cursors, 1) = cursor{client / u8"mousehit.ani"};
-
-    // Directions
     gsl::at(m_cursors, 2) = cursor{client / u8"arw_n.ani"};
     gsl::at(m_cursors, 3) = cursor{client / u8"arw_ne.ani"};
     gsl::at(m_cursors, 4) = cursor{client / u8"arw_e.ani"};
@@ -301,8 +273,6 @@ context::context(
     gsl::at(m_cursors, 7) = cursor{client / u8"arw_sw.ani"};
     gsl::at(m_cursors, 8) = cursor{client / u8"arw_w.ani"};
     gsl::at(m_cursors, 9) = cursor{client / u8"arw_nw.ani"};
-
-    // Directions (Alt)
     gsl::at(m_cursors, 10) = cursor{client / u8"oarw_n.ani"};
     gsl::at(m_cursors, 11) = cursor{client / u8"oarw_ne.ani"};
     gsl::at(m_cursors, 12) = cursor{client / u8"oarw_e.ani"};
@@ -315,8 +285,6 @@ context::context(
     m_client_shared = ffximain::menu<shared_window_config>(u8"conf5win");
     m_client_log1   = ffximain::menu<window_config>(u8"logwindo");
     m_client_log2   = ffximain::menu<window_config>(u8"logwin2 ");
-
-    // m_layout_mode = true;
 }
 
 context::~context() noexcept
@@ -384,14 +352,10 @@ void context::push_style(style_descriptor const& style) noexcept
 
     if (stack.empty())
     {
-        // First style on the stack, just push it directly
         stack.push_back(style);
     }
     else
     {
-        // CASCADE LOGIC: We merge the new style with the current active style.
-        // If the new style is missing a property (like background_color),
-        // it seamlessly inherits it from the parent.
         style_descriptor const& current = stack.back();
         style_descriptor merged         = style;
 
@@ -1189,41 +1153,25 @@ void context::draw_layout_grid() noexcept
         auto const y5 = m_client_shared->multi_window == 1 ? y2 : x1;
         auto const x5 = x4 + 366;
         auto const y4 = y5 - 200;
-
-        // Chat Log 1
         primitive::rectangle(*this, {x0, y0, x1, y1}, guide);
-
-        // Chat Log 2
         if (m_client_shared->multi_window != 0)
         {
             primitive::rectangle(*this, {x2, y2, x3, y3}, guide);
         }
-
-        // Menus & Tooltip
         primitive::rectangle(*this, {x4, y4, x5, y5}, guide);
     }
-
-    // Party, Alliance & Target
     primitive::rectangle(*this, {w - 128, h - 150, w - 16, h - 16}, guide);
     primitive::rectangle(*this, {w - 128, h - 196, w - 16, h - 152}, guide);
     primitive::rectangle(*this, {w - 128, h - 298, w - 16, h - 198}, guide);
     primitive::rectangle(*this, {w - 128, h - 400, w - 16, h - 300}, guide);
-
-    // Info
     primitive::rectangle(*this, {16, 16, w - 16, 46}, guide);
-
-    // Status, Equipment & Tooltips
     primitive::rectangle(*this, {16, 48, 128, 238}, guide);
     primitive::rectangle(*this, {130, 240, 496, 440}, guide);
     primitive::rectangle(*this, {130, 48, 312, 238}, guide);
     primitive::rectangle(*this, {314, 48, 496, 238}, guide);
     primitive::rectangle(*this, {16, 240, 128, 344}, guide);
-
-    // Menu
     primitive::rectangle(*this, {w - 128, 48, w - 16, 378}, guide);
     primitive::rectangle(*this, {w - 223, 48, w - 127, 378}, guide);
-
-    // Macros
     if (w > 1138)
     {
         primitive::rectangle(*this, {498, 48, 1008, 132}, guide);

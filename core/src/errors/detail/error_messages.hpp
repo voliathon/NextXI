@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #ifndef WINDOWER_ERRORS_DETAIL_ERROR_MESSAGES_HPP
 #define WINDOWER_ERRORS_DETAIL_ERROR_MESSAGES_HPP
 
@@ -35,7 +11,6 @@ namespace windower::detail
 using error_message = std::tuple<char8_t const*, char8_t const*>;
 
 constexpr auto error_messages = std::array{
-    // clang-format off
     error_message{u8"SIG:1", u8"signature exceeds the maximum size of 64 bytes"},
     error_message{u8"SIG:2", u8"unexpected symbol"},
     error_message{u8"SIG:3", u8"unexpected end of string"},
@@ -95,7 +70,6 @@ constexpr auto error_messages = std::array{
 
     error_message{u8"INT:1", u8"[INTERNAL ERROR] script_base not set"},
     error_message{u8"INT:2", u8"[INTERNAL ERROR] addon package not set"},
-    // clang-format on
 };
 
 }

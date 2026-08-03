@@ -1,33 +1,10 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #ifndef WINDOWER_SCANNER_HPP
 #define WINDOWER_SCANNER_HPP
 
 #include "errors/syntax_error.hpp"
 #include "library.hpp"
 #include "utility.hpp"
+#include "utilities/debug_helpers.hpp"
 
 #include <gsl/gsl>
 
@@ -64,28 +41,10 @@ public:
 
     constexpr explicit signature(std::u8string_view string)
     {
-        // signature    → byte body
-        //              | wildcard signature
-        //              | offset_mark leading_tail
-        //
-        // body         → byte body | wildcard body | offset_mark tail
-        // tail         → byte tail | wildcard tail
-        // leading_tail → byte tail | wildcard marked_tail
-        //
-        // byte         → nibble nibble
-        // wildcard     → '?' '?'
-        // offset_mark  → '*' | '&'
-        //
-        // nibble       → '0' | '1' | '2' | '3' | '4'
-        //              | '5' | '6' | '7' | '8' | '9'
-        //              | 'A' | 'B' | 'C' | 'D' | 'E' | 'F'
-        //              | 'a' | 'b' | 'c' | 'd' | 'e' | 'f'
 
         constexpr std::array<
             std::array<std::pair<std::int8_t, std::int8_t>, 6>, 10>
             state_table{{
-                // clang-format off
-                //  hex       ?        *        &        .        $
                 {{{3,  1}, {2,  0}, {1,  0}, {1,  5}, {0,  8}, {-1, 9}}},
                 {{{5,  1}, {4,  0}, {0, 10}, {0, 10}, {0,  8}, {-1, 9}}},
                 {{{0, 11}, {0,  0}, {0, 11}, {0, 11}, {0, 11}, {-1, 9}}},
@@ -96,7 +55,6 @@ public:
                 {{{5,  1}, {9,  0}, {0, 10}, {0, 10}, {0,  8}, {-1, 0}}},
                 {{{0, 11}, {6,  4}, {0, 11}, {0, 11}, {0, 11}, {-1, 9}}},
                 {{{0, 11}, {7,  4}, {0, 11}, {0, 11}, {0, 11}, {-1, 9}}},
-                // clang-format on
             }};
 
         constexpr auto next = [](std::u8string_view string,
@@ -107,7 +65,6 @@ public:
             }
             switch (gsl::at(string, offset++))
             {
-            // clang-format off
             case u8'0': case u8'1': case u8'2': case u8'3': case u8'4':
             case u8'5': case u8'6': case u8'7': case u8'8': case u8'9':
             case u8'A': case u8'B': case u8'C': case u8'D': case u8'E': case u8'F':
@@ -116,7 +73,6 @@ public:
             case u8'?': return 1;
             case u8'*': return 2;
             case u8'&': return 3;
-            // clang-format on
             default: return 4;
             }
         };

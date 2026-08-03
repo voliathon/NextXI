@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "ui/user_interface.hpp"
 
 #include "ui/context.hpp"
@@ -76,8 +52,6 @@ user_interface::process_message(::MSG const& message) const noexcept
 {
     if (m_console)
     {
-        // If the console handled the message (e.g., Tilde key or typing inside
-        // it), return immediately so the game/context ignores it.
         if (auto result = m_console->process_message(message))
         {
             return result;
@@ -106,13 +80,10 @@ void user_interface::render(ui::layer layer) noexcept
 {
     if (m_context)
     {
-        // 1. Submit the console widgets to the UI command buffer FIRST
         if (layer == ui::layer::screen && m_console)
         {
             m_console->render(*m_context);
         }
-
-        // 2. NOW tell the context to draw the layer and flush the stacks
         m_context->render(layer);
     }
 }

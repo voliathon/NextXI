@@ -25,24 +25,14 @@ local defaults = {
 
 local options = settings.load(defaults)
 local state = { show_ui = false }
-
--- ============================================================================
--- 1. MEMORY INJECTION ENGINE
--- ============================================================================
 local function apply_settings()
     local graphics = memory.graphics
     local graphics_options = options.graphics
-
-    -- Gamma
     graphics.gamma.red = graphics_options.gamma.red
     graphics.gamma.green = graphics_options.gamma.green
     graphics.gamma.blue = graphics_options.gamma.blue
-
-    -- Aspect Ratio
     local window_aspect_ratio = (4 / 3) / (windower.settings.client_size.width / windower.settings.client_size.height)
     graphics.render.aspect_ratio = graphics_options.aspect_ratio.auto and window_aspect_ratio or ((4 / 3) / graphics_options.aspect_ratio.value)
-
-	-- Framerate Divisors (Removed Unlimited)
     if graphics_options.framerate <= 30 then
         graphics.render.framerate_divisor = 2
     else
@@ -54,17 +44,11 @@ local function apply_settings()
     else
         graphics.animation_framerate = 1
     end
-
-    -- Clipping Plane & Particles
     graphics.clipping_plane_entity = graphics_options.clipping_plane
     graphics.clipping_plane_map = graphics_options.clipping_plane
     graphics.footstep_effects = options.graphics.footstep_effects
-
-    -- Audio Adjustments
     memory.volumes.footsteps = options.audio.footstep_effects and 1.0 or 0.0
 end
-
--- Staggered Initialization
 coroutine.schedule(function()
     coroutine.sleep_frame()
     local success, err = pcall(apply_settings)
@@ -74,10 +58,6 @@ coroutine.schedule(function()
         chat.print("Config Loaded: Type /config or /cfg to open.", ui.color.skin_accent)
     end
 end)
-
--- ============================================================================
--- 2. CONFIG DASHBOARD
--- ============================================================================
 local config_window = ui.window_state()
 config_window.title = " NextXI Client Configuration"
 config_window.size = {width = 420, height = 520}
@@ -95,14 +75,10 @@ ui.display(function()
             local window_still_open = ui.window(config_window, function(layout)
 
                 layout:height(480):scroll_panel(cfg_scroll, function(c)
-
-                    -- ── GRAPHICS & PERFORMANCE ──────────────────────────────
                     c:space(6)
                     c:label("  GRAPHICS & PERFORMANCE", COLOR_HEADER)
                     c:label("  ──────────────────────────────────────────────", COLOR_MUTED)
                     c:space(4)
-
-                    -- Camera FPS
                     c:label("  Camera FPS  (current: " .. tostring(options.graphics.framerate) .. ")")
                     local c30 = c:width(100):button("btn_fps_30", "  30 FPS  ", false)
                     c:same_line()
@@ -111,8 +87,6 @@ ui.display(function()
                     if c60 then options.graphics.framerate = 60; apply_settings(); settings.save() end
 
                     c:space(6)
-
-                    -- Animation FPS
                     c:label("  Animation FPS  (current: " .. tostring(options.graphics.animation_framerate) .. ")")
                     local a30 = c:width(100):button("btn_afps_30", "  30 FPS  ", false)
                     c:same_line()
@@ -121,8 +95,6 @@ ui.display(function()
                     if a60 then options.graphics.animation_framerate = 60; apply_settings(); settings.save() end
 
                     c:space(10)
-
-                    -- Draw Distance
                     c:label("  Draw Distance / Clipping Plane  (" .. string.format("%.1f", options.graphics.clipping_plane) .. ")")
                     local new_clip = c:slider("sld_clip", options.graphics.clipping_plane, 1.0, 25.0)
                     if new_clip ~= options.graphics.clipping_plane then
@@ -130,8 +102,6 @@ ui.display(function()
                     end
 
                     c:space(10)
-
-                    -- Gamma sliders
                     c:label("  Gamma - Red  (" .. string.format("%.2f", options.graphics.gamma.red) .. ")", ui.color.rgb(255, 100, 100))
                     local new_r = c:slider("sld_gamma_r", options.graphics.gamma.red, 0.5, 3.0)
                     if new_r ~= options.graphics.gamma.red then
@@ -151,8 +121,6 @@ ui.display(function()
                     end
 
                     c:space(14)
-
-                    -- ── AUDIO & EFFECTS ─────────────────────────────────────
                     c:label("  AUDIO & EFFECTS", COLOR_HEADER)
                     c:label("  ──────────────────────────────────────────────", COLOR_MUTED)
                     c:space(6)
@@ -189,10 +157,6 @@ ui.display(function()
         chat.print("Config UI Crash: " .. tostring(err), ui.color.system_error)
     end
 end)
-
--- ============================================================================
--- 3. COMMAND ROUTER
--- ============================================================================
 command.register({'config', 'cfg'}, function(args)
     state.show_ui = not state.show_ui
     if state.show_ui then

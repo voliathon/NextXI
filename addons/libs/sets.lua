@@ -1,4 +1,3 @@
---[[
 A library providing sets as a data structure.
 ]]
 
@@ -328,8 +327,6 @@ function set.format(s, trail, subs)
 
     return res
 end
-
---[[
 Copyright © 2013-2015, Windower
 All rights reserved.
 

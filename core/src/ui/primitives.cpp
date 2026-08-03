@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "ui/primitives.hpp"
 
 #include "ui/color.hpp"
@@ -585,38 +561,6 @@ void rectangle(
         {0, 1, 2, 2, 1, 3, 2, 3, 4, 4, 3, 5, 4, 5, 6, 6, 5, 7},
         determinant(transform) < 0);
 }
-
-// void poly_line(
-//     context& ctx, [[maybe_unused]] std::span<ui::vector> points,
-//     [[maybe_unused]] color c) noexcept
-//{
-//     auto const scale  = ctx.scale_factor();
-//     auto const origin = ctx.origin();
-//
-//     data_segment<vertex> vertices;
-//     data_segment<std::uint16_t> indices;
-//     std::iota(indices.data.begin(), indices.data.end(), vertices.offset);
-//
-//     auto offset    = std::size_t{0};
-//     auto remaining = points.size();
-//     while (remaining > 1)
-//     {
-//         auto const chunk_size = std::min(remaining, vertices.data.size());
-//         auto const chunk      = points.subspan(offset, chunk_size);
-//         offset += chunk.size() - 1;
-//         remaining -= chunk.size() - 1;
-//         std::transform(
-//             chunk.begin(), chunk.end(), vertices.data.begin(), [=](auto& p) {
-//                 auto const x = (p.x + origin.x) * scale.x;
-//                 auto const y = (p.y + origin.y) * scale.y;
-//                 return vertex{x, y, c};
-//             });
-//         // auto const vertex_span = std::span{vertices}.subspan(0,
-//         chunk_size);
-//         // auto const index_span = std::span{indices}.subspan(0, chunk_size);
-//         // ctx.line_strip(vertex_span, index_span);
-//     }
-// }
 
 void text(
     context& ctx, ui::rectangle const& bounds, std::u8string_view text,

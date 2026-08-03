@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "core.hpp"
 
 #include "addon/error.hpp"
@@ -88,7 +64,6 @@ namespace
 
             for (auto& msg : local_queue)
             {
-                // Convert to wstring ONLY for the external developer console window
                 auto w_text = windower::to_wstring(msg.text);
                 auto handle = msg.is_error ? error_handle : output_handle;
 
@@ -120,11 +95,8 @@ namespace
                 }
 
                 ::OutputDebugStringW(w_text.c_str());
-
-                // --- SEND TO IN-GAME UI CONSOLE ---
                 windower::core::instance().run_on_next_frame(
                     [text = std::move(msg.text)]() {
-                        // Split the text explicitly by \n so the UI perfectly renders every line!
                         std::u8string::size_type start = 0;
                         std::u8string::size_type pos;
 
@@ -185,8 +157,6 @@ namespace
         }
         log_cv.notify_one();
     }
-
-    // 1. Explicit Lua Stack Trace Extractor
     void format_lua_error(std::u8string& result, windower::lua::error const& exception)
     {
         if (exception.has_stack_trace())
@@ -234,8 +204,6 @@ namespace
             }
         }
     }
-
-    // 2. Brute-Force Unwrapper (Bypasses Template Slicing!)
     void unwrap_exception(std::u8string& result, std::size_t level, std::exception const& ex)
     {
         std::string_view const type_name = typeid(ex).name();
@@ -284,8 +252,6 @@ namespace
             }
         }
     }
-
-    // 3. The new core handler
     std::u8string get_error_message(std::exception const& exception)
     {
         std::u8string result;
@@ -431,7 +397,6 @@ void windower::core::output(
 {
     if (source < command_source::client)
     {
-        // Keep it strictly u8string so it never drops characters
         auto u8_text = process_output(component, text);
         u8_text.append(1, u8'\n');
         queue_log(std::move(u8_text), false);
@@ -449,7 +414,6 @@ void windower::core::error(
     command_source source)
 {
     (void)source;
-    // FORCE ALL ERRORS TO THE UI CONSOLE IN RAW UTF-8
     auto u8_text = process_output(component, text);
     u8_text.append(1, u8'\n');
     queue_log(std::move(u8_text), true);
@@ -488,10 +452,6 @@ void windower::core::update() noexcept
     if (!m_updated)
     {
         m_updated = true;
-
-        // ==========================================
-        // THE FPU AIRLOCK (LUAJIT 64-BIT MATH GUARD)
-        // ==========================================
         class FpuStateGuard
         {
             unsigned int original_state;
@@ -504,41 +464,27 @@ void windower::core::update() noexcept
 
             FpuStateGuard() noexcept
             {
-                // Save FFXI's 32-bit state and force CPU to 64-bit (_PC_53)
                 _controlfp_s(&original_state, 0, 0);
                 _controlfp_s(nullptr, _PC_53, _MCW_PC);
             }
             ~FpuStateGuard()
             {
-                // The microsecond Lua is done, restore FFXI's 32-bit state
                 _controlfp_s(nullptr, original_state, _MCW_PC);
             }
         };
-
-        // Activate the airlock!
         FpuStateGuard fpu_guard;
-
-        // Apply dynamic POL patches if they haven't been already
         windower::pol_hacks::apply();
-
-        // EVERYTHING BELOW THIS LINE RUNS SAFELY IN 64-BIT MODE
         scheduler::next_frame();
         script_environment.run_until_idle();
         if (addon_manager)
         {
             addon_manager->run_until_idle();
         }
-
-        //Create a local, un-shared queue
         std::queue<std::function<void()>> local_functions;
-
-        //Lock the mutex exactly once and steal all pending functions
         {
             std::lock_guard<std::mutex> guard{ m_queued_functions_mutex };
             std::swap(m_queued_functions, local_functions);
         } // Mutex is instantly unlocked here!
-
-        //Execute the stolen functions completely lock-free
         while (!local_functions.empty())
         {
             try
@@ -547,7 +493,6 @@ void windower::core::update() noexcept
             }
             catch (std::exception const& e) // <--- Catch the variable 'e'
             {
-                // 2. Properly route the error with a component tag
                 error(u8"Background Task", e, command_source::client);
             }
             local_functions.pop();

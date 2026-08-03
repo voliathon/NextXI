@@ -32,16 +32,12 @@ local expression_const
 local expression_const_true
 local expression_const_false
 
--- general
-
 expression_empty = function()
 end
 
 expression_id = function(...)
     return ...
 end
-
--- predicates
 
 expression_exists = function(value)
     return value ~= nil
@@ -105,8 +101,6 @@ expression_not_one_of = function(...)
     end
 end
 
--- comparisons
-
 expression_eq = function(lhs, rhs)
     return lhs == rhs
 end
@@ -130,8 +124,6 @@ end
 expression_geq = function(lhs, rhs)
     return lhs >= rhs
 end
-
--- operators
 
 expression_add = function(base)
     return function(value)
@@ -174,8 +166,6 @@ expression_prepend = function(base)
         return base .. value
     end
 end
-
--- accessors
 
 local selector
 

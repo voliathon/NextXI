@@ -1,4 +1,3 @@
---[[
     Windower 4 -> NextXI stub for the 'actions' library.
 
     In Windower 4, actions.lua parsed FFXI action packets (0x028) and fired

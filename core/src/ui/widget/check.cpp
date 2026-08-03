@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "ui/widget/check.hpp"
 
 #include "ui/context.hpp"
@@ -61,26 +37,13 @@ button_state check(
     auto const enabled         = ctx.enabled();
     auto const original_bounds = ctx.bounds();
     auto const position        = original_bounds.position();
-
-    // ========================================================================
-    // 1. DYNAMIC WIDTH MEASUREMENT
-    // ========================================================================
     auto text_options =
         text_layout_options{.word_wrapping = text_word_wrapping::no_wrap};
     auto const text_layout = primitive::layout_text(
         ctx, {dimension::unbounded, dimension::unbounded}, text, text_options);
 
     float const text_width = std::ceil(text_layout.metric_bounds().width());
-
-    // Total Width = 5px indent + Checkbox (14) + Gap (6) + Text Width + Padding
-    // (4)
     float const total_active_width = 29.f + text_width;
-
-    // ========================================================================
-    // 2. THE MARGIN-ADJUSTED HITBOX
-    // Start exactly at the clipping wall (x0) to avoid scroll panel cuts!
-    // Shift Up by 6px, and Clamp the right side to the text length.
-    // ========================================================================
     auto const hit_bounds = rectangle{
         original_bounds.x0, // Safely anchored to the left wall
         original_bounds.y0 - 6.f,
@@ -90,39 +53,22 @@ button_state check(
     ctx.bounds(hit_bounds);
     auto const state = basic_button(ctx, id);
     ctx.bounds(original_bounds);
-
-    // ========================================================================
-    // 3. VISUAL RENDERING (Indented 5 pixels to the right)
-    // ========================================================================
     auto const check_bounds = rectangle{
         position.x + 5.f, // Shift box right
         position.y + 2.f,
         position.x + 19.f, // 5 + 14 = 19
         position.y + 16.f};
-
-    // ========================================================================
-    // 4. RICH TEXT RENDERING & CASCADING STYLES
-    // ========================================================================
     
     auto text_opts = text_rasterization_options{};
-
-    // STEP 1: Ask the new Style Stack if there is a custom color!
     auto const current_style = ctx.current_style();
     if (current_style.text_color)
     {
-        // If Lua pushed a color (like system_green), apply it to the text brush
         text_opts.fill_color = *current_style.text_color;
     }
-
-    // STEP 2: Handle Disabled State
-    // If the widget is disabled, force it to be gray, overriding any custom
-    // styles.
     if (!enabled)
     {
         text_opts.fill_color = ctx.system_color(system_color::label_disabled);
     }
-
-    // Paint the text to the screen using our new styled brush
     primitive::text(
         ctx, {position.x + 25.f, position.y + 1.f}, text_layout, text_opts);
 

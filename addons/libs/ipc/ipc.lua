@@ -42,9 +42,6 @@ local mutex
 local data
 do
     local invalid_handle = ffi.cast('void*', -1)
-
-    -- Doesn't properly handle Unicode, but it doesn't actually matter
-    -- here; the result should still be valid UCS-16 and unique.
     local wide
     do
         local wide_string = ffi.typeof('wchar_t[?]')

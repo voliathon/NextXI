@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 namespace Windower.Core
 {
     using System;
@@ -43,8 +19,6 @@ namespace Windower.Core
         private static readonly Lazy<string> LazyUserAgent = new Lazy<string>(GetUserAgent);
         private static readonly Lazy<string> LazyUserAgentName = new Lazy<string>(GetUserAgentName);
         private static readonly Lazy<string> LazyUserAgentVersion = new Lazy<string>(GetUserAgentVersion);
-
-        // Modern .NET 8 HttpClient Implementation
         private static readonly Lazy<HttpClient> LazyHttpClient = new Lazy<HttpClient>(() =>
         {
             var handler = new HttpClientHandler
@@ -77,9 +51,6 @@ namespace Windower.Core
 
         public static async Task Update(IProgress<ProgressDetail<UpdateStatus>> progress)
         {
-            // NEXTXI: We have completely severed the legacy Windower 5 auto-updater.
-            // We do not want files.windower.net overwriting our custom NextXI.exe and core.dll.
-            // In the future, we can point this to our own NextXI GitHub Releases URL.
 
             await Task.CompletedTask;
         }
@@ -160,7 +131,6 @@ namespace Windower.Core
             {
                 using (var response = await HttpClient.SendAsync(request))
                 {
-                    // 304 Not Modified means our local file is perfectly fine
                     if (response.StatusCode == HttpStatusCode.NotModified)
                     {
                         return document?.Root;

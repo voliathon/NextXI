@@ -3,8 +3,6 @@ local core_pin = require('core.pin')
 
 local command = {}
 local active_commands = {}
-
--- Helper to handle the actual C++ binding
 local function register_single(cmd_name, callback)
     if type(cmd_name) ~= 'string' then return end
     
@@ -22,8 +20,6 @@ local function register_single(cmd_name, callback)
     
     active_commands[cmd_name] = callback
 end
-
--- Upgraded to support both Strings and Tables (Aliases)
 function command.register(command_name, callback)
     if type(command_name) == 'table' then
         for _, name in ipairs(command_name) do

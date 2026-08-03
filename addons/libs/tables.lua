@@ -1,4 +1,3 @@
---[[
     A few table helper functions, in addition to a new T-table interface, which enables method indexing on tables.
 
     To define a T-table with explicit values use T{...}, to convert an existing table t, use T(t). To access table methods of a T-table t, use t:methodname(args).
@@ -19,8 +18,6 @@ _libs.tables = table
 
 _raw = _raw or {}
 _raw.table = setmetatable(_raw.table or {}, {__index = table})
-
---[[
     Signatures
 ]]
 
@@ -31,10 +28,6 @@ _meta.T.__class = 'Table'
 
 _meta.N = {}
 _meta.N.__class = 'nil'
-
--- Constructor for T-tables.
--- t = T{...} for explicit declaration.
--- t = T(regular_table) to cast to a T-table.
 function T(t)
     local res
     if class(t) == 'Set' then
@@ -64,9 +57,6 @@ function T(t)
     else
         res = t or {}
     end
-
-    -- Sets T's metatable's index to the table namespace, which will take effect for all T-tables.
-    -- This makes every function that tables have also available for T-tables.
     return setmetatable(res, _meta.T)
 end
 
@@ -82,18 +72,12 @@ function class(o)
 
     return mt and mt.__class or type(o)
 end
-
--- Returns a function that returns the table when called.
 function table.fn(t)
     return functions.const(t)
 end
-
--- Checks if a table is an array, only having sequential integer keys.
 function table.isarray(t)
     return table.length(t) == #t
 end
-
--- Returns the number of elements in a table.
 function table.length(t)
     local count = 0
     for _ in table.it(t) do
@@ -102,21 +86,15 @@ function table.length(t)
 
     return count
 end
-
--- Returns the first element of an array, or the element at position n, if provided.
 function table.first(t, n)
     n = n or 1
     return t[n]
 end
-
--- Returns the last element of an array, or the element at position (length-n+1), if n provided.
 function table.last(t, n)
     n = n or 1
     n = n - 1
     return t[#t-n]
 end
-
--- Returns true if searchval is in t.
 function table.contains(t, searchval)
     for val in table.it(t) do
         if val == searchval then
@@ -126,19 +104,13 @@ function table.contains(t, searchval)
 
     return false
 end
-
--- Returns if the key searchkey is in t.
 function table.containskey(t, searchkey)
     return rawget(t, searchkey) ~= nil
 end
-
--- Appends an element to the end of an array table.
 function table.append(t, val)
     t[#t+1] = val
     return t;
 end
-
--- Appends an array table to the end of another array table.
 function table.extend(t, t_extend)
     if type(t_extend) ~= 'table' then
         return table.append(t, t_extend)
@@ -152,8 +124,6 @@ function table.extend(t, t_extend)
 end
 
 _meta.T.__add = table.extend
-
--- Returns the number of element in the table that satisfy fn. If fn is not a function, counts the number of occurrences of fn.
 function table.count(t, fn)
     if type(fn) ~= 'function' then
         fn = functions.equals(fn)
@@ -168,8 +138,6 @@ function table.count(t, fn)
 
     return count
 end
-
--- Removes all elements from a table.
 function table.clear(t)
     for key in pairs(t) do
         rawset(t, key, nil)
@@ -177,8 +145,6 @@ function table.clear(t)
 
     return t
 end
-
--- Merges two dictionary tables and returns the result. Keys from the new table will overwrite keys.
 function table.update(t, t_update, recursive, maxrec, rec)
     if t_update == nil then
         return t
@@ -198,8 +164,6 @@ function table.update(t, t_update, recursive, maxrec, rec)
 
     return t
 end
-
--- Merges two dictionary tables and returns the results. Keys from the new table will not overwrite existing keys.
 function table.amend(t, t_amend, recursive, maxrec, rec)
     if t_amend == nil then
         return t
@@ -220,8 +184,6 @@ function table.amend(t, t_amend, recursive, maxrec, rec)
 
     return t
 end
-
--- Searches elements of a table for an element. If, instead of an element, a function is provided, will search for the first element to satisfy that function.
 function table.find(t, fn)
     fn = type(fn) ~= 'function' and functions.equals(fn) or fn
 
@@ -231,8 +193,6 @@ function table.find(t, fn)
         end
     end
 end
-
--- Returns the keys of a table in an array.
 function table.keyset(t)
     local res = {}
     if _libs.sets then
@@ -255,8 +215,6 @@ function table.keyset(t)
 
     return setmetatable(res, _libs.lists and _meta.L or _meta.T)
 end
-
--- Flattens a table by splicing all nested tables in at their respective position.
 function table.flatten(t, recursive)
     recursive = true and (recursive ~= false)
 
@@ -281,8 +239,6 @@ function table.flatten(t, recursive)
 
     return T(res)
 end
-
--- Returns true if all key-value pairs in t_eq equal all key-value pairs in t.
 function table.equals(t, t_eq, depth)
     depth = depth or -1
     if depth == 0 then
@@ -316,8 +272,6 @@ function table.equals(t, t_eq, depth)
 
     return true
 end
-
--- Removes and returns an element from t.
 function table.delete(t, el)
     for key, val in pairs(t) do
         if val == el then
@@ -331,9 +285,6 @@ function table.delete(t, el)
         end
     end
 end
-
--- Searches keys of a table according to a function fn. Returns the key and value, if found.
--- Searches keys of a table for an element. If, instead of an element, a function is provided, will search for the first element to satisfy that function.
 function table.keyfind(t, fn)
     for key, val in pairs(t) do
         if fn(key) then
@@ -341,24 +292,17 @@ function table.keyfind(t, fn)
         end
     end
 end
-
--- Returns a partial table sliced from t, equivalent to t[x:y] in certain languages.
--- Negative indices will be used to access the table from the other end.
 function table.slice(t, from, to)
     local n  = #t
 
     from = from or 1
     if from < 0 then
-        -- Modulo the negative index, to get it back into range.
         from = (from % n) + 1
     end
     to = to or n
     if to < 0 then
-        -- Modulo the negative index, to get it back into range.
         to = (to % n) + 1
     end
-
-    -- Copy relevant elements into a blank T-table.
     local res = {}
     local key = 1
     for i = from, to do
@@ -368,8 +312,6 @@ function table.slice(t, from, to)
 
     return setmetatable(res, getmetatable(t))
 end
-
--- Replaces t[from, to] with the contents of st and returns the table.
 function table.splice(t, from, to, st)
     local n1 = #t
     local n2 = #st
@@ -394,8 +336,6 @@ function table.splice(t, from, to, st)
 
     return t
 end
-
--- Returns a reversed array.
 function table.reverse(t)
     local res = {}
 
@@ -408,8 +348,6 @@ function table.reverse(t)
 
     return setmetatable(res, getmetatable(t))
 end
-
--- Gets a list of arguments and creates a table with key: value pairs alternating the arguments.
 function table.dict(...)
     local res = type(...) == 'table' and ... or {}
 
@@ -420,8 +358,6 @@ function table.dict(...)
 
     return setmetatable(res, _meta.T)
 end
-
--- Finds a table entry based on an attribute.
 function table.with(t, attr, val)
     val = type(val) ~= 'function' and functions.equals(val) or val
     for key, el in pairs(t) do
@@ -432,17 +368,11 @@ function table.with(t, attr, val)
 
     return nil, nil
 end
-
--- Backs up old table sorting function.
 _raw.table.sort = _raw.table.sort or table.sort
-
--- Returns a sorted table.
 function table.sort(t, ...)
     _raw.table.sort(t, ...)
     return t
 end
-
--- Returns a table keyed by a specified index of a subtable. Requires a table of tables, and key must be a valid key in every table. Only produces the correct result, if the key is unique.
 function table.rekey(t, key)
     local res = {}
 
@@ -452,8 +382,6 @@ function table.rekey(t, key)
 
     return setmetatable(res, getmetatable(t))
 end
-
--- Wrapper around unpack(t). Returns table elements as a list of values. Optionally takes a number of keys to unpack.
 function table.unpack(t, ...)
     local count = select('#', ...);
     if count == 0 then
@@ -472,11 +400,8 @@ end
 function table.pack(...)
     return {...}
 end
-
--- Returns the values of the table, extracted into an argument list. Like unpack, but works on dictionaries as well.
 function table.extract(t)
     local res = {}
-    -- Convert a (possible) dictionary into an array.
     local i = 1
     for value in table.it(t) do
         res[i] = value
@@ -485,18 +410,12 @@ function table.extract(t)
 
     return table.unpack(res)
 end
-
--- Returns a copy of the table, including metatable and recursed over nested tables.
--- The second argument indicates whether or not to perform a deep copy (defaults to true)
 function table.copy(t, deep)
     deep = deep ~= false and true
     local res = {}
 
     for value, key in table.it(t) do
-        -- If a value is a table, recursively copy that.
         if type(value) == 'table' and deep then
-            -- If it has a copy function in its __index metatable (but not main table), use that.
-            -- Otherwise, default to the table.copy function.
             value = (not rawget(value, 'copy') and value.copy or table.copy)(value)
         end
         res[key] = value
@@ -504,13 +423,9 @@ function table.copy(t, deep)
 
     return setmetatable(res, getmetatable(t))
 end
-
--- Returns the first table, reassigned to the second one.
 function table.reassign(t, tn)
     return table.update(table.clear(t), tn)
 end
-
--- Returns an array containing values from start to finish. If no finish is specified, returns table.range(1, start)
 function table.range(start, finish, step)
     if finish == nil then
         start, finish = 1, start
@@ -525,16 +440,10 @@ function table.range(start, finish, step)
 
     return setmetatable(res, _meta.T)
 end
-
--- Splits an array into an array of arrays of fixed length.
 function table.chunks(t, size)
     return table.range(math.ceil(t:length()/size)):map(function(i) return t:slice(size*(i - 1) + 1, size*i) end)
 end
-
--- Backs up old table concat function.
 _raw.table.concat = table.concat
-
--- Concatenates all objects of a table. Converts to string, if not already so.
 function table.concat(t, delim, from, to)
     delim = delim or ''
     local res = ''
@@ -560,14 +469,9 @@ function table.concat(t, delim, from, to)
 
     return res
 end
-
--- Concatenates all elements with a whitespace in between.
 function table.sconcat(t, ...)
     return table.concat(t, ' ', ...)
 end
-
--- Check if table is empty.
--- If rec is true, it counts empty nested empty tables as empty as well.
 function table.empty(t, rec)
     if not rec then
         return next(t) == nil
@@ -585,28 +489,18 @@ function table.empty(t, rec)
 
     return true
 end
-
--- Sum up all elements of a table.
 function table.sum(t)
     return table.reduce(t, math.add, 0)
 end
-
--- Multiply all elements of a table.
 function table.mult(t)
     return table.reduce(t, math.mult, 1)
 end
-
--- Returns the minimum element of the table.
 function table.min(t)
     return table.reduce(t, math.min)
 end
-
--- Returns the maximum element of the table.
 function table.max(t)
     return table.reduce(t, math.max)
 end
-
---[[
 Copyright © 2013-2015, Windower
 All rights reserved.
 

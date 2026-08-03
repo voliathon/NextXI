@@ -1,19 +1,10 @@
-----------------------------------------------------------------------------
--- Verbose mode of the LuaJIT compiler.
---
-
--- Cache some library functions and objects.
 local jit = require("jit")
 local jutil = require("jit.util")
 local vmdef = require("jit.vmdef")
 local funcinfo, traceinfo = jutil.funcinfo, jutil.traceinfo
 local type, sub, format = type, string.sub, string.format
 local stdout, stderr = io.stdout, io.stderr
-
--- Active flag and output file handle.
 local active, out
-
-------------------------------------------------------------------------------
 
 local startloc, startex
 
@@ -29,8 +20,6 @@ local function fmtfunc(func, pc)
     return "(?)"
   end
 end
-
--- Format trace error message.
 local function fmterr(err, info)
   if type(err) == "number" then
     if type(info) == "function" then info = fmtfunc(info) end
@@ -43,8 +32,6 @@ local function fmterr(err, info)
   end
   return err
 end
-
--- Dump trace states.
 local function dump_trace(what, tr, func, pc, otr, oex)
   if what == "start" then
     startloc = fmtfunc(func, pc)
@@ -84,10 +71,6 @@ local function dump_trace(what, tr, func, pc, otr, oex)
     out:flush()
   end
 end
-
-------------------------------------------------------------------------------
-
--- Detach dump handlers.
 local function dumpoff()
   if active then
     active = false
@@ -96,8 +79,6 @@ local function dumpoff()
     out = nil
   end
 end
-
--- Open the output file and attach dump handlers.
 local function dumpon(outfile)
   if active then dumpoff() end
   if not outfile then outfile = os.getenv("LUAJIT_VERBOSEFILE") end
@@ -109,8 +90,6 @@ local function dumpon(outfile)
   jit.attach(dump_trace, "trace")
   active = true
 end
-
--- Public module functions.
 return {
   on = dumpon,
   off = dumpoff,

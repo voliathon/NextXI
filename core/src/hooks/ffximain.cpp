@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "hooks/ffximain.hpp"
 
 #include "addon/addon.hpp"
@@ -34,6 +10,7 @@
 #include "scanner.hpp"
 #include "unicode.hpp"
 #include "utility.hpp"
+#include "utilities/module_info.hpp"
 
 #include <windows.h>
 
@@ -88,7 +65,6 @@ struct menu_entry
     std::uint32_t _unknown_24_27;
     std::uint32_t _unknown_28_2B;
 };
-//thread_local isolates the buffer per thread
 thread_local std::vector<std::byte> temp_buffer;
 std::uint16_t last_out_counter;
 
@@ -396,8 +372,6 @@ std::size_t encode_packet(
     std::size_t output_size, void const* compression_table)
 {
     using namespace windower;
-
-    // auto const output_bytes_upper_bound = (output_size - 1) * 8;
     auto const output_bytes_lower_bound = (output_size - 1) * 2 / 3;
 
     auto const input = std::span{input_ptr, input_size};

@@ -1,4 +1,3 @@
---[[
 A library to facilitate packet usage
 ]]
 
@@ -45,15 +44,11 @@ __meta.Packet = {
     end,
     __class = 'Packet',
 }
-
---[[
     Packet database. Feel free to correct/amend it wherever it's lacking.
 ]]
 
 packets.data = require('packets/data')
 packets.raw_fields = require('packets/fields')
-
---[[
     Lengths for C data types.
 ]]
 
@@ -77,17 +72,11 @@ local bit_sizes = {
     ['bit']             =  1,
     ['boolbit']         =  1,
 }
-
--- This defines whether to treat a type with brackets at the end as an array or something special
 local non_array_types = S{'bit', 'data', 'char'}
-
--- Pattern to match variable size array
 local pointer_pattern = '(.+)%*'
--- Pattern to match fixed size array
 local array_pattern = '(.+)%[(.+)%]'
 
 do
-    -- Function returns number of bytes, bits, items and type name
     local parse_type = function(field)
         local ctype = field.ctype
 
@@ -109,13 +98,10 @@ do
 
     local bit_size
     bit_size = function(fields, count)
-        -- A single field
         if fields.ctype then
             local bits, _, type = parse_type(fields)
             return bits or type == 'char' and (count or 1) * bit_sizes[type] or 0
         end
-
-        -- A reference field
         if fields.ref then
             return bit_size(fields.ref, count) * (fields.count == '*' and count or fields.count)
         end
@@ -141,37 +127,29 @@ do
             local parsed_index = index
             for field in fields:it() do
                 if field.ctype then
-                    -- A regular type field
                     field = table.copy(field)
                     local bits, type_count, type = parse_type(field)
 
                     if not non_array_types:contains(type) and (not bits or type_count > 1) then
-                        -- An array field with more than one entry, reparse recursively
                         field.ctype = type
                         local ext, new_index = parse(L{field}, data, parsed_index, not bits and '*' or type_count, nil, depth + 1)
                         parsed = parsed + ext
                         parsed_index = new_index
                     else
-                        -- A non-array field or an array field with one entry
                         if max ~= 1 then
-                            -- Append indices to labels
                             if lookup then
-                                -- Look up index name in provided table
                                 local resource = lookup[1][count + lookup[2] - 1]
                                 field.label = ('%s %s'):format(resource and resource.english or ('Unknown %d'):format(count + lookup[2] - 1), field.label)
                             else
-                                -- Just increment numerically
                                 field.label = ('%s %d'):format(field.label, count)
                             end
                         end
 
                         if parsed_index % 8 ~= 0 and type ~= 'bit' and type ~= 'boolbit' then
-                            -- Adjust to byte boundary, if non-bit type
                             parsed_index = 8 * (parsed_index / 8):ceil()
                         end
 
                         if not bits then
-                            -- Determine length for pointer types (*)
                             type_count = ((length - parsed_index) / bit_sizes[type]):floor()
                             bits = bit_sizes[type] * type_count
 
@@ -187,10 +165,8 @@ do
                         parsed_index = parsed_index + bits
                     end
                 else
-                    -- A reference field, call the parser recursively
                     local type_count = field.count
                     if not type_count then
-                        -- If reference count not explicitly given it must be contained in the packet data
                         type_count = data:byte(field.count_ref + 1)
                     end
 
@@ -201,7 +177,6 @@ do
             end
 
             if parsed_index <= length then
-                -- Only add parsed chunk, if within length boundary
                 res = res + parsed
                 index = parsed_index
             else
@@ -215,13 +190,6 @@ do
 
         return res, index
     end
-
-    -- Arguments are:
-    --  dir     'incoming' or 'outgoing'
-    --  id      Packet ID
-    --  data    Binary packet data, nil if creating a blank packet
-    --  ...     Any parameters taken by a packet constructor function
-    --          If a packet has a variable length field (e.g. char* or ref with count='*') the last value in here must be the count of that field
     function packets.fields(dir, id, data, ...)
         if class(dir) == 'Packet' then
             return packets.fields(dir._dir, dir._id, dir._raw, unpack(dir._args))
@@ -245,10 +213,6 @@ do
         return parse(fields, data)
     end
 end
-
--- Type identifiers as declared in lpack.c
--- Windower uses an adjusted set of identifiers
--- This is marked where applicable
 local pack_ids = {}
 pack_ids['bit']             = 'b'   -- Windower exclusive
 pack_ids['boolbit']         = 'q'   -- Windower exclusive
@@ -307,33 +271,6 @@ local make_pack_string = function(field)
 
     return nil
 end
-
--- Constructor for packets (both injected and parsed).
--- If data is a string it parses an existing packet, otherwise it will create
--- a new packet table for injection. In that case, data can ba an optional
--- table containing values to initialize the packet to.
---
--- Example usage
---  Injection:
---      local packet = packets.new('outgoing', 0x050, {
---          ['Inventory Index'] = 27,   -- 27th item in the inventory
---          ['Equipment Slot'] = 15     -- 15th slot, left ring
---      })
---      packets.inject(packet)
---
---  Injection (Alternative):
---      local packet = packets.new('outgoing', 0x050)
---      packet['Inventory Index'] = 27  -- 27th item in the inventory
---      packet['Equipment Slot'] = 15   -- 15th slot, left ring
---      packets.inject(packet)
---
---  Parsing:
---      windower.register_event('outgoing chunk', function(id, data)
---          if id == 0x0B6 then -- outgoing /tell
---              local packet = packets.parse('outgoing', data)
---              print(packet['Target Name'], packet['Message'])
---          end
---      end)
 function packets.parse(dir, data)
     local rem = #data % 4
     if rem ~= 0 then
@@ -405,8 +342,6 @@ function packets.new(dir, id, values, ...)
                 packet[field.label] = values[field.alias]
             end
         end
-
-        -- Data not set
         if not packet[field.label] then
             if field.const then
                 packet[field.label] = field.const
@@ -435,8 +370,6 @@ local lookup = function(packet, field)
     local val = packet[field.label]
     return field.enc and field.enc.encode(val) or val
 end
-
--- Returns binary data from a packet
 function packets.build(packet)
     local fields = packets.fields(packet)
     if not fields then
@@ -453,8 +386,6 @@ function packets.build(packet)
 
     return ('b9b7H'):pack(packet._id, 1 + #data / 4, packet._sequence) .. data
 end
-
--- Injects a packet built with packets.new
 function packets.inject(dir, id, values, ...)
     local packet = type(dir) == 'table' and dir or packets.new(dir, id, values, ...)
     if packet._error then
@@ -481,8 +412,6 @@ function packets.inject(dir, id, values, ...)
 end
 
 return packets
-
---[[
 Copyright © 2013-2015, Windower
 All rights reserved.
 

@@ -18,8 +18,6 @@ namespace Windower.Core
             string targetD3d8 = Path.Combine(polDirectory, "d3d8.dll");
             string targetD3d9 = Path.Combine(polDirectory, "d3d9.dll");
             string targetConf = Path.Combine(polDirectory, "dgVoodoo.conf");
-
-            // Cleanup previous — silently skip files that are locked or inaccessible
             SafeDelete(targetD3d8);
             SafeDelete(targetD3d9);
             SafeDelete(targetConf);

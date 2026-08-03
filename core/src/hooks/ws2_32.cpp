@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "hooks/ws2_32.hpp"
 
 #include "core.hpp"
@@ -59,15 +35,12 @@ bool check_fast_login(::SOCKET socket)
     auto const data = reinterpret_cast<std::uint8_t*>(peer.sa_data);
     auto const port = (data[0] << 8) | data[1];
     auto const ip = *reinterpret_cast<std::uint32_t*>(data + 2);
-    // PlayOnline Viewer connects to 202.67.54.55 on port 443 for TLS and port 80 for PML.
-    // We MUST ignore port 443 (TLS) otherwise returning plaintext HTTP causes a fatal crash.
     return ip == pml_ip && port != 443;
 }
 
 int fast_login(char* buffer, int length, int flags)
 {
     (void)flags;
-    // Copy the payload up to the requested length.
     size_t to_send = static_cast<size_t>(length) < pml_response.size() ? static_cast<size_t>(length) : pml_response.size();
     std::copy(pml_response.begin(), pml_response.begin() + to_send, buffer);
     return static_cast<int>(to_send);

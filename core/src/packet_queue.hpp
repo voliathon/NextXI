@@ -26,7 +26,6 @@ public:
     packet_queue(packet_queue&&)      = default;
     packet_queue(packet_direction direction) : m_direction{direction}
     {
-        // Pre-allocate to prevent mid-combat heap reallocations
         m_output_buffer.reserve(4096);
     }
 

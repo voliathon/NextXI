@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "addon/addon_manager.hpp"
 
 #include "addon/addon.hpp"
@@ -108,21 +84,13 @@ void windower::addon_manager::reload_all()
 void windower::addon_manager::run_until_idle()
 {
     std::vector<std::u8string> failed_addons;
-
-    // Take a safe snapshot of the raw pointers currently loaded.
-    // This prevents fatal Iterator Invalidation if an addon (like AddonManager)
-    // executes an /unload command while this loop is running!
     std::vector<addon*> snapshot;
     for (auto const& a : m_loaded_addons)
     {
         snapshot.push_back(a.get());
     }
-
-    // Iterate over the safe snapshot
     for (auto* a : snapshot)
     {
-        // Verify the addon wasn't unloaded by another addon earlier in this
-        // exact loop!
         auto it = std::find_if(
             m_loaded_addons.begin(), m_loaded_addons.end(),
             [a](auto const& ptr) { return ptr.get() == a; });
@@ -135,16 +103,11 @@ void windower::addon_manager::run_until_idle()
             }
             catch (...)
             {
-                // Log the error immediately so the user sees the stack trace
                 core::error(a->package()->name(), std::current_exception());
-
-                // Queue the addon to be safely unloaded after the loop finishes
                 failed_addons.push_back(a->package()->name());
             }
         }
     }
-
-    // Safely execute the unloads for addons that threw Lua exceptions
     if (!failed_addons.empty())
     {
         unload(failed_addons);
@@ -162,12 +125,10 @@ void windower::addon_manager::raise_error(
 void windower::addon_manager::load(
     std::vector<std::shared_ptr<package const>> const& packages)
 {
-    // 1. Track which packages we load in this transaction
     std::vector<std::u8string> loaded_in_transaction;
 
     try
     {
-        // 2. Attempt to construct/boot every addon in the request
         for (auto const& package : packages)
         {
             if (package->type() != package_type::library)
@@ -181,13 +142,9 @@ void windower::addon_manager::load(
 
                 if (it == m_loaded_addons.end())
                 {
-                    // If the addon has a Lua syntax error, this constructor throws!
                     auto ptr = std::make_unique<addon>(package);
                     
                     core::output(u8"", ptr->package()->name() + u8" loaded");
-                    
-                    // Immediately add to loaded list so dependent addons
-                    // in this same transaction can discover it!
                     loaded_in_transaction.push_back(ptr->package()->name());
                     m_loaded_addons.emplace_back(std::move(ptr));
                 }
@@ -197,9 +154,6 @@ void windower::addon_manager::load(
     catch (std::exception const& e)
     {
         core::error(u8"addon manager", u8"Error loading addon: " + windower::to_u8string(e.what()));
-        
-        // THE ROLLBACK: If ANY addon fails, the loop aborts.
-        // We carefully unload all the packages we successfully loaded earlier in this transaction.
         std::lock_guard<std::mutex> lock{m_mutex};
         for (auto const& name : loaded_in_transaction)
         {

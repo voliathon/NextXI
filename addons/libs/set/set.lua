@@ -1,7 +1,5 @@
 local meta = {}
 
--- Metatable
-
 meta.__index = function(_, _)
     error('Cannot access set index.')
 end
@@ -151,8 +149,6 @@ meta.__ipairs = function(s)
     error('ipairs not defined for sets.')
 end
 
--- Enumerable base
-
 meta.__pairs = function(s)
     return next, s.data, nil
 end
@@ -182,15 +178,11 @@ meta.__remove_key = function(s, el)
     s.data[el] = nil
 end
 
--- Enumerable overrides
-
 local set = {}
 
 set.contains = function(s, el)
     return s.data[el] == el
 end
-
--- Unique members
 
 set.union = function(s1, s2)
     local data1 = s1.data
@@ -229,8 +221,6 @@ set.symmetric_difference = function(s1, s2)
         data1[el] = data1[el] == nil and el or nil
     end
 end
-
--- Invoke enumerable library
 
 local enumerable = require('enumerable')
 return enumerable.init_type(meta, set, 'set')

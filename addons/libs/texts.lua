@@ -1,5 +1,3 @@
--- texts.lua (NextXI Polyfill)
--- Wrapper over windower.text.create for DX8 users and legacy scripts.
 
 local texts = {}
 

@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "addon/unsafe.hpp"
 
 #include "addon/error.hpp"
@@ -57,14 +33,9 @@ extern "C"
 
 #if defined(LUAJIT_VERSION_NUM)
 #if LUAJIT_VERSION_NUM != 20100
-//#error "Please confirm ::estimate_record_count still works on this version of LuaJIT."
 #endif
     static std::size_t estimate_record_count(::lua_State* s)
     {
-        // This depends on undocumented behavior of LuaJIT!
-        // When ::lua_getstack fails because an invalid level is passed,
-        // the private field ::lua_Debug::i_ci contains the total number of
-        // activation records on the stack.
         ::lua_Debug record;
         if (!::lua_getstack(s, -10, &record))
         {
@@ -234,7 +205,6 @@ extern "C"
                 ::push_variable(s, -1, name);
                 ::lua_rawseti(s, -3, ++locals_count);
                 ::lua_settop(s, -2);
-                --local;
             }
             ::lua_rawset(s, -3);
 
@@ -474,9 +444,6 @@ char error_handler_key = 0;
 char cache_key         = 0;
 char to_string_key     = 0;
 char stack_trace_key   = 0;
-
-// Evil sneaky trickery here!
-// This is, in fact, legal c++, as bad as it looks.
 
 template<typename T, typename T::type M>
 class steal_private_member

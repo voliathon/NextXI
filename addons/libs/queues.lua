@@ -1,4 +1,3 @@
---[[
     A library providing advanced queue support and better optimizations for queue-based operations.
 ]]
 
@@ -150,8 +149,6 @@ function queue.tostring(q)
 end
 
 _meta.Q.__tostring = queue.tostring
-
---[[
 Copyright © 2013, Windower
 All rights reserved.
 

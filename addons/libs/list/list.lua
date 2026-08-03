@@ -7,8 +7,6 @@ local index = function(l, i)
     return i > 0 and i or l.length + i + 1
 end
 
--- Metatable
-
 meta.__index = function(l, k)
     local length = l.length
     local i = length + k + 1
@@ -76,8 +74,6 @@ end
 
 meta.__ipairs = pairs
 
--- Enumerable base
-
 meta.__pairs = function(l)
     local max = l.length
     return function(l, k)
@@ -133,16 +129,12 @@ meta.__remove_key = function(l, i)
     remove_key(l, idx, length)
 end
 
--- Enumerable overrides
-
 local list = {}
 
 list.clear = function(l)
     clear(l)
     rawset(l, 'length', 0)
 end
-
--- Unique members
 
 list.insert = function(l, i, el)
     i = index(l, i)
@@ -169,8 +161,6 @@ list.remove_element = function(l, el)
 
     error('Element not found: ' .. tostring(el))
 end
-
--- Invoke enumerable library
 
 local enumerable = require('enumerable')
 return enumerable.init_type(meta, list, 'list')

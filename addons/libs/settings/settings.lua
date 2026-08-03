@@ -180,10 +180,8 @@ end
 
 do
     settings.save = function(id)
-        -- Catch the Trap: Did the developer pass an options table instead of an ID string?
         if type(id) == 'table' then
             local found_id = 'settings' -- Default fallback
-            -- Search the cache to find the specific ID this table belongs to
             for cache_id, info in pairs(info_cache) do
                 if info.options == id then
                     found_id = cache_id
@@ -192,11 +190,7 @@ do
             end
             id = found_id
         end
-
-        -- Fetch the cached info
         local info = info_cache[id or 'settings']
-        
-        -- Fail gracefully if it somehow still doesn't exist
         if not info then return end 
 
         get_file(info.id, info.global):write('return ' .. format_table(info.options))

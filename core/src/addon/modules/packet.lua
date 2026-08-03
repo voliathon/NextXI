@@ -1,10 +1,8 @@
--- LuaFormatter off
 local -- params
     registry,
     trigger_key,
     inject_incoming_native_ptr,
     inject_outgoing_native_ptr = ...
--- LuaFormatter on
 
 local bit = require('bit')
 local ffi = require('ffi')
@@ -22,15 +20,12 @@ local string_len = string.len
 
 local event_trigger = event.trigger
 local package_name = windower.package_name or '<script>'
-
--- LuaFormatter off
 local inject_incoming_native = ffi.cast(
     'void(*)(uint16_t, char const*, size_t, char const*, size_t)',
     inject_incoming_native_ptr)
 local inject_outgoing_native = ffi.cast(
     'void(*)(uint16_t, char const*, size_t, char const*, size_t)',
     inject_outgoing_native_ptr)
--- LuaFormatter on
 
 local incoming_event = event.new(false)
 local outgoing_event = event.new(false)

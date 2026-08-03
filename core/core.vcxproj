@@ -155,7 +155,10 @@
     <ClInclude Include="src\ui\window_manager.hpp" />
     <ClInclude Include="src\unicode.hpp" />
     <ClInclude Include="src\utilities\coroutine.hpp" />
+    <ClInclude Include="src\utilities\debug_helpers.hpp" />
     <ClInclude Include="src\utilities\null_output.hpp" />
+    <ClInclude Include="src\utilities\paths.hpp" />
+    <ClInclude Include="src\utilities\string_helpers.hpp" />
     <ClInclude Include="src\utilities\xml.hpp" />
     <ClInclude Include="src\utility.hpp" />
     <ClInclude Include="src\version.hpp" />
@@ -211,6 +214,7 @@
     <ClCompile Include="src\hooks\advapi32.cpp" />
     <ClCompile Include="src\addon\lua_internal.cpp" />
     <ClCompile Include="src\library.cpp" />
+    <ClCompile Include="src\package_command_handlers.cpp" />
     <ClCompile Include="src\packet_queue.cpp" />
     <ClCompile Include="src\scanner.cpp" />
     <ClCompile Include="src\settings.cpp" />
@@ -259,10 +263,13 @@
     <ClCompile Include="src\ui\window.cpp" />
     <ClCompile Include="src\ui\window_manager.cpp" />
     <ClCompile Include="src\unicode.cpp" />
+    <ClCompile Include="src\utilities\debug_helpers.cpp" />
+    <ClCompile Include="src\utilities\module_info.cpp" />
+    <ClCompile Include="src\utilities\paths.cpp" />
     <ClCompile Include="src\utilities\pol_hacks.cpp" />
     <ClCompile Include="src\utilities\sigscan.cpp" />
+    <ClCompile Include="src\utilities\string_helpers.cpp" />
     <ClCompile Include="src\utilities\xml.cpp" />
-    <ClCompile Include="src\utility.cpp" />
     <ClCompile Include="src\wrappers\direct_3d.cpp" />
     <ClCompile Include="src\wrappers\direct_3d_device.cpp" />
     <ClCompile Include="src\wrappers\direct_draw.cpp" />

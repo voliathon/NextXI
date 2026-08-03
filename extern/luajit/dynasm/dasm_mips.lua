@@ -1,11 +1,6 @@
-------------------------------------------------------------------------------
--- DynASM MIPS32/MIPS64 module.
---
 
 local mips64 = mips64
 local mipsr6 = _map_def.MIPSR6
-
--- Module information:
 local _info = {
   arch =	mips64 and "mips64" or "mips",
   description =	"DynASM MIPS32/MIPS64 module",
@@ -15,11 +10,7 @@ local _info = {
   author =	"Mike Pall",
   license =	"MIT",
 }
-
--- Exported glue functions for the arch-specific module.
 local _M = { _info = _info }
-
--- Cache library functions.
 local type, tonumber, pairs, ipairs = type, tonumber, pairs, ipairs
 local assert, setmetatable = assert, setmetatable
 local _s = string
@@ -29,41 +20,21 @@ local concat, sort = table.concat, table.sort
 local bit = bit or require("bit")
 local band, shl, shr, sar = bit.band, bit.lshift, bit.rshift, bit.arshift
 local tohex = bit.tohex
-
--- Inherited tables and callbacks.
 local g_opt, g_arch
 local wline, werror, wfatal, wwarn
-
--- Action name list.
--- CHECK: Keep this in sync with the C code!
 local action_names = {
   "STOP", "SECTION", "ESC", "REL_EXT",
   "ALIGN", "REL_LG", "LABEL_LG",
   "REL_PC", "LABEL_PC", "IMM", "IMMS",
 }
-
--- Maximum number of section buffer positions for dasm_put().
--- CHECK: Keep this in sync with the C code!
 local maxsecpos = 25 -- Keep this low, to avoid excessively long C lines.
-
--- Action name -> action number.
 local map_action = {}
 for n,name in ipairs(action_names) do
   map_action[name] = n-1
 end
-
--- Action list buffer.
 local actlist = {}
-
--- Argument list for next dasm_put(). Start with offset 0 into action list.
 local actargs = { 0 }
-
--- Current number of section buffer positions for dasm_put().
 local secpos = 1
-
-------------------------------------------------------------------------------
-
--- Dump action names and numbers.
 local function dumpactions(out)
   out:write("DynASM encoding engine action codes:\n")
   for n,name in ipairs(action_names) do
@@ -72,8 +43,6 @@ local function dumpactions(out)
   end
   out:write("\n")
 end
-
--- Write action list buffer as a huge static C array.
 local function writeactions(out, name)
   local nn = #actlist
   if nn == 0 then nn = 1; actlist[0] = map_action.STOP end
@@ -83,24 +52,16 @@ local function writeactions(out, name)
   end
   assert(out:write("0x", tohex(actlist[nn]), "\n};\n\n"))
 end
-
-------------------------------------------------------------------------------
-
--- Add word to action list.
 local function wputxw(n)
   assert(n >= 0 and n <= 0xffffffff and n % 1 == 0, "word out of range")
   actlist[#actlist+1] = n
 end
-
--- Add action to list with optional arg. Advance buffer pos, too.
 local function waction(action, val, a, num)
   local w = assert(map_action[action], "bad action name `"..action.."'")
   wputxw(0xff000000 + w * 0x10000 + (val or 0))
   if a then actargs[#actargs+1] = a end
   if a or num then secpos = secpos + (num or 1) end
 end
-
--- Flush action list (intervening C code or buffer pos overflow).
 local function wflush(term)
   if #actlist == actargs[1] then return end -- Nothing to flush.
   if not term then waction("STOP") end -- Terminate action list.
@@ -108,29 +69,19 @@ local function wflush(term)
   actargs = { #actlist } -- Actionlist offset is 1st arg to next dasm_put().
   secpos = 1 -- The actionlist offset occupies a buffer position, too.
 end
-
--- Put escaped word.
 local function wputw(n)
   if n >= 0xff000000 then waction("ESC") end
   wputxw(n)
 end
-
--- Reserve position for word.
 local function wpos()
   local pos = #actlist+1
   actlist[pos] = ""
   return pos
 end
-
--- Store word to reserved position.
 local function wputpos(pos, n)
   assert(n >= 0 and n <= 0xffffffff and n % 1 == 0, "word out of range")
   actlist[pos] = n
 end
-
-------------------------------------------------------------------------------
-
--- Global label name -> global label number. With auto assignment on 1st use.
 local next_global = 20
 local map_global = setmetatable({}, { __index = function(t, name)
   if not match(name, "^[%a_][%w_]*$") then werror("bad global label") end
@@ -140,8 +91,6 @@ local map_global = setmetatable({}, { __index = function(t, name)
   t[name] = n
   return n
 end})
-
--- Dump global labels.
 local function dumpglobals(out, lvl)
   local t = {}
   for name, n in pairs(map_global) do t[n] = name end
@@ -151,8 +100,6 @@ local function dumpglobals(out, lvl)
   end
   out:write("\n")
 end
-
--- Write global label enum.
 local function writeglobals(out, prefix)
   local t = {}
   for name, n in pairs(map_global) do t[n] = name end
@@ -162,8 +109,6 @@ local function writeglobals(out, prefix)
   end
   out:write("  ", prefix, "_MAX\n};\n")
 end
-
--- Write global label names.
 local function writeglobalnames(out, name)
   local t = {}
   for name, n in pairs(map_global) do t[n] = name end
@@ -173,14 +118,9 @@ local function writeglobalnames(out, name)
   end
   out:write("  (const char *)0\n};\n")
 end
-
-------------------------------------------------------------------------------
-
--- Extern label name -> extern label number. With auto assignment on 1st use.
 local next_extern = 0
 local map_extern_ = {}
 local map_extern = setmetatable({}, { __index = function(t, name)
-  -- No restrictions on the name for now.
   local n = next_extern
   if n > 2047 then werror("too many extern labels") end
   next_extern = n + 1
@@ -188,8 +128,6 @@ local map_extern = setmetatable({}, { __index = function(t, name)
   map_extern_[n] = name
   return n
 end})
-
--- Dump extern labels.
 local function dumpexterns(out, lvl)
   out:write("Extern labels:\n")
   for i=0,next_extern-1 do
@@ -197,8 +135,6 @@ local function dumpexterns(out, lvl)
   end
   out:write("\n")
 end
-
--- Write extern label names.
 local function writeexternnames(out, name)
   out:write("static const char *const ", name, "[] = {\n")
   for i=0,next_extern-1 do
@@ -206,27 +142,16 @@ local function writeexternnames(out, name)
   end
   out:write("  (const char *)0\n};\n")
 end
-
-------------------------------------------------------------------------------
-
--- Arch-specific maps.
 local map_archdef = { sp="r29", ra="r31" } -- Ext. register name -> int. name.
 
 local map_type = {}		-- Type name -> { ctype, reg }
 local ctypenum = 0		-- Type number (for Dt... macros).
-
--- Reverse defines for registers.
 function _M.revdef(s)
   if s == "r29" then return "sp"
   elseif s == "r31" then return "ra" end
   return s
 end
-
-------------------------------------------------------------------------------
-
--- Template strings for MIPS instructions.
 local map_op = {
-  -- First-level opcodes.
   j_1 =		"08000000J",
   jal_1 =	"0c000000J",
   b_1 =		"10000000B",
@@ -263,8 +188,6 @@ local map_op = {
   swc1_2 =	"e4000000HO",
   sdc1_2 =	"f4000000HO",
   sd_2 =	mips64 and "fc000000TO",
-
-  -- Opcode SPECIAL.
   nop_0 =	"00000000",
   sll_3 =	"00000000DTA",
   sextw_2 =	"00000000DT",
@@ -323,16 +246,12 @@ local map_op = {
   dsrl32_3 =	mips64 and "0000003eDTA",
   drotr32_3 =	mips64 and "0020003eDTA",
   dsra32_3 =	mips64 and "0000003fDTA",
-
-  -- Opcode REGIMM.
   bltz_2 =	"04000000SB",
   bgez_2 =	"04010000SB",
   bltzl_2 =	"04020000SB",
   bgezl_2 =	"04030000SB",
   bal_1 =	"04110000B",
   synci_1 =	"041f0000O",
-
-  -- Opcode SPECIAL3.
   ext_4 =	"7c000000TSAM", -- Note: last arg is msbd = size-1
   dextm_4 =	mips64 and "7c000001TSAM", -- Args: pos    | size-1-32
   dextu_4 =	mips64 and "7c000002TSAM", -- Args: pos-32 | size-1
@@ -348,8 +267,6 @@ local map_op = {
   seb_2 =	"7c000420DT",
   seh_2 =	"7c000620DT",
   rdhwr_2 =	"7c00003bTD",
-
-  -- Opcode COP0.
   mfc0_2 =	"40000000TD",
   mfc0_3 =	"40000000TDW",
   dmfc0_2 =	mips64 and "40200000TD",
@@ -371,8 +288,6 @@ local map_op = {
   eret_0 =	"42000018",
   deret_0 =	"4200001f",
   wait_0 =	"42000020",
-
-  -- Opcode COP1.
   mfc1_2 =	"44000000TG",
   dmfc1_2 =	mips64 and "44200000TG",
   cfc1_2 =	"44400000TG",
@@ -433,16 +348,10 @@ local map_op = {
 if mipsr6 then -- Instructions added with MIPSR6.
 
   for k,v in pairs({
-
-    -- Add immediate to upper bits.
     aui_3 =	"3c000000TSI",
     daui_3 =	mips64 and "74000000TSI",
     dahi_2 =	mips64 and "04060000SI",
     dati_2 =	mips64 and "041e0000SI",
-
-    -- TODO: addiupc, auipc, aluipc, lwpc, lwupc, ldpc.
-
-    -- Compact branches.
     blezalc_2 =	"18000000TB",	-- rt != 0.
     bgezalc_2 =	"18000000T=SB",	-- rt != 0.
     bgtzalc_2 =	"1c000000TB",	-- rt != 0.
@@ -476,8 +385,6 @@ if mipsr6 then -- Instructions added with MIPSR6.
     jialc_2 =	"f8000000TI",
     bc_1 =	"c8000000L",
     balc_1 =	"e8000000L",
-
-    -- Opcode SPECIAL.
     jr_1 =	"00000009S",
     sdbbp_0 =	"0000000e",
     sdbbp_1 =	"0000000eY",
@@ -505,14 +412,10 @@ if mipsr6 then -- Instructions added with MIPSR6.
     dmod_3 =	mips64 and "000000deDST",
     ddivu_3 =	mips64 and "0000009fDST",
     dmodu_3 =	mips64 and "000000dfDST",
-
-    -- Opcode SPECIAL3.
     align_4 =		"7c000220DSTA",
     dalign_4 =		mips64 and "7c000224DSTA",
     bitswap_2 =		"7c000020DT",
     dbitswap_2 =	mips64 and "7c000024DT",
-
-    -- Opcode COP1.
     bc1eqz_2 =	"45200000HB",
     bc1nez_2 =	"45a00000HB",
 
@@ -589,11 +492,8 @@ if mipsr6 then -- Instructions added with MIPSR6.
 else -- Instructions removed by MIPSR6.
 
   for k,v in pairs({
-    -- Traps, don't use.
     addi_3 =	"20000000TSI",
     daddi_3 =	mips64 and "60000000TSI",
-
-    -- Branch on likely, don't use.
     beqzl_2 =	"50000000SB",
     beql_3 =	"50000000STB",
     bnezl_2 =	"54000000SB",
@@ -612,8 +512,6 @@ else -- Instructions removed by MIPSR6.
     pref_2 =	"cc000000NO",
     sc_2 =	"e0000000TO",
     scd_2 =	mips64 and "f0000000TO",
-
-    -- Opcode SPECIAL.
     movf_2 =	"00000001DS",
     movf_3 =	"00000001DSC",
     movt_2 =	"00010001DS",
@@ -633,8 +531,6 @@ else -- Instructions removed by MIPSR6.
     ddivu_3 =	mips64 and "0000001fST",
     dmult_2 =	mips64 and "0000001cST",
     dmultu_2 =	mips64 and "0000001dST",
-
-    -- Opcode REGIMM.
     tgei_2 =	"04080000SI",
     tgeiu_2 =	"04090000SI",
     tlti_2 =	"040a0000SI",
@@ -645,8 +541,6 @@ else -- Instructions removed by MIPSR6.
     bgezal_2 =	"04110000SB",
     bltzall_2 =	"04120000SB",
     bgezall_2 =	"04130000SB",
-
-    -- Opcode SPECIAL2.
     madd_2 =	"70000000ST",
     maddu_2 =	"70000001ST",
     mul_3 =	"70000002DST",
@@ -658,8 +552,6 @@ else -- Instructions removed by MIPSR6.
     dclo_2 =	mips64 and "70000025D=TS",
     sdbbp_0 =	"7000003f",
     sdbbp_1 =	"7000003fY",
-
-    -- Opcode COP1.
     bc1f_1 =	"45000000B",
     bc1f_2 =	"45000000CB",
     bc1t_1 =	"45010000B",
@@ -796,8 +688,6 @@ else -- Instructions removed by MIPSR6.
     ["c.le.ps_3"] =	"46c0003eVGH",
     ["c.ngt.ps_2"] =	"46c0003fGH",
     ["c.ngt.ps_3"] =	"46c0003fVGH",
-
-    -- Opcode COP1X.
     lwxc1_2 =	"4c000000FX",
     ldxc1_2 =	"4c000001FX",
     luxc1_2 =	"4c000005FX",
@@ -822,8 +712,6 @@ else -- Instructions removed by MIPSR6.
   }) do map_op[k] = v end
 
 end
-
-------------------------------------------------------------------------------
 
 local function parse_gpr(expr)
   local tname, ovreg = match(expr, "^([%w_]+):(r[1-3]?[0-9])$")
@@ -911,26 +799,21 @@ end
 
 local function parse_label(label, def)
   local prefix = sub(label, 1, 2)
-  -- =>label (pc label reference)
   if prefix == "=>" then
     return "PC", 0, sub(label, 3)
   end
-  -- ->name (global label reference)
   if prefix == "->" then
     return "LG", map_global[sub(label, 3)]
   end
   if def then
-    -- [1-9] (local label definition)
     if match(label, "^[1-9]$") then
       return "LG", 10+tonumber(label)
     end
   else
-    -- [<>][1-9] (local label reference)
     local dir, lnum = match(label, "^([<>])([1-9])$")
     if dir then -- Fwd: 1-9, Bkwd: 11-19.
       return "LG", lnum + (dir == ">" and 0 or 10)
     end
-    -- extern label (extern label reference)
     local extname = match(label, "^extern%s+(%S+)$")
     if extname then
       return "EXT", map_extern[extname]
@@ -938,21 +821,12 @@ local function parse_label(label, def)
   end
   werror("bad label `"..label.."'")
 end
-
-------------------------------------------------------------------------------
-
--- Handle opcodes defined with template strings.
 map_op[".template__"] = function(params, template, nparams)
   if not params then return sub(template, 9) end
   local op = tonumber(sub(template, 1, 8), 16)
   local n = 1
-
-  -- Limit number of section buffer positions used by a single dasm_put().
-  -- A single opcode needs a maximum of 2 positions (ins/ext).
   if secpos+2 > maxsecpos then wflush() end
   local pos = wpos()
-
-  -- Process each character.
   for p in gmatch(sub(template, 9), ".") do
     if p == "D" then
       op = op + shl(parse_gpr(params[n]), 11); n = n + 1
@@ -1010,40 +884,26 @@ map_op[".template__"] = function(params, template, nparams)
   end
   wputpos(pos, op)
 end
-
-------------------------------------------------------------------------------
-
--- Pseudo-opcode to mark the position where the action list is to be emitted.
 map_op[".actionlist_1"] = function(params)
   if not params then return "cvar" end
   local name = params[1] -- No syntax check. You get to keep the pieces.
   wline(function(out) writeactions(out, name) end)
 end
-
--- Pseudo-opcode to mark the position where the global enum is to be emitted.
 map_op[".globals_1"] = function(params)
   if not params then return "prefix" end
   local prefix = params[1] -- No syntax check. You get to keep the pieces.
   wline(function(out) writeglobals(out, prefix) end)
 end
-
--- Pseudo-opcode to mark the position where the global names are to be emitted.
 map_op[".globalnames_1"] = function(params)
   if not params then return "cvar" end
   local name = params[1] -- No syntax check. You get to keep the pieces.
   wline(function(out) writeglobalnames(out, name) end)
 end
-
--- Pseudo-opcode to mark the position where the extern names are to be emitted.
 map_op[".externnames_1"] = function(params)
   if not params then return "cvar" end
   local name = params[1] -- No syntax check. You get to keep the pieces.
   wline(function(out) writeexternnames(out, name) end)
 end
-
-------------------------------------------------------------------------------
-
--- Label pseudo-opcode (converted from trailing colon form).
 map_op[".label_1"] = function(params)
   if not params then return "[1-9] | ->global | =>pcexpr" end
   if secpos+1 > maxsecpos then wflush() end
@@ -1051,10 +911,6 @@ map_op[".label_1"] = function(params)
   if mode == "EXT" then werror("bad label definition") end
   waction("LABEL_"..mode, n, s, 1)
 end
-
-------------------------------------------------------------------------------
-
--- Pseudo-opcodes for data storage.
 map_op[".long_*"] = function(params)
   if not params then return "imm..." end
   for _,p in ipairs(params) do
@@ -1065,15 +921,12 @@ map_op[".long_*"] = function(params)
     if secpos+2 > maxsecpos then wflush() end
   end
 end
-
--- Alignment pseudo-opcode.
 map_op[".align_1"] = function(params)
   if not params then return "numpow2" end
   if secpos+1 > maxsecpos then wflush() end
   local align = tonumber(params[1])
   if align then
     local x = align
-    -- Must be a power of 2 in the range (2 ... 256).
     for i=1,8 do
       x = x / 2
       if x == 1 then
@@ -1084,10 +937,6 @@ map_op[".align_1"] = function(params)
   end
   werror("bad alignment")
 end
-
-------------------------------------------------------------------------------
-
--- Pseudo-opcode for (primitive) type definitions (map to C types).
 map_op[".type_3"] = function(params, nparams)
   if not params then
     return nparams == 2 and "name, ctype" or "name, ctype, reg"
@@ -1100,9 +949,7 @@ map_op[".type_3"] = function(params, nparams)
   if tp then
     werror("duplicate type `"..name.."'")
   end
-  -- Add #type to defines. A bit unclean to put it in map_archdef.
   map_archdef["#"..name] = "sizeof("..ctype..")"
-  -- Add new type and emit shortcut define.
   local num = ctypenum + 1
   map_type[name] = {
     ctype = ctype,
@@ -1113,8 +960,6 @@ map_op[".type_3"] = function(params, nparams)
   ctypenum = num
 end
 map_op[".type_2"] = map_op[".type_3"]
-
--- Dump type definitions.
 local function dumptypes(out, lvl)
   local t = {}
   for name in pairs(map_type) do t[#t+1] = name end
@@ -1127,45 +972,27 @@ local function dumptypes(out, lvl)
   end
   out:write("\n")
 end
-
-------------------------------------------------------------------------------
-
--- Set the current section.
 function _M.section(num)
   waction("SECTION", num)
   wflush(true) -- SECTION is a terminal action.
 end
-
-------------------------------------------------------------------------------
-
--- Dump architecture description.
 function _M.dumparch(out)
   out:write(format("DynASM %s version %s, released %s\n\n",
     _info.arch, _info.version, _info.release))
   dumpactions(out)
 end
-
--- Dump all user defined elements.
 function _M.dumpdef(out, lvl)
   dumptypes(out, lvl)
   dumpglobals(out, lvl)
   dumpexterns(out, lvl)
 end
-
-------------------------------------------------------------------------------
-
--- Pass callbacks from/to the DynASM core.
 function _M.passcb(wl, we, wf, ww)
   wline, werror, wfatal, wwarn = wl, we, wf, ww
   return wflush
 end
-
--- Setup the arch-specific module.
 function _M.setup(arch, opt)
   g_arch, g_opt = arch, opt
 end
-
--- Merge the core maps and the arch-specific maps.
 function _M.mergemaps(map_coreop, map_def)
   setmetatable(map_op, { __index = map_coreop })
   setmetatable(map_def, { __index = map_archdef })
@@ -1173,5 +1000,3 @@ function _M.mergemaps(map_coreop, map_def)
 end
 
 return _M
-
-------------------------------------------------------------------------------

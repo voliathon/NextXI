@@ -943,7 +943,6 @@ local meta_cache = {}
 local result_cache = {}
 local index_cache = {}
 local configure_metatable = function(meta, methods, name)
-    -- Create default addition function
     if meta.__add_element == nil then
         meta.__add_element = function(t, v)
             rawset(t, #t + 1, v)
@@ -951,8 +950,6 @@ local configure_metatable = function(meta, methods, name)
     end
 
     local add = meta.__add_element
-
-    -- Create default removal function
     if meta.__remove_key == nil then
         meta.__remove_key = function(t, k)
             rawset(t, k, nil)
@@ -960,8 +957,6 @@ local configure_metatable = function(meta, methods, name)
     end
 
     local remove = meta.__remove_key
-
-    -- Create value constructor
     if meta.__create == nil then
         meta.__create = function(...)
             return setmetatable({...}, meta)
@@ -969,8 +964,6 @@ local configure_metatable = function(meta, methods, name)
     end
 
     local constructor = meta.__create
-
-    -- Create copy constructor
     if meta.__convert == nil then
         meta.__convert = function(t)
             local res = constructor()
@@ -985,8 +978,6 @@ local configure_metatable = function(meta, methods, name)
 
     local index_table = build_index_table(constructor, converter, add, remove, methods)
     index_cache[index_table] = true
-
-    -- __index
     local original_index = meta.__index
     local index_type = type(original_index)
     local raw_getter
@@ -1027,8 +1018,6 @@ local configure_metatable = function(meta, methods, name)
         return original_result
     end
 
-    -- Default implementations
-
     if meta.__len == nil then
         meta.__len = enumerable.count
     end
@@ -1038,11 +1027,6 @@ local configure_metatable = function(meta, methods, name)
             return lazy_functions.concat(constructor, t, other)
         end
     end
-
-    -- Lazy evaluation
-    -- If __pairs is not provided, it should default to pairs, but we can't use pairs itself
-    -- or it will go to the __pairs metamethod again and infinitely recurse, so we provide a
-    -- custom pairs implementation
     local enumerator = meta.__pairs or function(t)
         return next, t, nil
     end
@@ -1053,8 +1037,6 @@ local configure_metatable = function(meta, methods, name)
         end
         return enumerator(t)
     end
-
-    -- Implement toX function as a constructor call
     if name ~= nil then
         local key = 'to_' .. name
         enumerable[key] = converter
@@ -1065,8 +1047,6 @@ local configure_metatable = function(meta, methods, name)
             cached_result[key] = converter
         end
     end
-
-    -- Evaluate table for operators
     local is_native = function(fn)
         for _, enumerable_fn in pairs(index_table) do
             if enumerable_fn == fn then
@@ -1092,8 +1072,6 @@ local configure_metatable = function(meta, methods, name)
             end
         end
     end
-
-    -- Hack to remove second table argument to __len
     if meta.__len ~= nil then
         local len = meta.__len
         meta.__len = function(t)
@@ -1144,7 +1122,6 @@ local result = {
         end
 
         if type(t) == 'table' then
-            --TODO: Or just ignore existing metatable? Or copy? Or initialize fully?
             assert(getmetatable(t) == nil, 'Cannot wrap enumerable around existing metatable')
 
             return empty_converter(t, {})

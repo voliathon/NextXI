@@ -1,4 +1,3 @@
---[[
 This library provides a set of functions to aid in debugging.
 ]]
 
@@ -15,8 +14,6 @@ local logger = {}
 _libs.logger = logger
 
 _raw = _raw or {}
-
--- Set up, based on addon.
 logger.defaults = {}
 logger.defaults.logtofile = false
 logger.defaults.defaultfile = 'lua.log'
@@ -24,17 +21,11 @@ logger.defaults.logcolor = 207
 logger.defaults.errorcolor = 167
 logger.defaults.warningcolor = 200
 logger.defaults.noticecolor = 160
-
---[[
     Local functions
 ]]
 
 local arrstring
 local captionlog
-
--- Returns a concatenated string list, separated by whitespaces, for the chat output function.
--- Converts any kind of object type to a string, so it's type-safe.
--- Concatenates all provided arguments with whitespaces.
 function arrstring(...)
     local str = ''
     local args = {...}
@@ -48,8 +39,6 @@ function arrstring(...)
 
     return str
 end
-
--- Prints the arguments provided to the FFXI chatlog, in the same color used for Campaign/Bastion alerts and Kupower messages. Can be changed below.
 function captionlog(msg, msgcolor, ...)
     local caption = table.concat({_addon and _addon.name, msg}, ' ')
 
@@ -89,9 +78,6 @@ end
 function notice(...)
     captionlog('Notice', logger.settings.noticecolor, ...)
 end
-
--- Prints the arguments provided to a file, analogous to log(...) in functionality.
--- If the first argument ends with '.log', it will print to that output file, otherwise to 'lua.log' in the addon directory.
 function flog(filename, ...)
     filename = filename or logger.settings.defaultfile
 
@@ -107,16 +93,12 @@ function flog(filename, ...)
         fh:close()
     end
 end
-
--- Returns a string representation of a table in explicit Lua syntax: {...}
 function table.tostring(t)
     if next(t) == nil then
         return '{}'
     end
 
     keys = keys or false
-
-    -- Iterate over table.
     local tstr = ''
     local kt = {}
     k = 0
@@ -136,7 +118,6 @@ function table.tostring(t)
 
     for i, key in ipairs(kt) do
         val = t[key]
-        -- Check for nested tables
         if type(val) == 'table' then
             if val.tostring then
                 valstr = val:tostring()
@@ -150,29 +131,21 @@ function table.tostring(t)
                 valstr = tostring(val)
             end
         end
-
-        -- Append to the string.
         if tonumber(key) then
             tstr = tstr .. valstr
         else
             tstr = tstr .. tostring(key) .. '=' .. valstr
         end
-
-        -- Add comma, unless it's the last value.
         if next(kt, i) ~= nil then
             tstr = tstr .. ', '
         end
     end
-
-    -- Output the result, enclosed in braces.
     return '{' .. tstr .. '}'
 end
 
 _meta = _meta or {}
 _meta.T = _meta.T or {}
 _meta.T.__tostring = table.tostring
-
--- Prints a string representation of a table in explicit Lua syntax: {...}
 function table.print(t, keys)
     if t.tostring then
         log(t:tostring(keys))
@@ -180,11 +153,6 @@ function table.print(t, keys)
         log(table.tostring(t, keys))
     end
 end
-
--- Returns a vertical string representation of a table in explicit Lua syntax, with every element in its own line:
---- {
----     ...
---- }
 function table.tovstring(t, keys, indentlevel)
     if next(t) == nil then
         return '{}'
@@ -217,8 +185,6 @@ function table.tovstring(t, keys, indentlevel)
             end
             return ret
         end
-        
-        -- Check for nested tables
         if type(val) == 'table' then
             if val.tovstring then
                 valstr = val:tovstring(keys, indentlevel + 1)
@@ -228,15 +194,11 @@ function table.tovstring(t, keys, indentlevel)
         else
             valstr = sanitize(val)
         end
-
-        -- Append one line with indent.
         if not keys and tonumber(key) then
             tstr = tstr .. indent .. '    ' .. '[' .. sanitize(key) .. ']=' .. valstr
         else
             tstr = tstr .. indent .. '    ' .. '[' .. sanitize(key) .. ']=' .. valstr
         end
-
-        -- Add comma, unless it's the last value.
         if next(kt, i) ~= nil then
             tstr = tstr .. ', '
         end
@@ -247,11 +209,6 @@ function table.tovstring(t, keys, indentlevel)
 
     return tstr
 end
-
--- Prints a vertical string representation of a table in explicit Lua syntax, with every element in its own line:
---- {
----     ...
---- }
 function table.vprint(t, keys)
     if t.tovstring then
         log(t:tovstring(keys))
@@ -259,16 +216,12 @@ function table.vprint(t, keys)
         log(table.tovstring(t, keys))
     end
 end
-
--- Load logger settings (has to be after the logging functions have been defined, so those work in the config and related files).
 local config = require('config')
 
 logger.settings = config.load('../libs/logger.xml', logger.defaults)
 
 return logger
-
---[[
-Copyright © 2013-2014, Windower
+Copyright ï¿½ 2013-2014, Windower
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:

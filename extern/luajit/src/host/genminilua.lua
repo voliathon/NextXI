@@ -1,7 +1,3 @@
-----------------------------------------------------------------------------
--- Lua script to generate a customized, minified version of Lua.
--- The resulting 'minilua' is used for the build process of LuaJIT.
-----------------------------------------------------------------------------
 
 local sub, match, gsub = string.sub, string.match, string.gsub
 

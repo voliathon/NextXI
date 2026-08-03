@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "addon/modules/ui.hpp"
 
 #include "addon/lua.hpp"
@@ -103,8 +79,6 @@ extern "C"
     void end_scope(context& ctx) { ctx.pop_enabled(); }
 
 void set_enabled(context& ctx, bool enabled) { ctx.enabled(enabled); }
-
-    // --- STYLING SYSTEM WRAPPERS ---
     void push_style(
         context& ctx, bool has_text, std::int32_t text_color, bool has_bg,
         std::int32_t bg_color, bool has_border, std::int32_t border_color,
@@ -124,7 +98,6 @@ void set_enabled(context& ctx, bool enabled) { ctx.enabled(enabled); }
     }
 
     void pop_style(context& ctx) { ctx.pop_style(); }
-    // -----------------------------------
 
     void set_bounds(context& ctx, float x0, float y0, float x1, float y1)
     {
@@ -158,8 +131,6 @@ void set_enabled(context& ctx, bool enabled) { ctx.enabled(enabled); }
         context& ctx, std::uint64_t id, widget::edit_state& state,
         char8_t const* text_data, std::size_t text_size)
     {
-        // HACK: the text pointer in the state is only valid as long as the
-        // widget has focus.
         if (!ctx.is_focused(ui::id{id}))
         {
             state.text({text_data, text_size});
@@ -275,8 +246,6 @@ int load_ui_module(lua::state s)
     lua::push(guard, &ui::wrappers::begin_scope);
     lua::push(guard, &ui::wrappers::end_scope);
     lua::push(guard, &ui::wrappers::set_enabled);
-
-    // Push the new style system
     lua::push(guard, &ui::wrappers::push_style);
     lua::push(guard, &ui::wrappers::pop_style);
 

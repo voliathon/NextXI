@@ -1,7 +1,3 @@
---[[ LuaJIT FFI reflection Library ]]--
-
-
--- Windower modifications
 local math = require('math')
 local string = require('string')
 
@@ -20,8 +16,6 @@ local function gc_str(gcref) -- Convert a GCref (to a GCstr) into a string
 end
 
 local typeinfo = ffi.typeinfo or function(id)
-  -- ffi.typeof is present in LuaJIT v2.1 since 8th Oct 2014 (d6ff3afc)
-  -- this is an emulation layer for older versions of LuaJIT
   local ctype = (CTState or init_CTState()).tab[id]
   return {
     info = ctype.info,
@@ -36,7 +30,6 @@ local function memptr(gcobj)
 end
 
 init_CTState = function()
-  -- Relevant minimal definitions from lj_ctype.h
   ffi.cdef [[
     typedef struct CType {
       uint32_t info;
@@ -56,19 +49,14 @@ init_CTState = function()
       void *miscmap;
     } CTState;
   ]]
-
-  -- Acquire a pointer to this Lua universe's CTState
   local co = coroutine.create(function()end) -- Any live coroutine will do.
   local uint32_ptr = ffi.typeof("uint32_t*")
   local G = ffi.cast(uint32_ptr, ffi.cast(uint32_ptr, memptr(co))[2])
-  -- In global_State, `MRef ctype_state` is immediately before `GCRef gcroot[GCROOT_MAX]`.
-  -- We first find (an entry in) gcroot by looking for a metamethod name string.
   local anchor = ffi.cast("uint32_t", ffi.cast("const char*", "__index"))
   local i = 0
   while math.abs(tonumber(G[i] - anchor)) > 64 do
     i = i + 1
   end
-  -- We then work backwards looking for something resembling ctype_state.
   repeat
     i = i - 1
     CTState = ffi.cast("CTState*", G[i])
@@ -78,20 +66,12 @@ init_CTState = function()
 end
 
 init_miscmap = function()
-  -- Acquire the CTState's miscmap table as a Lua variable
   local t = {}; t[0] = t
   local tvalue = ffi.cast("uint32_t*", memptr(t))[2]
   ffi.cast("uint32_t*", tvalue)[ffi.abi"le" and 0 or 1] = ffi.cast("uint32_t", ffi.cast("uintptr_t", (CTState or init_CTState()).miscmap))
   miscmap = t[0]
   return miscmap
 end
-
--- Information for unpacking a `struct CType`.
--- One table per CT_* constant, containing:
--- * A name for that CT_
--- * Roles of the cid and size fields.
--- * Whether the sib field is meaningful.
--- * Zero or more applicable boolean flags.
 local CTs = {[0] =
   {"int",
     "", "size", false,
@@ -163,16 +143,12 @@ local CTs = {[0] =
     "TOK", "size",
   },
 }
-
--- Set of CType::cid roles which are a CTypeID.
 local type_keys = {
   element_type = true,
   return_type = true,
   value_type = true,
   type = true,
 }
-
--- Create a metatable for each CT.
 local metatables = {
 }
 for _, CT in ipairs(CTs) do
@@ -180,8 +156,6 @@ for _, CT in ipairs(CTs) do
   local mt = {__index = {}}
   metatables[what] = mt
 end
-
--- Logic for merging an attribute CType onto the annotated CType.
 local CTAs = {[0] =
   function(a, refct) error("TODO: CTA_NONE") end,
   function(a, refct) error("TODO: CTA_QUAL") end,
@@ -197,8 +171,6 @@ local CTAs = {[0] =
   function(a, refct) refct.sym_name = a.name end,
   function(a, refct) error("TODO: CTA_BAD") end,
 }
-
--- C function calling conventions (CTCC_* constants in lj_refct.h)
 local CTCCs = {[0] = 
   "cdecl",
   "thiscall",
@@ -216,8 +188,6 @@ local function refct_from_id(id) -- refct = refct_from_id(CTypeID)
     typeid = id,
     name = ctype.name,
   }, metatables[what])
-  
-  -- Interpret (most of) the CType::info field
   for i = 5, #CT do
     if bit.band(ctype.info, CT[i][1]) ~= 0 then
       if CT[i][3] == "subwhat" then
@@ -252,7 +222,6 @@ local function refct_from_id(id) -- refct = refct_from_id(CTypeID)
   end
   
   if what == "attrib" then
-    -- Merge leading attributes onto the type being decorated.
     local CTA = CTAs[bit.band(bit.rshift(ctype.info, 16), 0xff)]
     if refct.type then
       local ct = refct.type
@@ -264,7 +233,6 @@ local function refct_from_id(id) -- refct = refct_from_id(CTypeID)
       refct.CTA = CTA
     end
   elseif what == "bitfield" then
-    -- Decode extra bitfield fields, and make it look like a normal field.
     refct.offset = refct.offset + bit.band(ctype.info, 127) / 8
     refct.size = bit.band(bit.rshift(ctype.info, 8), 127) / 8
     refct.type = {
@@ -302,7 +270,6 @@ local function sib_iter(s, refct)
 end
 
 local function siblings(refct)
-  -- Follow to the end of the attrib chain, if any.
   while refct.attributes do
     refct = refct_from_id(refct.attributes.subtype or typeinfo(refct.typeid).sib)
   end
