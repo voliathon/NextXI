@@ -1,4 +1,0 @@
-Copyright (c) 2026 Voliathon. All rights reserved.
-
-This software is for private, personal use.
-Portions of this software are based on the original work by the Windower Dev Team, Byrthnoth, and other open-source contributors to the FFXI modding community.
