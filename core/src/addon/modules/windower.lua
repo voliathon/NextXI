@@ -64,28 +64,144 @@ local get_ffxi_spells_c = ffi.typeof('char const*(*)()')(get_ffxi_spells_ptr)
 local get_ffxi_entities_c = ffi.typeof('char const*(*)()')(get_ffxi_entities_ptr)
 local project_c = ffi.typeof('void(*)(float const*, float*)')(project_ptr)
 
+
+-- Lightweight inline JSON decoder (pure Lua, no external module required)
+-- Handles objects {}, arrays [], strings, numbers, booleans, null
+local json_decode
+do
+    local function skip_ws(s, i)
+        while i <= #s do
+            local c = s:sub(i,i)
+            if c == ' ' or c == '\t' or c == '\n' or c == '\r' then i = i + 1
+            else break end
+        end
+        return i
+    end
+    local parse_value  -- forward decl
+    local function parse_string(s, i)
+        i = i + 1  -- skip opening "
+        local t = {}
+        while i <= #s do
+            local c = s:sub(i,i)
+            if c == '"' then return table.concat(t), i + 1 end
+            if c == '\\' then
+                local n = s:sub(i+1,i+1)
+                if     n == '"' then table.insert(t, '"');  i = i + 2
+                elseif n == '\\' then table.insert(t, '\\'); i = i + 2
+                elseif n == '/' then table.insert(t, '/');  i = i + 2
+                elseif n == 'n' then table.insert(t, '\n'); i = i + 2
+                elseif n == 'r' then table.insert(t, '\r'); i = i + 2
+                elseif n == 't' then table.insert(t, '\t'); i = i + 2
+                else table.insert(t, n); i = i + 2 end
+            else
+                table.insert(t, c); i = i + 1
+            end
+        end
+        error('unterminated string')
+    end
+    local function parse_number(s, i)
+        local j = i
+        if s:sub(j,j) == '-' then j = j + 1 end
+        while j <= #s and s:sub(j,j):match('%d') do j = j + 1 end
+        if j <= #s and s:sub(j,j) == '.' then
+            j = j + 1
+            while j <= #s and s:sub(j,j):match('%d') do j = j + 1 end
+        end
+        if j <= #s and (s:sub(j,j) == 'e' or s:sub(j,j) == 'E') then
+            j = j + 1
+            if j <= #s and (s:sub(j,j) == '+' or s:sub(j,j) == '-') then j = j + 1 end
+            while j <= #s and s:sub(j,j):match('%d') do j = j + 1 end
+        end
+        return tonumber(s:sub(i, j-1)), j
+    end
+    local function parse_array(s, i)
+        i = i + 1  -- skip [
+        local t = {}
+        i = skip_ws(s, i)
+        if s:sub(i,i) == ']' then return t, i + 1 end
+        while true do
+            local v; v, i = parse_value(s, i)
+            table.insert(t, v)
+            i = skip_ws(s, i)
+            local c = s:sub(i,i)
+            if c == ']' then return t, i + 1 end
+            if c ~= ',' then error('expected , or ]') end
+            i = i + 1
+            i = skip_ws(s, i)
+        end
+    end
+    local function parse_object(s, i)
+        i = i + 1  -- skip {
+        local t = {}
+        i = skip_ws(s, i)
+        if s:sub(i,i) == '}' then return t, i + 1 end
+        while true do
+            i = skip_ws(s, i)
+            if s:sub(i,i) ~= '"' then error('expected key string') end
+            local k; k, i = parse_string(s, i)
+            i = skip_ws(s, i)
+            if s:sub(i,i) ~= ':' then error('expected :') end
+            i = i + 1
+            i = skip_ws(s, i)
+            local v; v, i = parse_value(s, i)
+            t[k] = v
+            i = skip_ws(s, i)
+            local c = s:sub(i,i)
+            if c == '}' then return t, i + 1 end
+            if c ~= ',' then error('expected , or }') end
+            i = i + 1
+        end
+    end
+    parse_value = function(s, i)
+        i = skip_ws(s, i)
+        local c = s:sub(i,i)
+        if c == '{' then return parse_object(s, i)
+        elseif c == '[' then return parse_array(s, i)
+        elseif c == '"' then return parse_string(s, i)
+        elseif c == 't' then return true,  i + 4
+        elseif c == 'f' then return false, i + 5
+        elseif c == 'n' then return nil,   i + 4
+        else return parse_number(s, i) end
+    end
+    json_decode = function(s)
+        local ok, result = pcall(function()
+            local v, _ = parse_value(s, 1)
+            return v
+        end)
+        if ok then return result else return nil end
+    end
+end
+
 local function get_player()
     local ptr = get_ffxi_player_c()
-    if ptr ~= nil then return ffi.string(ptr) end
-    return "{}"
+    if ptr ~= nil then
+        return json_decode(ffi.string(ptr)) or {}
+    end
+    return {}
 end
 
 local function get_items()
     local ptr = get_ffxi_items_c()
-    if ptr ~= nil then return ffi.string(ptr) end
-    return "{}"
+    if ptr ~= nil then
+        return json_decode(ffi.string(ptr)) or {}
+    end
+    return {}
 end
 
 local function get_spells()
     local ptr = get_ffxi_spells_c()
-    if ptr ~= nil then return ffi.string(ptr) end
-    return "[]"
+    if ptr ~= nil then
+        return json_decode(ffi.string(ptr)) or {}
+    end
+    return {}
 end
 
 local function get_entities()
     local ptr = get_ffxi_entities_c()
-    if ptr ~= nil then return ffi.string(ptr) end
-    return "[]"
+    if ptr ~= nil then
+        return json_decode(ffi.string(ptr)) or {}
+    end
+    return {}
 end
 
 local in_vec = ffi.new('float[3]')
@@ -136,7 +252,8 @@ local windower = {
         get_player = get_player,
         get_items = get_items,
         get_spells = get_spells,
-        get_entities = get_entities
+        get_entities = get_entities,
+        get_bag_info = function() return {} end
     }
 }
 

@@ -8,6 +8,7 @@ require('strings')
 require('maths')
 require('lists')
 require('sets')
+local os = require('os')
 
 local fields = {}
 fields.outgoing = {}

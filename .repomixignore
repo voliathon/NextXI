@@ -1,0 +1,23 @@
+# Ignore build outputs
+build
+Debug/
+Release/
+bin/
+obj/
+build/
+x64/
+Debug/
+Release/
+
+# Ignore IDE / Visual Studio files
+.vs/
+*.user
+*.suo
+.github
+
+
+# Ignore third-party dependencies / external libs
+vcpkg_installed/
+deps/
+ext/
+extern

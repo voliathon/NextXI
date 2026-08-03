@@ -154,68 +154,102 @@ extern "C" char const* get_ffxi_spells_ffi()
     static std::string spells_json = "[ 1, 2, 3, 4, 5 ]";
     return spells_json.c_str();
 }
+// ---------------------------------------------------------------------------
+// POD struct — no destructor, safe to use inside SEH helper functions
+struct entity_slot_t
+{
+    uint32_t id;
+    char     name[24];
+    float    x, y, z;
+};
+
+// Resolves entity array base pointer from a pattern-scan match address.
+// Pure C-style function (no C++ objects with dtors) — required to use __try/__except (C2712).
+static void** seh_resolve_entity_ptr(void* match_addr)
+{
+    void** out = nullptr;
+    __try  { out = *reinterpret_cast<void***>(static_cast<char*>(match_addr) + 9); }
+    __except (EXCEPTION_EXECUTE_HANDLER) { out = nullptr; }
+    return out;
+}
+
+// Reads one entity slot from the array into a POD struct.
+// Pure C-style function (no C++ objects with dtors) — required to use __try/__except (C2712).
+static bool seh_read_entity_slot(void** arr, int idx, entity_slot_t* out)
+{
+    __try
+    {
+        void* ent = arr[idx];
+        if (!ent) return false;
+
+        out->id = *(uint32_t*)((char*)ent + 0x078);
+        if (out->id == 0) return false;
+
+        memset(out->name, 0, 24);
+        memcpy(out->name, (char*)ent + 0x07C, 23);
+        out->name[23] = '\0';
+        if (out->name[0] == '\0') return false;
+
+        // Sanitize: replace non-printable / JSON-unsafe characters
+        for (int j = 0; j < 23 && out->name[j]; ++j)
+        {
+            unsigned char ch = (unsigned char)out->name[j];
+            if (ch < 0x20 || ch == '"' || ch == '\\') out->name[j] = '?';
+        }
+
+        out->x = *(float*)((char*)ent + 0x004);
+        out->z = *(float*)((char*)ent + 0x008);
+        out->y = *(float*)((char*)ent + 0x00C);
+
+        // Reject NaN / Inf — would produce invalid JSON
+        if (out->x != out->x || out->y != out->y || out->z != out->z) return false;
+        return true;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+// ---------------------------------------------------------------------------
 
 extern "C" char const* get_ffxi_entities_ffi()
 {
     static std::string entities_json;
-    static void** entity_array_ptr = nullptr;
-    static bool scanned = false;
+    static void**      entity_array_ptr = nullptr;
+    static bool        scanned          = false;
 
-    if (!scanned)
+    if (!scanned && ::GetModuleHandleW(L"FFXiMain.dll"))
     {
-        if (::GetModuleHandleW(L"FFXiMain.dll"))
+        scanned = true;
+        windower::signature sig{u8"8B560C8B042A8B0485"};
+        auto results = windower::scan<1>(u8"FFXiMain.dll", sig);
+        if (results[0])
         {
-            scanned = true;
-            windower::signature sig{u8"8B560C8B042A8B0485"};
-            auto results = windower::scan<1>(u8"FFXiMain.dll", sig);
-            // Guard: only dereference if the signature scan returned a valid (non-null) address.
-            // If results[0] is null (module not found or signature mismatch), (char*)null + 9
-            // equals 0x9, which causes an access violation (crash at address 0x9).
-            if (results[0])
-            {
-                void* match_addr = static_cast<void*>(results[0]);
-                // The instruction is: mov eax, [eax*4 + XXXXXXXX]  (8B 04 85 XX XX XX XX)
-                // The embedded 4-byte absolute address XXXXXXXX sits at byte offset 9 from
-                // the start of our matched pattern (3 bytes for 8B56 0C + 3 bytes for 8B04 2A
-                // + 3 bytes for 8B04 85 = 9 bytes before the address operand).
-                entity_array_ptr = *reinterpret_cast<void***>(
-                    static_cast<char*>(match_addr) + 9);
-            }
+            entity_array_ptr = seh_resolve_entity_ptr(static_cast<void*>(results[0]));
+            if (!entity_array_ptr) scanned = false;
         }
     }
 
     entities_json = "[";
-    if (entity_array_ptr && !::IsBadReadPtr(entity_array_ptr, 2304 * sizeof(void*)))
+
+    if (entity_array_ptr)
     {
         bool first = true;
+        entity_slot_t slot;
+
         for (int i = 0; i < 2304; ++i)
         {
-            void* ent = entity_array_ptr[i];
-            if (ent && !::IsBadReadPtr(ent, 0x0A0))
-            {
-                uint32_t id = *(uint32_t*)((char*)ent + 0x078);
-                if (id == 0) continue;
+            if (!seh_read_entity_slot(entity_array_ptr, i, &slot)) continue;
 
-                char name[24] = {0};
-                memcpy(name, (char*)ent + 0x07C, 24);
-                name[23] = '\0'; // ensure null termination
-                if (strlen(name) == 0) continue;
+            if (!first) entities_json += ",";
+            first = false;
 
-                float x = *(float*)((char*)ent + 0x004);
-                float z = *(float*)((char*)ent + 0x008);
-                float y = *(float*)((char*)ent + 0x00C);
-
-                if (!first) entities_json += ",";
-                first = false;
-
-                char buffer[256];
-                snprintf(buffer, sizeof(buffer), "{\"id\":%u,\"name\":\"%s\",\"x\":%f,\"y\":%f,\"z\":%f,\"target_id\":0}", id, name, x, y, z);
-                entities_json += buffer;
-            }
+            char buffer[256];
+            snprintf(buffer, sizeof(buffer),
+                "{\"id\":%u,\"name\":\"%s\",\"x\":%.2f,\"y\":%.2f,\"z\":%.2f,\"target_id\":0}",
+                slot.id, slot.name, (double)slot.x, (double)slot.y, (double)slot.z);
+            entities_json += buffer;
         }
     }
-    entities_json += "]";
 
+    entities_json += "]";
     return entities_json.c_str();
 }
 

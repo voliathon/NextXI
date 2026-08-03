@@ -45,14 +45,14 @@ local state = {
 local version_cache = {}
 
 -- Elite UI Colors
-local COLOR_ACCENT = ui.color.rgb(100, 200, 255)
-local COLOR_ON = ui.color.rgb(40, 200, 100)
-local COLOR_OFF = ui.color.rgb(220, 80, 80)
-local COLOR_TEXT = ui.color.rgb(230, 230, 230)
-local COLOR_MUTED = ui.color.rgb(140, 140, 140)
-local COLOR_WARN = ui.color.rgb(255, 180, 50)
-local COLOR_BG = ui.color.fade(ui.color.system_black, 230)
-local COLOR_BORDER = ui.color.rgb(80, 120, 160)
+local COLOR_ACCENT = ui.color.rgb(0, 255, 255)
+local COLOR_ON = ui.color.rgb(50, 255, 120)
+local COLOR_OFF = ui.color.rgb(255, 70, 70)
+local COLOR_TEXT = ui.color.rgb(240, 240, 245)
+local COLOR_MUTED = ui.color.rgb(100, 120, 140)
+local COLOR_WARN = ui.color.rgb(255, 160, 0)
+local COLOR_BG = ui.color.fade(ui.color.rgb(15, 20, 30), 245)
+local COLOR_BORDER = ui.color.fade(ui.color.rgb(0, 180, 255), 180)
 
 local ELITE_STYLE = {
     text_color = COLOR_TEXT,
@@ -279,7 +279,7 @@ end
 -- 5. ELITE UI RENDERING
 -- ============================================================================
 local market_window = ui.window_state()
-market_window.title = " NEXTXI ADDON MANAGER"
+market_window.title = "  >> NEXTXI ADDON HUD v2.1"
 market_window.size = {width = 760, height = 750}
 market_window.visible = false
 
@@ -336,7 +336,8 @@ local function draw_package(canvas, pkg)
 
     -- ROW 1: Name colored green if ENABLED, muted gray if DISABLED
     local name_color = is_on and COLOR_ON or COLOR_MUTED
-    canvas:label("  " .. pkg.name .. "  (v" .. pkg.version .. ")", name_color)
+    
+    canvas:width(350):label("  " .. pkg.name .. "  (v" .. pkg.version .. ")", name_color)
     canvas:same_line()
 
     if pkg.group == "core" or pkg.group == "dependency" then
@@ -349,23 +350,23 @@ local function draw_package(canvas, pkg)
     else
         -- Status badge: green ENABLED / red DISABLED
         if is_on then
-            canvas:width(110):label("  [● AUTO: ON ]", COLOR_ON)
+            canvas:width(110):label("[● AUTO: ON]", COLOR_ON)
         else
-            canvas:width(110):label("  [○ AUTO: OFF]", COLOR_OFF)
+            canvas:width(110):label("[○ AUTO: OFF]", COLOR_OFF)
         end
 
         canvas:same_line()
 
         -- Auto-Load Toggle
-        local auto_label = is_on and "  Disable  " or "  Enable  "
-        local auto_clicked = canvas:width(80):button("auto_" .. pkg.id, auto_label, false)
+        local auto_label = is_on and "Disable" or "Enable"
+        local auto_clicked = canvas:width(60):button("auto_" .. pkg.id, auto_label, false)
 
         canvas:same_line()
         
         -- Start/Stop buttons
-        local start_clicked = canvas:width(60):button("start_" .. pkg.id, " Start ", false)
+        local start_clicked = canvas:width(50):button("start_" .. pkg.id, "Start", false)
         canvas:same_line()
-        local stop_clicked = canvas:width(60):button("stop_" .. pkg.id, " Stop ", false)
+        local stop_clicked = canvas:width(50):button("stop_" .. pkg.id, "Stop", false)
 
         -- Readme button
         if pkg.has_readme then
@@ -413,12 +414,11 @@ local function draw_package(canvas, pkg)
 
     -- ROW 2: Author + description
     canvas:space(2)
-    canvas:label("     Author: " .. (pkg.author or "Unknown") .. "  |  " .. pkg.group:upper(), COLOR_MUTED)
-    canvas:space(2)
+    canvas:label("     [ " .. (pkg.author or "Voliathon") .. " ]   |   " .. pkg.group:upper(), COLOR_ACCENT)
+    canvas:space(4)
     canvas:label("     " .. (pkg.description or "No description provided."), COLOR_TEXT)
 
-    canvas:space(6)
-    canvas:label("-----------------------------------------------------------------------------------------------------------------------------------", COLOR_MUTED)
+    canvas:space(15)
 end
 
 
@@ -445,10 +445,10 @@ ui.display(function()
             
             local window_still_open = ui.window(market_window, function(layout)
                 
-                layout:space(10)
-                layout:label("    Profile Management", COLOR_MUTED)
+                layout:space(15)
+                layout:label("    [ SYSTEM PROFILE ]", COLOR_MUTED)
                 layout:space(5)
-                layout:label("    Active Profile:  " .. state.current_character:upper(), COLOR_ACCENT)
+                layout:label("    ACTIVE CHARACTER:  " .. state.current_character:upper(), COLOR_ACCENT)
                 
                 layout:same_line()
                 layout:space(380)
@@ -457,9 +457,7 @@ ui.display(function()
                     chat.success("AddonManager: Packages rescanned dynamically.")
                 end
                 
-                layout:space(15)
-                layout:label("=============================================================================================================", COLOR_BORDER)
-                layout:space(5)
+                layout:space(25)
 
                 layout:height(610):scroll_panel(scroll_view, function(canvas)
                     
