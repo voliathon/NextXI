@@ -46,6 +46,7 @@
     <ClInclude Include="src\addon\modules\os.hpp" />
     <ClInclude Include="src\addon\modules\pin.hpp" />
     <ClInclude Include="src\addon\unsafe.hpp" />
+    <ClInclude Include="src\command_parser.hpp" />
     <ClInclude Include="src\errors\command_error.hpp" />
     <ClInclude Include="src\errors\xml_error.hpp" />
     <ClInclude Include="src\errors\detail\error_messages.hpp" />
@@ -178,6 +179,7 @@
     <ClCompile Include="src\addon\modules\os.cpp" />
     <ClCompile Include="src\addon\modules\pin.cpp" />
     <ClCompile Include="src\addon\unsafe.cpp" />
+    <ClCompile Include="src\command_parser.cpp" />
     <ClCompile Include="src\errors\command_error.cpp" />
     <ClCompile Include="src\errors\syntax_error.cpp" />
     <ClCompile Include="src\addon\addon.cpp" />
