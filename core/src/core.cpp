@@ -59,76 +59,7 @@ windower::core::core() noexcept
             std::make_unique<windower::package_manager>();
         core::instance().package_manager->update_all();
 
-        auto& cmd = command_manager::instance();
-
-        cmd.register_command(
-            command_manager::layer::core, u8"", u8"install",
-            command_handlers::install);
-        cmd.register_command(
-            command_manager::layer::core, u8"", u8"uninstall",
-            command_handlers::uninstall);
-        cmd.register_command(
-            command_manager::layer::core, u8"", u8"update",
-            command_handlers::update);
-        cmd.register_command(
-            command_manager::layer::core, u8"", u8"updateall",
-            command_handlers::updateall);
-
-        cmd.register_command(
-            command_manager::layer::core, u8"", u8"load",
-            command_handlers::load);
-        cmd.register_command(
-            command_manager::layer::core, u8"", u8"unload",
-            command_handlers::unload);
-        cmd.register_command(
-            command_manager::layer::core, u8"", u8"reload",
-            command_handlers::reload);
-
-        cmd.register_command(
-            command_manager::layer::core, u8"", u8"unloadall",
-            command_handlers::unloadall);
-        cmd.register_command(
-            command_manager::layer::core, u8"", u8"reloadall",
-            command_handlers::reloadall);
-
-        cmd.register_command(
-            command_manager::layer::core, u8"", u8"alias",
-            command_handlers::alias, true);
-        cmd.register_command(
-            command_manager::layer::core, u8"", u8"unalias",
-            command_handlers::unalias);
-
-        cmd.register_command(
-            command_manager::layer::core, u8"", u8"bind",
-            command_handlers::bind, true);
-        cmd.register_command(
-            command_manager::layer::core, u8"", u8"unbind",
-            command_handlers::unbind, true);
-        cmd.register_command(
-            command_manager::layer::core, u8"", u8"listbinds",
-            command_handlers::listbinds, true);
-
-        cmd.register_command(
-            command_manager::layer::core, u8"", u8"exec",
-            command_handlers::exec);
-        cmd.register_command(
-            command_manager::layer::core, u8"", u8"eval",
-            command_handlers::eval, true);
-
-        cmd.register_command(
-            command_manager::layer::core, u8"", u8"reset",
-            command_handlers::reset);
-
-        cmd.register_command(
-            command_manager::layer::core, u8"", u8"pkg", command_handlers::pkg);
-
-        cmd.register_command(
-            command_manager::layer::core, u8"", u8"nextwindow",
-            command_handlers::nextwindow);
-
-        cmd.register_command(
-            command_manager::layer::core, u8"", u8"prevwindow",
-            command_handlers::prevwindow);
+        command_handlers::register_all();
 
 
     });

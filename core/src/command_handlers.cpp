@@ -241,3 +241,29 @@ void windower::command_handlers::prevwindow(
     check_args(u8"/prevwindow", args, 0);
     core::instance().ui.activate_previous_window();
 }
+
+void windower::command_handlers::register_all()
+{
+    auto& cmd = command_manager::instance();
+
+    cmd.register_command(command_manager::layer::core, u8"", u8"install", install);
+    cmd.register_command(command_manager::layer::core, u8"", u8"uninstall", uninstall);
+    cmd.register_command(command_manager::layer::core, u8"", u8"update", update);
+    cmd.register_command(command_manager::layer::core, u8"", u8"updateall", updateall);
+    cmd.register_command(command_manager::layer::core, u8"", u8"load", load);
+    cmd.register_command(command_manager::layer::core, u8"", u8"unload", unload);
+    cmd.register_command(command_manager::layer::core, u8"", u8"reload", reload);
+    cmd.register_command(command_manager::layer::core, u8"", u8"unloadall", unloadall);
+    cmd.register_command(command_manager::layer::core, u8"", u8"reloadall", reloadall);
+    cmd.register_command(command_manager::layer::core, u8"", u8"alias", alias, true);
+    cmd.register_command(command_manager::layer::core, u8"", u8"unalias", unalias);
+    cmd.register_command(command_manager::layer::core, u8"", u8"bind", bind, true);
+    cmd.register_command(command_manager::layer::core, u8"", u8"unbind", unbind, true);
+    cmd.register_command(command_manager::layer::core, u8"", u8"listbinds", listbinds, true);
+    cmd.register_command(command_manager::layer::core, u8"", u8"exec", exec);
+    cmd.register_command(command_manager::layer::core, u8"", u8"eval", eval, true);
+    cmd.register_command(command_manager::layer::core, u8"", u8"reset", reset);
+    cmd.register_command(command_manager::layer::core, u8"", u8"pkg", pkg);
+    cmd.register_command(command_manager::layer::core, u8"", u8"nextwindow", nextwindow);
+    cmd.register_command(command_manager::layer::core, u8"", u8"prevwindow", prevwindow);
+}
