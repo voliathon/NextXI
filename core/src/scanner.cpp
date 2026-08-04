@@ -92,7 +92,7 @@ void windower::scan(library const& library, signature const& sig, std::span<addr
                 auto result = address{ std::to_address(it) };
                 result += sig.offset();
 
-                results[0] = sig.dereference() ? *result : result;
+                gsl::at(results, 0) = sig.dereference() ? *result : result;
                 results = results.subspan(1);
 
                 section_data = section_data.subspan(std::distance(section_data.begin(), it) + 1);

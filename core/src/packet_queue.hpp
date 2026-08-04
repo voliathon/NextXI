@@ -9,6 +9,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <mutex>
 
 namespace windower
 {
@@ -51,6 +52,7 @@ private:
     };
 
     packet_direction const m_direction;
+    std::mutex m_queue_mutex; 
     std::deque<packet> m_queue;
     std::vector<std::byte> m_output_buffer;
 
