@@ -47,9 +47,17 @@ void windower::d3d8::install()
 {
     if (!hooks::Direct3DCreate8)
     {
+        // Explicitly force Windows to map the DLL using standard search order.
+        // This guarantees that if the launcher placed dgVoodoo2 in the game directory,
+        // Windows will lock onto the local proxy DLL instead of the System32 default.
+        ::LoadLibraryW(L"d3d8.dll");
+
         hooks::Direct3DCreate8 = hooklib::make_hook<false>(
             u8"d3d8.dll", u8"Direct3DCreate8", callbacks::Direct3DCreate8);
     }
 }
 
-void windower::d3d8::uninstall() noexcept { hooks::Direct3DCreate8 = {}; }
+void windower::d3d8::uninstall() noexcept
+{
+    hooks::Direct3DCreate8 = {};
+}
