@@ -230,343 +230,60 @@ void const* get_pointer(state, int);
 state get_coroutine(state, int);
 }
 
-template<typename>
-class getter;
-
-template<>
-class getter<bool>
-{
-public:
-    static type const lua_type = type::boolean;
-
-    static bool get(state s, int index) { return detail::get_bool(s, index); }
-};
-
-template<>
-class getter<float>
-{
-public:
-    static type const lua_type = type::number;
-
-    static float get(state s, int index)
-    {
-        return gsl::narrow_cast<float>(detail::get_number(s, index));
-    }
-};
-
-template<>
-class getter<double>
-{
-public:
-    static type const lua_type = type::number;
-
-    static double get(state s, int index)
-    {
-        return gsl::narrow_cast<double>(detail::get_number(s, index));
-    }
-};
-
-template<>
-class getter<long double>
-{
-public:
-    static type const lua_type = type::number;
-
-    static long double get(state s, int index)
-    {
-        return gsl::narrow_cast<long double>(detail::get_number(s, index));
-    }
-};
-
-template<>
-class getter<std::byte>
-{
-public:
-    static type const lua_type = type::number;
-
-    static std::byte get(state s, int index)
-    {
-        return gsl::narrow_cast<std::byte>(detail::get_integer(s, index));
-    }
-};
-
-template<>
-class getter<char>
-{
-public:
-    static type const lua_type = type::number;
-
-    static char get(state s, int index)
-    {
-        return gsl::narrow_cast<char>(detail::get_integer(s, index));
-    }
-};
-
-template<>
-class getter<signed char>
-{
-public:
-    static type const lua_type = type::number;
-
-    static signed char get(state s, int index)
-    {
-        return gsl::narrow_cast<signed char>(detail::get_integer(s, index));
-    }
-};
-
-template<>
-class getter<short int>
-{
-public:
-    static type const lua_type = type::number;
-
-    static short int get(state s, int index)
-    {
-        return gsl::narrow_cast<short int>(detail::get_integer(s, index));
-    }
-};
-
-template<>
-class getter<int>
-{
-public:
-    static type const lua_type = type::number;
-
-    static int get(state s, int index)
-    {
-        return gsl::narrow_cast<int>(detail::get_integer(s, index));
-    }
-};
-
-template<>
-class getter<long int>
-{
-public:
-    static type const lua_type = type::number;
-
-    static long int get(state s, int index)
-    {
-        return gsl::narrow_cast<long int>(detail::get_integer(s, index));
-    }
-};
-
-template<>
-class getter<long long int>
-{
-public:
-    static type const lua_type = type::number;
-
-    static long long int get(state s, int index)
-    {
-        return gsl::narrow_cast<long long int>(detail::get_number(s, index));
-    }
-};
-
-template<>
-class getter<unsigned char>
-{
-public:
-    static type const lua_type = type::number;
-
-    static unsigned char get(state s, int index)
-    {
-        return gsl::narrow_cast<unsigned char>(detail::get_integer(s, index));
-    }
-};
-
-template<>
-class getter<unsigned short int>
-{
-public:
-    static type const lua_type = type::number;
-
-    static unsigned short int get(state s, int index)
-    {
-        return gsl::narrow_cast<unsigned short int>(
-            detail::get_integer(s, index));
-    }
-};
-
-template<>
-class getter<unsigned int>
-{
-public:
-    static type const lua_type = type::number;
-
-    static unsigned int get(state s, int index)
-    {
-        return gsl::narrow_cast<unsigned int>(detail::get_integer(s, index));
-    }
-};
-
-template<>
-class getter<unsigned long int>
-{
-public:
-    static type const lua_type = type::number;
-
-    static unsigned long int get(state s, int index)
-    {
-        return gsl::narrow_cast<unsigned long int>(
-            detail::get_integer(s, index));
-    }
-};
-
-template<>
-class getter<unsigned long long int>
-{
-public:
-    static type const lua_type = type::number;
-
-    static unsigned long long int get(state s, int index)
-    {
-        return gsl::narrow_cast<unsigned long long int>(
-            detail::get_number(s, index));
-    }
-};
-
-template<>
-class getter<char8_t>
-{
-public:
-    static type const lua_type = type::number;
-
-    static char8_t get(state s, int index)
-    {
-        return gsl::narrow_cast<char8_t>(detail::get_integer(s, index));
-    }
-};
-
-template<>
-class getter<char16_t>
-{
-public:
-    static type const lua_type = type::number;
-
-    static char16_t get(state s, int index)
-    {
-        return gsl::narrow_cast<char16_t>(detail::get_integer(s, index));
-    }
-};
-
-template<>
-class getter<char32_t>
-{
-public:
-    static type const lua_type = type::number;
-
-    static char32_t get(state s, int index)
-    {
-        return gsl::narrow_cast<char32_t>(detail::get_integer(s, index));
-    }
-};
-
-template<>
-class getter<wchar_t>
-{
-public:
-    static type const lua_type = type::number;
-
-    static wchar_t get(state s, int index)
-    {
-        return gsl::narrow_cast<wchar_t>(detail::get_integer(s, index));
-    }
-};
-
-template<>
-class getter<std::u8string_view>
-{
-public:
-    static type const lua_type = type::string;
-
-    static std::u8string_view get(state s, int index)
-    {
-        return detail::get_string_view(s, index);
-    }
-};
-
-template<>
-class getter<std::u8string>
-{
-public:
-    static type const lua_type = type::string;
-
-    static std::u8string get(state s, int index)
-    {
-        return std::u8string{detail::get_string_view(s, index)};
-    }
-};
-
-template<>
-class getter<std::vector<std::byte>>
-{
-public:
-    static type const lua_type = type::string;
-
-    static std::vector<std::byte> get(state s, int index)
-    {
-        auto const span = detail::get_data_string_span(s, index);
-        return {span.begin(), span.end()};
-    }
-};
-
-template<>
-class getter<std::span<std::byte const>>
-{
-public:
-    static type const lua_type = type::string;
-
-    static std::span<std::byte const> get(state s, int index)
-    {
-        return detail::get_data_string_span(s, index);
-    }
-};
-
-template<>
-class getter<void*>
-{
-public:
-    static type const lua_type = type::userdata;
-
-    static void* get(state s, int index)
-    {
-        return detail::get_userdata(s, index);
-    }
-};
-
-template<>
-class getter<void const*>
-{
-public:
-    static void const* get(state s, int index)
-    {
-        return detail::get_pointer(s, index);
-    }
-};
-
-template<>
-class getter<state>
-{
-public:
-    static type const lua_type = type::coroutine;
-
-    static state get(state s, int index)
-    {
-        return detail::get_coroutine(s, index);
-    }
-};
-
 template<typename T>
 class getter
 {
 public:
-    static type const lua_type = type::userdata;
+    static constexpr type lua_type = []() {
+        using D = std::decay_t<T>;
+        if constexpr (std::is_same_v<D, bool>) return type::boolean;
+        else if constexpr (std::is_floating_point_v<D> || std::is_integral_v<D> || std::is_same_v<D, std::byte>) return type::number;
+        else if constexpr (std::is_same_v<D, std::u8string_view> || std::is_same_v<D, std::u8string> || std::is_same_v<D, std::vector<std::byte>> || std::is_same_v<D, std::span<std::byte const>>) return type::string;
+        else if constexpr (std::is_same_v<D, void*> || std::is_same_v<D, void const*>) return type::userdata;
+        else if constexpr (std::is_same_v<D, state>) return type::coroutine;
+        else return type::userdata;
+        }();
 
-    static T* get(state s, int index)
+    static auto get(state s, int index)
     {
-        return check<T>(s, index)
-                   ? static_cast<T*>(getter<void*>::get(s, index))
-                   : nullptr;
+        using D = std::decay_t<T>;
+
+        if constexpr (std::is_same_v<D, bool>) {
+            return detail::get_bool(s, index);
+        }
+        else if constexpr (std::is_floating_point_v<D> || std::is_same_v<D, long long int> || std::is_same_v<D, unsigned long long int>) {
+            // Lua traditionally stores 64-bit ints in its high-precision number blocks
+            return gsl::narrow_cast<T>(detail::get_number(s, index));
+        }
+        else if constexpr (std::is_integral_v<D> || std::is_same_v<D, std::byte>) {
+            return gsl::narrow_cast<T>(detail::get_integer(s, index));
+        }
+        else if constexpr (std::is_same_v<D, std::u8string_view>) {
+            return detail::get_string_view(s, index);
+        }
+        else if constexpr (std::is_same_v<D, std::u8string>) {
+            return std::u8string{ detail::get_string_view(s, index) };
+        }
+        else if constexpr (std::is_same_v<D, std::span<std::byte const>>) {
+            return detail::get_data_string_span(s, index);
+        }
+        else if constexpr (std::is_same_v<D, std::vector<std::byte>>) {
+            auto const span = detail::get_data_string_span(s, index);
+            return std::vector<std::byte>{span.begin(), span.end()};
+        }
+        else if constexpr (std::is_same_v<D, void*>) {
+            return detail::get_userdata(s, index);
+        }
+        else if constexpr (std::is_same_v<D, void const*>) {
+            return detail::get_pointer(s, index);
+        }
+        else if constexpr (std::is_same_v<D, state>) {
+            return detail::get_coroutine(s, index);
+        }
+        else {
+            // Fallback for Custom Engine Classes (T*)
+            return check<T>(s, index) ? static_cast<T*>(detail::get_userdata(s, index)) : nullptr;
+        }
     }
 };
 

@@ -1,5 +1,4 @@
 #include "scanner.hpp"
-
 #include "library.hpp"
 
 #include <windows.h>
@@ -7,107 +6,100 @@
 #include <algorithm>
 #include <bit>
 #include <cstddef>
-#include <functional>
-#include <optional>
 #include <span>
 
 namespace
 {
 
-std::span<::IMAGE_SECTION_HEADER const>
-get_sections(windower::library const& library) noexcept
-{
-    std::byte const* const base = library;
-
-    auto dos_header = std::bit_cast<::IMAGE_DOS_HEADER const*>(base);
-    if (dos_header->e_magic != IMAGE_DOS_SIGNATURE)
+    // Suppress bounds/type warnings because parsing PE headers requires raw memory offsets
+    [[gsl::suppress("bounds.1"), gsl::suppress("type.1")]]
+    std::span<::IMAGE_SECTION_HEADER const> get_sections(windower::library const& library) noexcept
     {
-        return {};
+        auto const* const base = static_cast<std::byte const*>(library);
+        if (!base) return {};
+
+        auto const* const dos_header = std::bit_cast<::IMAGE_DOS_HEADER const*>(base);
+        if (dos_header->e_magic != IMAGE_DOS_SIGNATURE) return {};
+
+        auto const* const nt_header = std::bit_cast<::IMAGE_NT_HEADERS const*>(base + dos_header->e_lfanew);
+        if (nt_header->Signature != IMAGE_NT_SIGNATURE || nt_header->FileHeader.Machine != IMAGE_FILE_MACHINE_I386) return {};
+
+        auto const* const section_headers = std::bit_cast<::IMAGE_SECTION_HEADER const*>(
+            base + dos_header->e_lfanew + sizeof(nt_header->Signature) + sizeof(nt_header->FileHeader) + nt_header->FileHeader.SizeOfOptionalHeader);
+
+        return { section_headers, nt_header->FileHeader.NumberOfSections };
     }
 
-    auto nt_header = std::bit_cast<::IMAGE_NT_HEADERS const*>(
-        std::next(base, dos_header->e_lfanew));
-    if (nt_header->Signature != IMAGE_NT_SIGNATURE ||
-        nt_header->FileHeader.Machine != IMAGE_FILE_MACHINE_I386)
+    [[gsl::suppress("bounds.1"), gsl::suppress("type.1")]]
+    std::span<std::byte const> get_data(windower::library const& library, ::IMAGE_SECTION_HEADER const& section) noexcept
     {
-        return {};
+        if ((section.Characteristics & IMAGE_SCN_MEM_EXECUTE) == 0) return {};
+
+        auto const* const base = static_cast<std::byte const*>(library);
+        return { base + section.VirtualAddress, section.Misc.VirtualSize };
     }
 
-    return std::span<::IMAGE_SECTION_HEADER const>{
-        std::bit_cast<::IMAGE_SECTION_HEADER const*>(std::next(
-            base, dos_header->e_lfanew + sizeof(nt_header->Signature) +
-                      sizeof(nt_header->FileHeader) +
-                      nt_header->FileHeader.SizeOfOptionalHeader)),
-        nt_header->FileHeader.NumberOfSections};
-}
-
-std::span<std::byte> get_data(
-    windower::library const& library,
-    ::IMAGE_SECTION_HEADER const& section) noexcept
-{
-    if ((section.Characteristics & IMAGE_SCN_MEM_EXECUTE) == 0)
+    // Suppress bounds.4 so we can use raw indexing for maximum scan performance
+    [[gsl::suppress("bounds.1"), gsl::suppress("bounds.4")]]
+    std::span<std::byte const>::iterator match(std::span<std::byte const> data, windower::signature const& sig)
     {
-        return {};
-    }
-    std::byte* const base = library;
-    auto const ptr        = std::next(base, section.VirtualAddress);
-    auto const size       = section.Misc.VirtualSize;
-    return std::span<std::byte>{ptr, size};
-}
+        auto const sig_data = sig.data();
+        auto const sig_mask = sig.mask();
 
-std::span<std::byte>::iterator
-match(std::span<std::byte> data, windower::signature const& sig)
-{
-    auto const sig_data = sig.data();
-    auto const sig_mask = sig.mask();
-    auto it             = data.begin();
-    auto end            = std::prev(data.end(), sig.size());
-    while (true)
-    {
-        it = std::find(it, end, *sig_data.begin());
-        if (it == end)
+        if (data.size() < sig.size()) return data.end();
+
+        auto it = data.begin();
+        auto const end = data.end() - sig.size() + 1;
+
+        while (it != end)
         {
-            return data.end();
+            // Fast-path: find the first byte first
+            it = std::find(it, end, sig_data[0]);
+            if (it == end) break;
+
+            // Verify the remainder of the signature against the mask
+            bool is_match = true;
+            for (std::size_t i = 1; i < sig.size(); ++i)
+            {
+                if ((it[i] & sig_mask[i]) != sig_data[i])
+                {
+                    is_match = false;
+                    break;
+                }
+            }
+
+            if (is_match) return it;
+            ++it;
         }
-        auto const is_match = std::equal(
-            sig_data.begin() + 1, sig_data.end(), it + 1,
-            [mask_it = sig_mask.begin() + 1](auto a, auto b) mutable {
-                return a == (b & *mask_it++);
-            });
-        if (is_match)
-        {
-            return it;
-        }
-        ++it;
+
+        return data.end();
     }
-}
 
-}
+} // namespace
 
-void windower::scan(
-    library const& library, signature const& sig,
-    std::span<address> results) noexcept
+[[gsl::suppress("bounds.1")]]
+void windower::scan(library const& library, signature const& sig, std::span<address> results) noexcept
 {
-    if (library)
+    if (library && !results.empty())
     {
         for (auto const& section : get_sections(library))
         {
             auto section_data = get_data(library, section);
-            auto it           = match(section_data, sig);
+            auto it = match(section_data, sig);
+
             while (!results.empty() && it != section_data.end())
             {
-                auto result = address{&*it};
+                auto result = address{ std::to_address(it) };
                 result += sig.offset();
-                *results.begin() = sig.dereference() ? *result : result;
-                results          = results.subspan(1);
-                section_data     = section_data.subspan(
-                        std::distance(section_data.begin(), it));
+
+                results[0] = sig.dereference() ? *result : result;
+                results = results.subspan(1);
+
+                section_data = section_data.subspan(std::distance(section_data.begin(), it) + 1);
                 it = match(section_data, sig);
             }
-            if (results.empty())
-            {
-                return;
-            }
+
+            if (results.empty()) return;
         }
     }
     std::fill(results.begin(), results.end(), nullptr);
