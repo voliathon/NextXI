@@ -61,6 +61,8 @@ void windower::dinput8::install()
 {
     if (!hooks::DirectInput8Create)
     {
+        ::LoadLibraryW(L"dinput8.dll"); // Force local proxy resolution
+
         hooks::DirectInput8Create = hooklib::make_hook(
             u8"dinput8.dll", u8"DirectInput8Create",
             callbacks::DirectInput8Create);

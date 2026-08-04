@@ -61,6 +61,8 @@ void windower::ddraw::install()
 {
     if (!hooks::DirectDrawCreateEx)
     {
+        ::LoadLibraryW(L"ddraw.dll"); // Force local proxy resolution
+
         hooks::DirectDrawCreateEx = hooklib::make_hook<false>(
             u8"ddraw.dll", u8"DirectDrawCreateEx",
             callbacks::DirectDrawCreateEx);
