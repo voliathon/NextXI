@@ -43,7 +43,7 @@ public:
     void raise_error(gsl::not_null<package const*>, std::exception_ptr);
 
 private:
-    std::mutex m_mutex;
+    mutable std::mutex m_mutex;
     std::vector<std::unique_ptr<addon>> m_loaded_addons;
 
     void load(std::vector<std::shared_ptr<package const>> const&);

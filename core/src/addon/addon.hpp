@@ -11,24 +11,29 @@
 namespace windower
 {
 
-class addon : public script_base
-{
-public:
-    static std::shared_ptr<windower::package const> get_package(lua::state);
+    class addon : public script_base
+    {
+    public:
+        static std::shared_ptr<windower::package const> get_package(lua::state);
 
-    addon(std::shared_ptr<windower::package const> const&);
+        addon(std::shared_ptr<windower::package const> const&);
+        addon(addon const&) = delete; // Rule of 5: Prevent copies
+        addon(addon&&) = delete; // Rule of 5: Prevent moves
 
-    ~addon();
+        virtual ~addon();                        // <-- Changed to just 'virtual'
 
-    std::shared_ptr<windower::package const>
-        find_dependency(lua::state, std::u8string_view) const override;
+        addon& operator=(addon const&) = delete; // Rule of 5: Prevent copy assignment
+        addon& operator=(addon&&) = delete; // Rule of 5: Prevent move assignment
 
-    std::shared_ptr<windower::package const> package() const;
+        std::shared_ptr<windower::package const>
+            find_dependency(lua::state, std::u8string_view) const override;
 
-private:
-    std::u8string m_package_name;
-    mutable std::weak_ptr<windower::package const> m_package;
-};
+        std::shared_ptr<windower::package const> package() const;
+
+    private:
+        std::u8string m_package_name;
+        mutable std::weak_ptr<windower::package const> m_package;
+    };
 
 }
 

@@ -15,6 +15,7 @@ windower::addon_manager::~addon_manager() noexcept { unload_all(); }
 windower::addon const*
 windower::addon_manager::get(std::u8string_view name) const
 {
+    std::lock_guard<std::mutex> lock{ m_mutex }; // thread-safe
     auto it = std::find_if(
         m_loaded_addons.begin(), m_loaded_addons.end(),
         [&name](auto const& addon) {
@@ -84,18 +85,31 @@ void windower::addon_manager::reload_all()
 void windower::addon_manager::run_until_idle()
 {
     std::vector<std::u8string> failed_addons;
-    std::vector<addon*> snapshot;
-    for (auto const& a : m_loaded_addons)
-    {
-        snapshot.push_back(a.get());
-    }
-    for (auto* a : snapshot)
-    {
-        auto it = std::find_if(
-            m_loaded_addons.begin(), m_loaded_addons.end(),
-            [a](auto const& ptr) { return ptr.get() == a; });
+    std::vector<gsl::not_null<addon*>> snapshot; // <-- Enforce not_null here
 
-        if (it != m_loaded_addons.end())
+    // Safely acquire the snapshot
+    {
+        std::lock_guard<std::mutex> lock{ m_mutex };
+        for (auto const& a : m_loaded_addons)
+        {
+            if (a)
+            {
+                snapshot.push_back(gsl::make_not_null(a.get()));
+            }
+        }
+    }
+
+    for (auto const& a : snapshot)
+    {
+        bool exists = false;
+        // Verify the addon wasn't unloaded by a previous addon's run_until_idle()
+        {
+            std::lock_guard<std::mutex> lock{ m_mutex };
+            exists = std::any_of(m_loaded_addons.begin(), m_loaded_addons.end(),
+                [a](auto const& ptr) { return ptr.get() == a.get(); });
+        }
+
+        if (exists)
         {
             try
             {
@@ -108,6 +122,7 @@ void windower::addon_manager::run_until_idle()
             }
         }
     }
+
     if (!failed_addons.empty())
     {
         unload(failed_addons);
@@ -133,7 +148,7 @@ void windower::addon_manager::load(
         {
             if (package->type() != package_type::library)
             {
-                std::lock_guard<std::mutex> lock{m_mutex};
+                std::lock_guard<std::mutex> lock{ m_mutex };
                 auto it = std::find_if(
                     m_loaded_addons.begin(), m_loaded_addons.end(),
                     [=](auto const& addon) {
@@ -143,7 +158,7 @@ void windower::addon_manager::load(
                 if (it == m_loaded_addons.end())
                 {
                     auto ptr = std::make_unique<addon>(package);
-                    
+
                     core::output(u8"", ptr->package()->name() + u8" loaded");
                     loaded_in_transaction.push_back(ptr->package()->name());
                     m_loaded_addons.emplace_back(std::move(ptr));
@@ -154,21 +169,33 @@ void windower::addon_manager::load(
     catch (std::exception const& e)
     {
         core::error(u8"addon manager", u8"Error loading addon: " + windower::to_u8string(e.what()));
-        std::lock_guard<std::mutex> lock{m_mutex};
-        for (auto const& name : loaded_in_transaction)
+
+        bool needs_purge = false;
+
+        // Scope the lock so it releases before the purge
         {
-            auto it = std::find_if(
-                m_loaded_addons.begin(), m_loaded_addons.end(),
-                [&name](auto const& addon) {
-                    return addon->package()->name() == name;
-                });
-            if (it != m_loaded_addons.end())
+            std::lock_guard<std::mutex> lock{ m_mutex };
+            for (auto const& name : loaded_in_transaction)
             {
-                core::output(u8"", name + u8" aborted");
-                m_loaded_addons.erase(it);
-                command_manager::instance().purge();
+                auto it = std::find_if(
+                    m_loaded_addons.begin(), m_loaded_addons.end(),
+                    [&name](auto const& addon) {
+                        return addon->package()->name() == name;
+                    });
+                if (it != m_loaded_addons.end())
+                {
+                    core::output(u8"", name + u8" aborted");
+                    m_loaded_addons.erase(it);
+                    needs_purge = true;
+                }
             }
         }
+
+        if (needs_purge)
+        {
+            command_manager::instance().purge();
+        }
+
         throw;
     }
 }
@@ -176,22 +203,31 @@ void windower::addon_manager::load(
 void windower::addon_manager::unload(
     std::vector<std::shared_ptr<package const>> const& packages)
 {
+    bool needs_purge = false;
+
     for (auto const& package : packages)
     {
         if (package->type() != package_type::library)
         {
-            std::lock_guard<std::mutex> lock{m_mutex};
+            std::lock_guard<std::mutex> lock{ m_mutex };
             auto it = std::find_if(
                 m_loaded_addons.begin(), m_loaded_addons.end(),
                 [=](auto const& addon) {
                     return addon->package()->name() == package->name();
                 });
+
             if (it != m_loaded_addons.end())
             {
                 m_loaded_addons.erase(it);
-                command_manager::instance().purge();
+                needs_purge = true;
                 core::output(u8"", package->name() + u8" unloaded");
             }
         }
+    }
+
+    // Purge exactly once outside the lock for maximum performance
+    if (needs_purge)
+    {
+        command_manager::instance().purge();
     }
 }

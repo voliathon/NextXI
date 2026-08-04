@@ -149,37 +149,22 @@ std::shared_ptr<windower::package const> windower::addon::find_dependency(
 {
     if (auto pkg = addon::get_package(s))
     {
-        auto const& dependencies = pkg->dependencies();
-
         auto const& core = core::instance();
+        std::queue<std::shared_ptr<windower::package const>> indirect_dependencies;
 
-        std::queue<std::shared_ptr<windower::package const>>
-            indirect_dependencies;
-        for (auto const& d : dependencies)
+        // Seed the queue with immediate dependencies
+        for (auto const& d : pkg->dependencies())
         {
             if (auto p = core.package_manager->get_package(d.name()))
             {
-                if (d.name() == package_name)
-                {
-                    return p;
-                }
-                if (p->type() == package_type::library)
-                {
-                    for (auto const& temp : p->dependencies())
-                    {
-                        if (auto indirect_dependency =
-                                core.package_manager->get_package(temp.name()))
-                        {
-                            indirect_dependencies.push(indirect_dependency);
-                        }
-                    }
-                }
+                indirect_dependencies.push(p);
             }
         }
 
+        // Seed the queue with implicit developer-mode dependencies
         if (core.settings.developer_mode)
         {
-            lua::stack_guard guard{s};
+            lua::stack_guard guard{ s };
             lua::push(guard, &implicit_packages_key);
             lua::raw_get(guard, lua::registry);
             if (lua::typeof(guard, -1) == lua::type::table)
@@ -188,7 +173,7 @@ std::shared_ptr<windower::package const> windower::addon::find_dependency(
                 while (lua::next(guard, -2))
                 {
                     if (auto p = core.package_manager->get_package(
-                            lua::get<std::u8string>(guard, -1));
+                        lua::get<std::u8string>(guard, -1));
                         p && p->type() == package_type::library)
                     {
                         indirect_dependencies.push(p);
@@ -198,20 +183,23 @@ std::shared_ptr<windower::package const> windower::addon::find_dependency(
             }
         }
 
+        // Process the dependency queue
         while (!indirect_dependencies.empty())
         {
             auto p = indirect_dependencies.front();
             indirect_dependencies.pop();
+
             if (p->name() == package_name)
             {
                 return p;
             }
+
             if (p->type() == package_type::library)
             {
                 for (auto const& temp : p->dependencies())
                 {
                     if (auto indirect_dependency =
-                            core.package_manager->get_package(temp.name()))
+                        core.package_manager->get_package(temp.name()))
                     {
                         indirect_dependencies.push(indirect_dependency);
                     }
@@ -219,6 +207,7 @@ std::shared_ptr<windower::package const> windower::addon::find_dependency(
             }
         }
 
+        // Handle unmet dependencies
         if (core.settings.developer_mode)
         {
             if (auto p = core.package_manager->get_package(package_name))
@@ -234,7 +223,7 @@ std::shared_ptr<windower::package const> windower::addon::find_dependency(
                     u8"package manifest.");
                 core::error(pkg->name(), warning_message);
 
-                lua::stack_guard guard{s};
+                lua::stack_guard guard{ s };
                 lua::push(guard, &implicit_packages_key);
                 lua::raw_get(guard, lua::registry);
                 if (lua::typeof(guard, -1) != lua::type::table)
@@ -252,14 +241,14 @@ std::shared_ptr<windower::package const> windower::addon::find_dependency(
             }
             else
             {
-                throw package_error{u8"PKG:P1", package_name};
+                throw package_error{ u8"PKG:P1", package_name };
             }
         }
 
-        throw package_error{u8"PKG:P2", package_name};
+        throw package_error{ u8"PKG:P2", package_name };
     }
 
-    throw windower_error{u8"INT:2"};
+    throw windower_error{ u8"INT:2" };
 }
 
 std::shared_ptr<windower::package const> windower::addon::package() const
