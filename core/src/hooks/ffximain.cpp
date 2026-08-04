@@ -163,7 +163,7 @@ std::string_view lookup_autotranslate_impl(
     {
         if ((code_point & 0xFF00) != 0 && (code_point & 0x00FF) != 0)
         {
-            code = code_point & 0xFFFF | 0x02020000;
+            code = (code_point & 0xFFFF) | 0x02020000;
         }
     }
     else if (code_point == U'\U000F8000')
@@ -333,38 +333,40 @@ std::size_t decode_packet(
     static_assert(sizeof(udp_header) == 28);
     static_assert(std::is_trivially_copyable_v<udp_header>);
 
-if (temp_buffer.size() < output_size)
+    if (temp_buffer.size() < output_size)
     {
         temp_buffer.clear();
         temp_buffer.resize(output_size);
     }
+
     auto decoded_size = hooks::decode_packet(
         temp_buffer.data(), temp_buffer.size(), cipher_data, decompression_tree,
         input_ptr, input_size);
-    std::span<std::byte const> input{temp_buffer.data(), decoded_size};
-    std::span<std::byte> output{output_ptr, output_size};
 
-    udp_header header{};
-    auto const header_buffer = std::as_writable_bytes(std::span{&header, 1});
-    if (input.size() < header_buffer.size())
+    std::span<std::byte const> input{ temp_buffer.data(), decoded_size };
+    std::span<std::byte> output{ output_ptr, output_size };
+
+    if (input.size() < sizeof(udp_header))
     {
-        std::copy(input.begin(), input.end(), output.begin());
+        std::memcpy(output.data(), input.data(), input.size());
         return input.size();
     }
-    std::copy_n(input.begin(), header_buffer.size(), header_buffer.begin());
-    std::copy(header_buffer.begin(), header_buffer.end(), output.begin());
 
-    input  = input.subspan(header_buffer.size());
-    output = output.subspan(header_buffer.size());
+    udp_header header{};
+    std::memcpy(&header, input.data(), sizeof(udp_header));
+    std::memcpy(output.data(), &header, sizeof(udp_header));
 
-    auto const counter   = header.server_counter;
+    input = input.subspan(sizeof(udp_header));
+    output = output.subspan(sizeof(udp_header));
+
+    auto const counter = header.server_counter;
     auto const timestamp = header.timestamp;
-    auto& queue          = *core::instance().incoming_packet_queue;
-    auto const result =
-        queue.process_buffer(input, counter, timestamp, output.size());
-    std::copy(result.begin(), result.end(), output.begin());
+    auto& queue = *core::instance().incoming_packet_queue;
 
-    return header_buffer.size() + result.size();
+    auto const result = queue.process_buffer(input, counter, timestamp, output.size());
+    std::memcpy(output.data(), result.data(), result.size());
+
+    return sizeof(udp_header) + result.size();
 }
 
 std::size_t encode_packet(
