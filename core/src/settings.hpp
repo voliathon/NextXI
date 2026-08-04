@@ -33,7 +33,7 @@ public:
     unsigned int max_sounds        = 32;
     bool play_sound_when_unfocused = false;
 
-    unsigned int mipmapping                 = false;
+    unsigned int mipmapping                 = 0;
     bool bump_mapping                       = false;
     bool map_compression                    = false;
     texture_compression texture_compression = texture_compression::uncompressed;

@@ -97,17 +97,21 @@ extern "C"
     static ::BOOL CALLBACK enum_display_monitors_callback(
         ::HMONITOR monitor, ::HDC, ::LPRECT, ::LPARAM data)
     {
-        auto info   = ::MONITORINFOEXW{};
+        auto info = ::MONITORINFOEXW{};
         info.cbSize = sizeof info;
         if (::GetMonitorInfoW(monitor, &info))
         {
-            auto block = std::bit_cast<enum_display_monitors_block*>(data);
+            // Use reinterpret_cast for Win32 LPARAM-to-pointer conversions
+            auto block = reinterpret_cast<enum_display_monitors_block*>(data);
+
+            // Use std::size instead of awkward gsl::at sizeof math
             if (::CompareStringEx(
-                    LOCALE_NAME_INVARIANT, NORM_IGNORECASE,
-                    static_cast<::LPCWCH>(info.szDevice),
-                    sizeof info.szDevice / sizeof gsl::at(info.szDevice, 0),
-                    block->name.data(), block->name.size(), nullptr, nullptr,
-                    0) == CSTR_EQUAL)
+                LOCALE_NAME_INVARIANT, NORM_IGNORECASE,
+                static_cast<::LPCWCH>(info.szDevice),
+                gsl::narrow_cast<int>(std::size(info.szDevice)),
+                block->name.data(),
+                gsl::narrow_cast<int>(block->name.size()),
+                nullptr, nullptr, 0) == CSTR_EQUAL)
             {
                 block->handle = monitor;
                 return FALSE;
