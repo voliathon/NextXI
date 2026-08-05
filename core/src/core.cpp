@@ -37,9 +37,14 @@ windower::core& windower::core::instance() noexcept
     static core instance;
     return instance;
 }
-
 windower::core::core() noexcept
 {
+    // Allocate all core engine subsystems first!
+    incoming_packet_queue = std::make_unique<packet_queue>(packet_direction::incoming);
+    outgoing_packet_queue = std::make_unique<packet_queue>(packet_direction::outgoing);
+    addon_manager = std::make_unique<windower::addon_manager>();
+
+    // Install the FFXI hooks
     kernel32::install();
     user32::install();
     advapi32::install();
@@ -49,9 +54,11 @@ windower::core::core() noexcept
     ddraw::install();
     ws2_32::install();
 
+    // Load configurations
     settings.load();
     crash_handler::instance().dump_path(settings.temp_path);
 
+    // Defer the heavy initialization to the first frame
     run_on_next_frame([]() mutable {
         debug_console::initialize(core::instance().settings.debug);
 
@@ -60,9 +67,7 @@ windower::core::core() noexcept
         core::instance().package_manager->update_all();
 
         command_handlers::register_all();
-
-
-    });
+        });
 }
 
 void windower::core::output(

@@ -114,10 +114,17 @@ extern "C"
 {
     static void input(
         char8_t const* command_ptr, std::size_t command_length,
-        std::int32_t source)
+        std::int32_t source) noexcept
     {
-        windower::command_manager::instance().handle_command(
-            {command_ptr, command_length}, windower::command_source{source});
+        try
+        {
+            windower::command_manager::instance().handle_command(
+                { command_ptr, command_length }, windower::command_source{ source });
+        }
+        catch (...)
+        {
+            windower::core::instance().error(u8"command_module", std::current_exception());
+        }
     }
 }
 
@@ -156,7 +163,9 @@ int windower::load_command_module(lua::state s)
     lua::push(guard, ::register_handler);
     lua::push(guard, ::unregister_handler);
     lua::push(guard, ::parse_args);
-    lua::push(guard, ::input);
+    lua::push(guard, reinterpret_cast<void*>(::input)); // Explicit FFI void* cast!
+
+    lua::call(guard, 6);
 
     lua::call(guard, 6);
 

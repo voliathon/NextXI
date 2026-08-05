@@ -9,11 +9,18 @@
 
 #include <windows.h>
 
+#include <imgui.h>
+#include <imgui_impl_win32.h>
+#include <imgui_impl_dx8.h>
+#include <d3d11.h>
+#include <dxgi.h>
 #include <d3d8.h>
 
 #include <cstddef>
 #include <memory>
 #include <string>
+
+static bool g_imgui_initialized = false;
 
 windower::direct_3d_device::direct_3d_device(
     ::IDirect3DDevice8* impl, ::HWND hwnd, direct_3d* parent) :
@@ -206,18 +213,46 @@ windower::direct_3d_device::CreateAdditionalSwapChain(
     auto& core = core::instance();
 
     m_impl->BeginScene();
-
     core.update();
     core.end_frame();
+
+    // IMGUI BOOT UP & NEW FRAME
+    if (!g_imgui_initialized)
+    {
+        HWND target_hwnd = hDestWindowOverride ? hDestWindowOverride : static_cast<HWND>(core.client_hwnd);
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGuiIO& io = ImGui::GetIO(); (void)io;
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+        ImGui::StyleColorsDark();
+
+        ImGui_ImplWin32_Init(target_hwnd);
+        ImGui_ImplDX8_Init(m_impl);
+        g_imgui_initialized = true;
+    }
+
+    if (g_imgui_initialized)
+    {
+        ImGui_ImplDX8_NewFrame();
+        ImGui_ImplWin32_NewFrame();
+        ImGui::NewFrame();
+    }
+
+    // RENDER NORMAL UI (This triggers m_console->render() -> ImGui::Begin!)
     core.ui.render(windower::ui::layer::screen);
     core.ui.render(windower::ui::layer::layout);
 
-    m_impl->EndScene();
+    // FLUSH IMGUI TO DIRECTX
+    if (g_imgui_initialized)
+    {
+        ImGui::Render();
+        ImGui_ImplDX8_RenderDrawData(ImGui::GetDrawData());
+    }
 
+    m_impl->EndScene();
     m_frame_in_progress = false;
 
-    return m_impl->Present(
-        pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
+    return m_impl->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
 }
 
 ::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::GetBackBuffer(

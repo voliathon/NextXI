@@ -76,15 +76,15 @@ void user_interface::end_frame() noexcept
     }
 }
 
-void user_interface::render(ui::layer layer) noexcept
-{
+void user_interface::render(ui::layer layer) noexcept {
     if (m_context)
     {
+        // CAVEMAN FIX: We MUST feed the console here so ImGui::Begin gets called!
         if (layer == ui::layer::screen && m_console)
         {
             m_console->render(*m_context);
         }
-        m_context->render(layer);
+        // m_context->render(layer); // Old UI primitives remain dead.
     }
 }
 

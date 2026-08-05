@@ -22,6 +22,9 @@
 #include <new>
 #include <string_view>
 
+#include <imgui.h>
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 namespace
 {
 
@@ -146,7 +149,7 @@ extern "C" ::LRESULT CALLBACK ffxi_wnd_proc(
     ::HWND hwnd, ::UINT uMsg, ::WPARAM wParam, ::LPARAM lParam) noexcept
 {
     auto const data_value = hooks::GetWindowLongW(hwnd, 0);
-    auto const data       = std::bit_cast<window_data*>(data_value);
+    auto const data = std::bit_cast<window_data*>(data_value);
     if (uMsg == WM_NCDESTROY)
     {
         ::SetWindowLongW(hwnd, 0, 0);

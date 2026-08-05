@@ -40,6 +40,12 @@
     <ClInclude Include="lib\d3d8.h" />
     <ClInclude Include="lib\ddraw.h" />
     <ClInclude Include="lib\dinput.h" />
+    <ClInclude Include="lib\imgui\backends\imgui_impl_dx8.h" />
+    <ClInclude Include="lib\imgui\backends\imgui_impl_win32.h" />
+    <ClInclude Include="lib\imgui\imconfig.h" />
+    <ClInclude Include="lib\imgui\imgui.h" />
+    <ClInclude Include="lib\imgui\imgui_internal.h" />
+    <ClInclude Include="lib\imgui\misc\cpp\imgui_stdlib.h" />
     <ClInclude Include="src\addon\errors\package_error.hpp" />
     <ClInclude Include="src\addon\modules\class.hpp" />
     <ClInclude Include="src\addon\modules\hash.hpp" />
@@ -77,6 +83,7 @@
     <ClInclude Include="src\addon\lua_internal.hpp" />
     <ClInclude Include="src\geometry.hpp" />
     <ClInclude Include="src\guid.hpp" />
+    <ClInclude Include="src\hooks\ws2_32.hpp" />
     <ClInclude Include="src\packet_queue.hpp" />
     <ClInclude Include="src\settings_channel.hpp" />
     <ClInclude Include="src\crash_handler.hpp" />
@@ -174,6 +181,13 @@
     <ClInclude Include="src\errors\windower_error.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="lib\imgui\backends\imgui_impl_dx8.cpp" />
+    <ClCompile Include="lib\imgui\backends\imgui_impl_win32.cpp" />
+    <ClCompile Include="lib\imgui\imgui.cpp" />
+    <ClCompile Include="lib\imgui\imgui_draw.cpp" />
+    <ClCompile Include="lib\imgui\imgui_tables.cpp" />
+    <ClCompile Include="lib\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="lib\imgui\misc\cpp\imgui_stdlib.cpp" />
     <ClCompile Include="src\addon\errors\package_error.cpp" />
     <ClCompile Include="src\addon\modules\class.cpp" />
     <ClCompile Include="src\addon\modules\hash.cpp" />
@@ -284,6 +298,7 @@
     <ClCompile Include="src\errors\windower_error.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="res\favicon.ico" />
     <Image Include="res\icon.ico" />
     <Image Include="res\icons.png" />
     <Image Include="res\layout-grid.100.png" />
@@ -412,7 +427,7 @@
       <WarningLevel>Level4</WarningLevel>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WINDOWER_AUTO_VERSION;$(ReleaseConstants);WIN32_LEAN_AND_MEAN;NOMINMAX;WINVER=_WIN32_WINNT_WIN8;_WIN32_WINNT=_WIN32_WINNT_WIN8;PSAPI_VERSION=1;_HAS_AUTO_PTR_ETC=0;_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;NDEBUG;_DEBUG;gsl_FEATURE_WITH_CONTAINER_TO_STD=14;gsl_FEATURE_MAKE_SPAN_TO_STD=14;gsl_FEATURE_BYTE_SPAN_TO_STD=14;gsl_FEATURE_OWNER_MACRO=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(IntDir)src;$(ProjectDir)src;$(ProjectDir)lib;$(SolutionDir)extern\luajit\src\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(IntDir)src;$(ProjectDir)src;$(ProjectDir)lib;$(SolutionDir)extern\luajit\src\;%(AdditionalIncludeDirectories);lib\imgui;lib\imgui\backends;lib\imgui\misc\freetype;</AdditionalIncludeDirectories>
       <EnablePREfast>true</EnablePREfast>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -456,7 +471,7 @@ xcopy /E /I /Y "$(SolutionDir)extern\luajit\src\jit\*" "$(SolutionDir)build\lib\
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WINDOWER_AUTO_VERSION;$(ReleaseConstants);WIN32_LEAN_AND_MEAN;NOMINMAX;WINVER=_WIN32_WINNT_WIN8;_WIN32_WINNT=_WIN32_WINNT_WIN8;PSAPI_VERSION=1;_HAS_AUTO_PTR_ETC=0;_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;NDEBUG;gsl_FEATURE_WITH_CONTAINER_TO_STD=14;gsl_FEATURE_MAKE_SPAN_TO_STD=14;gsl_FEATURE_BYTE_SPAN_TO_STD=14;gsl_FEATURE_OWNER_MACRO=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(IntDir)src;$(ProjectDir)src;$(ProjectDir)lib;$(SolutionDir)extern\luajit\src\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(IntDir)src;$(ProjectDir)src;$(ProjectDir)lib;$(SolutionDir)extern\luajit\src\;%(AdditionalIncludeDirectories);lib\imgui;lib\imgui\backends;lib\imgui\misc\freetype;</AdditionalIncludeDirectories>
       <EnablePREfast>true</EnablePREfast>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
