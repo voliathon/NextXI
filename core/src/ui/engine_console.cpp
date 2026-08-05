@@ -98,8 +98,6 @@ namespace windower::ui
 
     void engine_console::render(context& /*ctx*/) noexcept
     {
-        if (!m_visible) return;
-
         // 1. UNLOCK THE VAULT SAFELY ON THE RENDER THREAD
         // Drain the message queue and feed it directly into ImGui
         {
@@ -111,9 +109,11 @@ namespace windower::ui
             m_msg_queue.clear();
         }
 
-        // 2. FORCE MOUSE CURSOR
-        // FFXI hides the OS cursor. ImGui must draw its own so you can grab the window edges.
-        ImGui::GetIO().MouseDrawCursor = true;
+        // 2. TOGGLE MOUSE CURSOR
+        // Only force the cursor to draw when the console is actually visible
+        ImGui::GetIO().MouseDrawCursor = m_visible;
+
+        if (!m_visible) return;
 
         ImGui::SetNextWindowSize(ImVec2(700, 450), ImGuiCond_FirstUseEver);
         if (!ImGui::Begin("NextXI Console", &m_visible, ImGuiWindowFlags_NoCollapse))
@@ -168,10 +168,52 @@ namespace windower::ui
                     std::lock_guard<std::mutex> lock{ g_console_mutex };
                     s_log_buffer.clear();
                 }
+                else if (cmd_str == u8"export")
+                {
+                    bool success = false;
+                    auto export_path =
+                        core::instance().settings.user_path.parent_path() /
+                        "console_export.txt";
+
+                    {
+                        std::lock_guard<std::mutex> lock{ g_console_mutex };
+                        std::error_code ec;
+                        std::filesystem::create_directories(
+                            export_path.parent_path(), ec);
+
+                        std::ofstream out(export_path, std::ios::binary);
+                        if (out)
+                        {
+                            for (auto const& line : s_log_buffer)
+                            {
+                                out.write(
+                                    reinterpret_cast<char const*>(
+                                        line.data()),
+                                    line.size());
+                                out.write("\r\n", 2);
+                            }
+                            success = true;
+                        }
+                    }
+
+                    if (success)
+                    {
+                        std::u8string success_msg = u8"--- Exported to: " +
+                            export_path.u8string() +
+                            u8" ---";
+                        push_log(success_msg);
+                    }
+                    else
+                    {
+                        push_log(
+                            u8"--- ERROR: Failed to write export file ---");
+                    }
+                }
                 else if (cmd_str == u8"help")
                 {
                     push_log(u8"--- Console Commands ---");
                     push_log(u8" clear           : Erases all text in the console.");
+                    push_log(u8" export          : Dumps the console history to console_export.txt.");
                     push_log(u8" help            : Displays this command list.");
                     push_log(u8" /load <addon>   : Loads an addon.");
                     push_log(u8" /unload <addon> : Unloads an addon.");
