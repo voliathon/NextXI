@@ -9,8 +9,6 @@ end
 
 local start = 1000000
 
--- Metatable
-
 meta.__index = function(q, k)
     local length = q.length
     local i = k > 0 and k or length + k + 1
@@ -84,8 +82,6 @@ end
 
 meta.__ipairs = pairs
 
--- Enumerable base
-
 meta.__pairs = function(q)
     local i = q.index
     local max = i + q.length
@@ -152,8 +148,6 @@ meta.__remove_key = function(q, i)
     return element
 end
 
--- Enumerable overrides
-
 local queue = {}
 
 queue.clear = function(q)
@@ -161,8 +155,6 @@ queue.clear = function(q)
     rawset(q, 'length', 0)
     rawset(q, 'index', start)
 end
-
--- Unique members
 
 queue.push = function(q, el)
     local new_length = q.length + 1
@@ -181,8 +173,6 @@ queue.pop = function(q)
 
     return el
 end
-
--- Invoke enumerable library
 
 local enumerable = require('enumerable')
 return enumerable.init_type(meta, queue, 'queue')

@@ -1,8 +1,3 @@
-----------------------------------------------------------------------------
--- LuaJIT profiler.
---
-
--- Cache some library functions and objects.
 local jit = require("jit")
 local profile = require("jit.profile")
 local vmdef = require("jit.vmdef")
@@ -11,11 +6,7 @@ local pairs, ipairs, tonumber, floor = pairs, ipairs, tonumber, math.floor
 local sort, format = table.sort, string.format
 local stdout = io.stdout
 local zone -- Load jit.zone module on demand.
-
--- Output file handle.
 local out
-
-------------------------------------------------------------------------------
 
 local prof_ud
 local prof_states, prof_split, prof_min, prof_raw, prof_fmt, prof_depth
@@ -28,12 +19,9 @@ local map_vmmode = {
   G = "Garbage Collector",
   J = "JIT Compiler",
 }
-
--- Profiler callback.
 local function prof_cb(th, samples, vmmode)
   prof_samples = prof_samples + samples
   local key_stack, key_stack2, key_state
-  -- Collect keys for sample.
   if prof_states then
     if prof_states == "v" then
       key_state = map_vmmode[vmmode] or vmmode
@@ -53,7 +41,6 @@ local function prof_cb(th, samples, vmmode)
       key_stack2 = profile.dumpstack(th, "l", 1)
     end
   end
-  -- Order keys.
   local k1, k2
   if prof_split == 1 then
     if key_state then
@@ -64,7 +51,6 @@ local function prof_cb(th, samples, vmmode)
     k1 = key_stack
     if key_stack2 then k2 = key_stack2 elseif key_state then k2 = key_state end
   end
-  -- Coalesce samples in one or two levels.
   if k1 then
     local t1 = prof_count1
     t1[k1] = (t1[k1] or 0) + samples
@@ -76,10 +62,6 @@ local function prof_cb(th, samples, vmmode)
     end
   end
 end
-
-------------------------------------------------------------------------------
-
--- Show top N list.
 local function prof_top(count1, count2, samples, indent)
   local t, n = {}, 0
   for k in pairs(count1) do
@@ -108,8 +90,6 @@ local function prof_top(count1, count2, samples, indent)
     end
   end
 end
-
--- Annotate source code
 local function prof_annotate(count1, samples)
   local files = {}
   local ms = 0
@@ -180,10 +160,6 @@ local function prof_annotate(count1, samples)
     fp:close()
   end
 end
-
-------------------------------------------------------------------------------
-
--- Finish profiling and dump result.
 local function prof_finish()
   if prof_ud then
     profile.stop()
@@ -201,8 +177,6 @@ local function prof_finish()
     if out ~= stdout then out:close() end
   end
 end
-
--- Start profiling.
 local function prof_start(mode)
   local interval = ""
   mode = mode:gsub("i%d*", function(s) interval = s; return "" end)
@@ -252,8 +226,6 @@ local function prof_start(mode)
   getmetatable(prof_ud).__gc = prof_finish
 end
 
-------------------------------------------------------------------------------
-
 local function start(mode, outfile)
   if not outfile then outfile = os.getenv("LUAJIT_PROFILEFILE") end
   if outfile then
@@ -263,8 +235,6 @@ local function start(mode, outfile)
   end
   prof_start(mode or "f")
 end
-
--- Public module functions.
 return {
   start = start, -- For -j command line option.
   stop = prof_finish

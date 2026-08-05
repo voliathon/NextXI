@@ -9,6 +9,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <mutex>
 
 namespace windower
 {
@@ -26,7 +27,6 @@ public:
     packet_queue(packet_queue&&)      = default;
     packet_queue(packet_direction direction) : m_direction{direction}
     {
-        // Pre-allocate to prevent mid-combat heap reallocations
         m_output_buffer.reserve(4096);
     }
 
@@ -52,6 +52,7 @@ private:
     };
 
     packet_direction const m_direction;
+    std::mutex m_queue_mutex; 
     std::deque<packet> m_queue;
     std::vector<std::byte> m_output_buffer;
 

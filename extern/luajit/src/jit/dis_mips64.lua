@@ -1,6 +1,3 @@
-----------------------------------------------------------------------------
--- LuaJIT MIPS64 disassembler wrapper module.
---
 
 local dis_mips = require((string.match(..., ".*%.") or "").."dis_mips")
 return {

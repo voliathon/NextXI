@@ -1,95 +1,72 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "packet_queue.hpp"
-
 #include "addon/modules/packet.hpp"
+
+#include <cstring>
 
 namespace
 {
 
-struct packet_header
-{
-public:
-    packet_header() noexcept = default;
-    packet_header(
-        std::uint16_t id, std::size_t size, std::uint16_t counter) noexcept :
-        m_packed_id_size{id & 0x1FF
-                         | (size + sizeof(packet_header)) << 7 & 0xFE00},
-        m_counter{counter}
-    {}
-
-    std::size_t size() const noexcept
+    struct packet_header
     {
-        return (m_packed_id_size >> 7 & 0x1FC) - sizeof(packet_header);
+    public:
+        packet_header() noexcept = default;
+        packet_header(
+            std::uint16_t id, std::size_t size, std::uint16_t counter) noexcept :
+            m_packed_id_size{ gsl::narrow_cast<std::uint16_t>((id & 0x1FF) | (((size + sizeof(packet_header)) << 7) & 0xFE00)) },
+            m_counter{ counter }
+        {
+        }
+
+        std::size_t size() const noexcept
+        {
+            return (m_packed_id_size >> 7 & 0x1FC) - sizeof(packet_header);
+        }
+        std::uint16_t id() const noexcept { return m_packed_id_size & 0x1FF; }
+        std::uint16_t counter() const noexcept { return m_counter; }
+
+    private:
+        std::uint16_t m_packed_id_size;
+        std::uint16_t m_counter;
+    };
+
+    static_assert(sizeof(packet_header) == 4);
+
+
+    // Use memcpy instead of std::copy_n to guarantee zero analyzer warnings and maximum speed
+    template<typename T>
+    T read(std::span<std::byte const>& input)
+    {
+        static_assert(std::is_trivially_copyable_v<T>);
+        T value;
+        std::memcpy(&value, input.data(), sizeof(T));
+        input = input.subspan(sizeof(T));
+        return value;
     }
-    std::uint16_t id() const noexcept { return m_packed_id_size & 0x1FF; }
-    std::uint16_t counter() const noexcept { return m_counter; }
 
-private:
-    std::uint16_t m_packed_id_size;
-    std::uint16_t m_counter;
-};
+    std::span<std::byte const>
+        read(std::span<std::byte const>& input, std::size_t size) noexcept
+    {
+        auto const value = input.subspan(0, size);
+        input = input.subspan(size);
+        return value;
+    }
 
-static_assert(sizeof(packet_header) == 4);
+    std::span<std::byte const>
+        write(std::span<std::byte>& output, std::span<std::byte const> value)
+    {
+        std::memcpy(output.data(), value.data(), value.size());
+        output = output.subspan(value.size());
+        return value;
+    }
 
-
-template<typename T>
-T read(std::span<std::byte const>& input)
-{
-    static_assert(std::is_trivially_copyable_v<T>);
-
-    T value;
-    auto const span = std::as_writable_bytes(std::span{&value, 1});
-    std::copy_n(input.begin(), span.size(), span.begin());
-    input = input.subspan(sizeof value);
-    return value;
-}
-
-std::span<std::byte const>
-read(std::span<std::byte const>& input, std::size_t size) noexcept
-{
-    auto const value = input.subspan(0, size);
-    input = input.subspan(size);
-    return value;
-}
-
-std::span<std::byte const>
-write(std::span<std::byte>& output, std::span<std::byte const> value)
-{
-    std::copy_n(value.begin(), value.size(), output.begin());
-    output = output.subspan(value.size());
-    return value;
-}
-
-template<typename T>
-T const& write(std::span<std::byte>& output, T const& value)
-{
-    static_assert(std::is_trivially_copyable_v<T>);
-    write(output, std::as_bytes(std::span{&value, 1}));
-    return value;
-}
+    template<typename T>
+    T const& write(std::span<std::byte>& output, T const& value)
+    {
+        static_assert(std::is_trivially_copyable_v<T>);
+        std::memcpy(output.data(), &value, sizeof(T));
+        output = output.subspan(sizeof(T));
+        return value;
+    }
 
 }
 
@@ -97,6 +74,7 @@ void windower::packet_queue::queue(
     std::uint16_t id, std::span<std::byte const> data,
     std::u8string_view injected_by)
 {
+    std::lock_guard<std::mutex> lock{ m_queue_mutex };
     m_queue.emplace_back(id, data, injected_by);
 }
 
@@ -109,7 +87,7 @@ std::span<std::byte const> windower::packet_queue::process_buffer(
         m_output_buffer.clear();
         m_output_buffer.resize(output_size);
     }
-    auto output = std::span{m_output_buffer};
+    auto output = std::span{ m_output_buffer };
 
     while (input.size() >= sizeof(packet_header))
     {
@@ -127,7 +105,7 @@ std::span<std::byte const> windower::packet_queue::process_buffer(
         }
         else
         {
-            // Simply pass the span directly without a vector copy
+            std::lock_guard<std::mutex> lock{ m_queue_mutex };
             m_queue.emplace_front(id, data, u8"");
             core::error(
                 u8"",
@@ -136,16 +114,33 @@ std::span<std::byte const> windower::packet_queue::process_buffer(
         }
     }
 
-    while (!m_queue.empty() && peek_size() <= output.size())
+    // Safely steal the queue contents to process without holding the lock
+    std::deque<packet> local_queue;
     {
-        auto const& packet = m_queue.front();
-        process_packet(
-            output, packet.id, counter, timestamp,
-            std::span{packet.data.data(), packet.size}, packet.injected_by);
-        m_queue.pop_front();
+        std::lock_guard<std::mutex> lock{ m_queue_mutex };
+        std::swap(m_queue, local_queue);
     }
 
-    return {m_output_buffer.data(), m_output_buffer.size() - output.size()};
+    while (!local_queue.empty() && (local_queue.front().size + sizeof(packet_header)) <= output.size())
+    {
+        auto const& packet = local_queue.front();
+        process_packet(
+            output, packet.id, counter, timestamp,
+            std::span{ packet.data.data(), packet.size }, packet.injected_by);
+        local_queue.pop_front();
+    }
+
+    // If we couldn't process everything due to output limits, push it back safely
+    if (!local_queue.empty())
+    {
+        std::lock_guard<std::mutex> lock{ m_queue_mutex };
+        for (auto it = local_queue.rbegin(); it != local_queue.rend(); ++it)
+        {
+            m_queue.push_front(*it);
+        }
+    }
+
+    return { m_output_buffer.data(), m_output_buffer.size() - output.size() };
 }
 
 std::size_t windower::packet_queue::peek_size() const noexcept

@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "addon/modules/command.hpp"
 
 #include "addon/addon.hpp"
@@ -138,10 +114,17 @@ extern "C"
 {
     static void input(
         char8_t const* command_ptr, std::size_t command_length,
-        std::int32_t source)
+        std::int32_t source) noexcept
     {
-        windower::command_manager::instance().handle_command(
-            {command_ptr, command_length}, windower::command_source{source});
+        try
+        {
+            windower::command_manager::instance().handle_command(
+                { command_ptr, command_length }, windower::command_source{ source });
+        }
+        catch (...)
+        {
+            windower::core::instance().error(u8"command_module", std::current_exception());
+        }
     }
 }
 
@@ -180,7 +163,9 @@ int windower::load_command_module(lua::state s)
     lua::push(guard, ::register_handler);
     lua::push(guard, ::unregister_handler);
     lua::push(guard, ::parse_args);
-    lua::push(guard, ::input);
+    lua::push(guard, reinterpret_cast<void*>(::input)); // Explicit FFI void* cast!
+
+    lua::call(guard, 6);
 
     lua::call(guard, 6);
 

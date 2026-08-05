@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "addon/package_manager.hpp"
 
 #include "addon/errors/package_error.hpp"
@@ -29,7 +5,9 @@
 #include "downloader.hpp"
 #include "utilities/coroutine.hpp"
 #include "utilities/xml.hpp"
+#include "utilities/paths.hpp"
 #include "utility.hpp"
+
 
 #include <windows.h>
 
@@ -172,10 +150,6 @@ windower::package::package(std::filesystem::path root_path, bool can_update) :
     m_root_path{std::move(root_path)}, m_can_update{can_update}
 {
     pugi::xml_document doc;
-
-    // Pillar 2: The Boilerplate Nuke
-    // If the manifest exists, load it. If not, generate it dynamically in
-    // memory.
     if (std::filesystem::exists(m_root_path / u8"manifest.xml"))
     {
         auto stream = resolve(u8"manifest.xml");
@@ -917,11 +891,7 @@ void windower::package_manager::populate_installed_packages()
     {
         populate_installed_packages(override_path, false);
     }
-
-    // Scan the standard 'packages' root folder
     populate_installed_packages(m_installed_package_directory, true);
-
-    // Scan our custom 'packages/libs' folder!
     auto libs_directory = m_installed_package_directory / u8"libs";
     populate_installed_packages(libs_directory, true);
 }
@@ -954,7 +924,6 @@ void windower::package_manager::populate_installed_packages(
                 }
                 catch (std::exception const& e)
                 {
-                    // Print the bad package but KEEP SCANNING!
                     core::error(u8"package manager", e);
                 }
             }
@@ -962,8 +931,6 @@ void windower::package_manager::populate_installed_packages(
     }
     catch (std::exception const& e)
     {
-        // SAFTEY NET: Catch OS-level locks so they don't bubble up into the
-        // noexcept constructor!
         core::error(u8"package manager", e);
     }
 }
@@ -1036,7 +1003,6 @@ windower::package_manager::load_order_impl(
             auto const it = m_installed_packages.find(name);
             if (it == m_installed_packages.end())
             {
-                // SAFETY NET: Log and skip instead of throwing!
                 core::error(
                     u8"package manager",
                     u8"Cannot load missing package: " + name);
@@ -1084,7 +1050,6 @@ void windower::package_manager::topological_sort(
     {
         if (required)
         {
-            // Throw the error so the ENTIRE load aborts cleanly without crashing the client!
             throw package_error{ u8"PKG:P1", name };
         }
     }
@@ -1093,7 +1058,6 @@ void windower::package_manager::topological_sort(
         auto const color = it->second.color;
         if (color == vertex_color::gray && required)
         {
-            // SAFETY NET: Log cycles instead of throwing.
             core::error(
                 u8"package manager",
                 u8"Dependency cycle detected in package: " + name);

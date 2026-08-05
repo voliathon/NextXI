@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "crash_handler.hpp"
 
 #include "cloak.hpp"
@@ -29,6 +5,8 @@
 #include "library.hpp"
 #include "unicode.hpp"
 #include "utility.hpp"
+#include "utilities/module_info.hpp"
+#include "utilities/paths.hpp"
 
 #include <windows.h>
 
@@ -323,14 +301,10 @@ windower::crash_handler::write_dump(std::filesystem::path const& path) const
 
 void windower::crash_handler::crash(void* exception) const
 {
-    // Redirect the memory dump so it doesn't create files/temp/
     auto dmp_path = windower_path() / u8"crash.dmp";
     ::write_dump(dmp_path, m_dump_type, exception);
 
     auto reporter = windower_path() / u8"NextXI.exe";
-
-    // Pass the new dmp_path to the C# Launcher so it stops throwing
-    // exceptions!
     auto args = quote_argument(reporter.wstring()) + L" report-crash " +
                 quote_argument(dmp_path.wstring());
 
@@ -338,9 +312,6 @@ if (auto ptr = static_cast<::EXCEPTION_POINTERS*>(exception))
     {
         args.append(L" --signature ");
         args.append(quote_argument(get_signature(*ptr)));
-
-        // --- GENERATE CRASH.LOG ---
-        // windower_path() points directly to your bin/release/ folder!
         auto report_path = windower_path() / u8"crash.log";
         std::ofstream report(report_path);
         if (report)
@@ -362,8 +333,6 @@ if (auto ptr = static_cast<::EXCEPTION_POINTERS*>(exception))
                    << ptr->ExceptionRecord->ExceptionCode << "`\n";
             report << "- **Address (Instruction Pointer):** `0x"
                    << ptr->ExceptionRecord->ExceptionAddress << "`\n";
-
-            // 0xC0000005 is EXCEPTION_ACCESS_VIOLATION
             if (ptr->ExceptionRecord->ExceptionCode == 0xC0000005)
             {
                 report << "- **Violation Type:** "
@@ -393,22 +362,13 @@ if (auto ptr = static_cast<::EXCEPTION_POINTERS*>(exception))
             report << "EIP: 0x" << std::hex << ptr->ContextRecord->Eip << "\n";
 #endif
             report << "```\n";
-
-            // --- C++ CALL STACK GENERATOR ---
             report << "\n### C++ Call Stack\n";
             report << "```text\n";
 
             ::HANDLE process = ::GetCurrentProcess();
             ::HANDLE thread  = ::GetCurrentThread();
-
-            // Tell DbgHelp to "demangle" the ugly C++ symbols into
-            // human-readable text
             ::SymSetOptions(
                 SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES);
-
-            // Explicitly point the Stack Walker at the Windower
-            // directory! Because FFXI is hosted by pol.exe, it was searching
-            // the PlayOnline folder by default.
             std::string search_path = windower_path().string();
             ::SymInitialize(process, search_path.c_str(), TRUE);
 
@@ -416,10 +376,6 @@ if (auto ptr = static_cast<::EXCEPTION_POINTERS*>(exception))
             frame.AddrPC.Mode    = AddrModeFlat;
             frame.AddrFrame.Mode = AddrModeFlat;
             frame.AddrStack.Mode = AddrModeFlat;
-
-            // FIX: Make a complete, isolated copy of the CPU state!
-            // StackWalk64 intentionally modifies this object as it walks
-            // backwards.
             ::CONTEXT context_copy = *ptr->ContextRecord;
 
 #if defined(_M_IX86) // FFXI is a 32-bit process
@@ -441,8 +397,6 @@ if (auto ptr = static_cast<::EXCEPTION_POINTERS*>(exception))
 
             for (int i = 0; i < 32; ++i)
             {
-                // FIX: Pass '&context_copy' instead of the live
-                // 'ptr->ContextRecord'
                 if (!::StackWalk64(
                         machine_type, process, thread, &frame, &context_copy,
                         nullptr, ::SymFunctionTableAccess64,
@@ -457,8 +411,6 @@ if (auto ptr = static_cast<::EXCEPTION_POINTERS*>(exception))
                 if (::SymFromAddr(
                         process, frame.AddrPC.Offset, &displacement, symbol))
                 {
-                    // Explicitly take the address of the first character
-                    // to prevent implicit array-to-pointer decay (bounds.3)
                     auto const* name_ptr = &symbol->Name[0];
                     report << i << ": "
                            << std::string_view{name_ptr, symbol->NameLen}
@@ -466,8 +418,6 @@ if (auto ptr = static_cast<::EXCEPTION_POINTERS*>(exception))
                 }
                 else
                 {
-                    // SILVER BULLET FALLBACK: If the PDB fails, natively query
-                    // the OS for the DLL Name and Offset!
                     auto const mod =
                         static_cast<::HMODULE>(windower::module_for(
                             reinterpret_cast<void*>(frame.AddrPC.Offset)));
@@ -495,9 +445,7 @@ if (auto ptr = static_cast<::EXCEPTION_POINTERS*>(exception))
 
             ::SymCleanup(process);
             report << "```\n";
-            // -------------------------------------
         }
-        // --- END REPORT.MD ---
     }
 
     ::PROCESS_INFORMATION process_info = {};

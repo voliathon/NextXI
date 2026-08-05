@@ -153,15 +153,6 @@ local entity = struct({
     _unknown_1              = {0x040, data(0x04)}, -- Sometimes a single world coordinate, sometimes a pointer...
     _dupe_position          = {0x044, vector_3f}, -- Seems unused! w-coordinate is occasionally overwritten by pointer value...
     _unknown_variable       = {0x050, data(0x24)}, -- Data in here varies! Sometimes the same field is a pointer, sometimes coordinates. Seems to depend on the entity
-    -- Observed constellations:
-    -- Ding Bats
-    --  ptr1    coord   coord   coord       -- small coordinates, ~0.01 range
-    --  ptr2    ptr3    ptr4    0           -- ptr2 == _unknonw_1 - 0x35C, ptr3 == ptr1 + 0xCA0, ptr4 == ptr1 + 28A6
-    --  1(float)
-    -- Wild Rabbit
-    --  0       0       0       0
-    --  0       1       0       0
-    --  1(int)
     index                   = {0x074, entity_index},
     id                      = {0x078, entity_id},
     name                    = {0x07C, npc_name},
@@ -405,23 +396,11 @@ types.target_array = struct({signature = '53568BF18B480433DB3BCB75065E33C05B59C3
     alliance_target_active  = {0x59, bool}, -- This includes party targeting
     target_locked           = {0x5C, boolbit(uint32), offset = 0},
     sub_target_mask         = {0x60, uint32}, -- Bit mask indicating valid sub target selection
-                                              --     0:  PCs/Pets/Trusts
-                                              --     1:  Green NPCs/Pets/Trusts
-                                              --     2:  Party members (incl. Trusts)
-                                              --     3:  Alliance members (incl. Trusts)
-                                              --     4:  Enemies
-                                              -- Unsure about the significance of the second byte in this int
-                                              --     0:  <stnpc>
-                                              --     2:  <stpc>
-                                              --     3:  <st>
-                                              -- Changing the second byte does not seem to have an effect
-                                              -- The entire int is -1 if no sub target is active
     action_target_active    = {0x6C, bool},
     action_range            = {0x6D, uint8}, -- One less than the distance in yalms (including 0xFF for self-targeting spells)
     menu_open               = {0x74, bool},
     action_category         = {0x76, uint8}, -- 1 for JA/WS, 2 for spells
     action_aoe_range        = {0x77, uint8}, -- Base range for AoE modifiers, this is not directly related to the distance drawn on the screen
-                                             -- For example increased range by different instruments will not change this value for AoE songs
     action_id               = {0x78, uint16}, -- The ID of the JA, WS or spell
     action_target_id        = {0x7C, entity_id},
     focus_index             = {0x84, entity_index}, -- Only set when the target exists in the entity array

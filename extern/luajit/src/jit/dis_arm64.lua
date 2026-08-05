@@ -1,6 +1,3 @@
-----------------------------------------------------------------------------
--- LuaJIT ARM64 disassembler module.
---
 
 local type = type
 local sub, byte, format = string.sub, string.byte, string.format
@@ -10,10 +7,6 @@ local bit = require("bit")
 local band, bor, bxor, tohex = bit.band, bit.bor, bit.bxor, bit.tohex
 local lshift, rshift, arshift = bit.lshift, bit.rshift, bit.arshift
 local ror = bit.ror
-
-------------------------------------------------------------------------------
--- Opcode maps
-------------------------------------------------------------------------------
 
 local map_adr = { -- PC-relative addressing.
   shift = 31, mask = 1,
@@ -703,8 +696,6 @@ local map_init = {
   map_datai, map_datai, map_br, map_br, map_ls, map_datar, map_ls, map_datafp
 }
 
-------------------------------------------------------------------------------
-
 local map_regs = { x = {}, w = {}, d = {}, s = {} }
 
 for i=0,30 do
@@ -728,10 +719,6 @@ local map_shift = { [0] = "lsl", "lsr", "asr", "ror"}
 local map_extend = {
   [0] = "uxtb", "uxth", "uxtw", "uxtx", "sxtb", "sxth", "sxtw", "sxtx",
 }
-
-------------------------------------------------------------------------------
-
--- Output a nicely formatted line with an opcode and operands.
 local function putop(ctx, text, operands)
   local pos = ctx.pos
   local extra = ""
@@ -750,8 +737,6 @@ local function putop(ctx, text, operands)
   end
   ctx.pos = pos + 4
 end
-
--- Fallback for unknown opcodes.
 local function unknown(ctx)
   return putop(ctx, ".long", { "0x"..tohex(ctx.op) })
 end
@@ -856,8 +841,6 @@ local function prefer_bfx(sf, uns, imms, immr)
   end
   return true
 end
-
--- Disassemble a single instruction.
 local function disass_ins(ctx)
   local pos = ctx.pos
   local b0, b1, b2, b3 = byte(ctx.code, pos+1, pos+4)
@@ -984,7 +967,6 @@ local function disass_ins(ctx)
       local opt = band(rshift(op, 13), 7)
       local s = band(rshift(op, 12), 1)
       local sz = band(rshift(op, 30), 3)
-      -- extension to be applied
       if opt == 3 then
        if s == 0 then x = x.."]"
        else x = x..", lsl #"..sz.."]" end
@@ -1113,13 +1095,11 @@ local function disass_ins(ctx)
       else x = map_shift[band(rshift(op, 22), 3)].." #"..x end
     elseif p == "X" then
       local opt = band(rshift(op, 13), 7)
-      -- Width specifier <R>.
       if opt ~= 3 and opt ~= 7 then
 	last = map_regs.w[band(rshift(op, 16), 31)]
 	operands[#operands] = last
       end
       x = band(rshift(op, 10), 7)
-      -- Extension.
       if opt == 2 + band(rshift(op, 31), 1) and
 	 band(rshift(op, second0 and 5 or 0), 31) == 31 then
 	if x == 0 then x = nil
@@ -1145,7 +1125,6 @@ local function disass_ins(ctx)
       x = "#0x"..decode_fpmovi(op)
     elseif p == "g" or p == "f" or p == "x" or p == "w" or
 	   p == "d" or p == "s" then
-      -- These are handled in D/N/M/A.
     elseif p == "0" then
       if last == "sp" or last == "wsp" then
 	local n = #operands
@@ -1178,10 +1157,6 @@ local function disass_ins(ctx)
 
   return putop(ctx, name..suffix, operands)
 end
-
-------------------------------------------------------------------------------
-
--- Disassemble a block of code.
 local function disass_block(ctx, ofs, len)
   if not ofs then ofs = 0 end
   local stop = len and ofs+len or #ctx.code
@@ -1189,8 +1164,6 @@ local function disass_block(ctx, ofs, len)
   ctx.rel = nil
   while ctx.pos < stop do disass_ins(ctx) end
 end
-
--- Extended API: create a disassembler context. Then call ctx:disass(ofs, len).
 local function create(code, addr, out)
   local ctx = {}
   ctx.code = code
@@ -1201,19 +1174,13 @@ local function create(code, addr, out)
   ctx.hexdump = 8
   return ctx
 end
-
--- Simple API: disassemble code (a string) at address and output via out.
 local function disass(code, addr, out)
   create(code, addr, out):disass()
 end
-
--- Return register name for RID.
 local function regname(r)
   if r < 32 then return map_regs.x[r] end
   return map_regs.d[r-32]
 end
-
--- Public module functions.
 return {
   create = create,
   disass = disass,

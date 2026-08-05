@@ -1,6 +1,3 @@
-----------------------------------------------------------------------------
--- LuaJIT PPC disassembler module.
---
 
 local type = type
 local byte, format = string.byte, string.format
@@ -9,10 +6,6 @@ local concat = table.concat
 local bit = require("bit")
 local band, bor, tohex = bit.band, bit.bor, bit.tohex
 local lshift, rshift, arshift = bit.lshift, bit.rshift, bit.arshift
-
-------------------------------------------------------------------------------
--- Primary and extended opcode maps
-------------------------------------------------------------------------------
 
 local map_crops = {
   shift = 1, mask = 1023,
@@ -362,8 +355,6 @@ local map_pri = {
   false,	false,		map_std,	map_fpd,
 }
 
-------------------------------------------------------------------------------
-
 local map_gpr = {
   [0] = "r0", "sp", "r2", "r3", "r4", "r5", "r6", "r7",
   "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15",
@@ -372,8 +363,6 @@ local map_gpr = {
 }
 
 local map_cond = { [0] = "lt", "gt", "eq", "so", "ge", "le", "ne", "ns", }
-
--- Format a condition bit.
 local function condfmt(cond)
   if cond <= 3 then
     return map_cond[band(cond, 3)]
@@ -381,10 +370,6 @@ local function condfmt(cond)
     return format("4*cr%d+%s", rshift(cond, 2), map_cond[band(cond, 3)])
   end
 end
-
-------------------------------------------------------------------------------
-
--- Output a nicely formatted line with an opcode and operands.
 local function putop(ctx, text, operands)
   local pos = ctx.pos
   local extra = ""
@@ -401,13 +386,9 @@ local function putop(ctx, text, operands)
   end
   ctx.pos = pos + 4
 end
-
--- Fallback for unknown opcodes.
 local function unknown(ctx)
   return putop(ctx, ".long", { "0x"..tohex(ctx.op) })
 end
-
--- Disassemble a single instruction.
 local function disass_ins(ctx)
   local pos = ctx.pos
   local b0, b1, b2, b3 = byte(ctx.code, pos+1, pos+4)
@@ -536,10 +517,6 @@ local function disass_ins(ctx)
 
   return putop(ctx, name, operands)
 end
-
-------------------------------------------------------------------------------
-
--- Disassemble a block of code.
 local function disass_block(ctx, ofs, len)
   if not ofs then ofs = 0 end
   local stop = len and ofs+len or #ctx.code
@@ -548,8 +525,6 @@ local function disass_block(ctx, ofs, len)
   ctx.rel = nil
   while ctx.pos < stop do disass_ins(ctx) end
 end
-
--- Extended API: create a disassembler context. Then call ctx:disass(ofs, len).
 local function create(code, addr, out)
   local ctx = {}
   ctx.code = code
@@ -560,19 +535,13 @@ local function create(code, addr, out)
   ctx.hexdump = 8
   return ctx
 end
-
--- Simple API: disassemble code (a string) at address and output via out.
 local function disass(code, addr, out)
   create(code, addr, out):disass()
 end
-
--- Return register name for RID.
 local function regname(r)
   if r < 32 then return map_gpr[r] end
   return "f"..(r-32)
 end
-
--- Public module functions.
 return {
   create = create,
   disass = disass,

@@ -1,4 +1,3 @@
---[[
 File handler.
 ]]
 
@@ -12,13 +11,9 @@ local string, table = _libs.strings, _libs.tables
 local files = {}
 
 _libs.files = files
-
--- Create a new file object.
 function files.new(path, create)
     return setmetatable({_create = create == true or nil, path = path}, {__index = files})
 end
-
--- Creates a new file. Creates path, if necessary.
 function files.create(f)
     f:create_path()
     local fh = io.open(windower.addon_path .. f.path, 'w')
@@ -29,8 +24,6 @@ function files.create(f)
 
     return f
 end
-
--- Check if file exists. There's no better way, it would seem.
 function files.exists(f)
     local path
 
@@ -46,13 +39,9 @@ function files.exists(f)
 
     return windower.file_exists(windower.addon_path .. path)
 end
-
--- Checks existance of a number of paths, returns the first that exists.
 function files.check(...)
     return table.find[2]({...}, files.exists)
 end
-
--- Read from file and return string of the contents.
 function files.read(f)
     local path
     if type(f) == 'string' then
@@ -80,16 +69,12 @@ function files.read(f)
     local fh = io.open(windower.addon_path .. path, 'r')
     local content = fh:read('*all*')
     fh:close()
-
-    -- Remove byte order mark for UTF-8, if present
     if content:sub(1, 3) == string.char(0xEF, 0xBB, 0xBF) then
         content = content:sub(4)
     end
 
     return content
 end
-
--- Creates a directory.
 function files.create_path(f)
     local path
     if type(f) == 'string' then
@@ -124,13 +109,9 @@ function files.create_path(f)
 
     return newpath
 end
-
--- Read from file and return lines of the contents in a table.
 function files.readlines(f)
     return files.read(f):split('\n')
 end
-
--- Return an iterator over the lines of a file.
 function files.it(f)
     local path
     if type(f) == 'string' then
@@ -157,8 +138,6 @@ function files.it(f)
 
     return io.lines(windower.addon_path .. path)
 end
-
--- Write to file. Overwrites everything within the file, if present.
 function files.write(f, content, flush)
     local path
     if type(f) == 'string' then
@@ -197,8 +176,6 @@ function files.write(f, content, flush)
 
     return f
 end
-
--- Append to file. Sets a newline per default, unless newline is set to false.
 function files.append(f, content, flush)
     local path
     if type(f) == 'string' then
@@ -235,8 +212,6 @@ function files.append(f, content, flush)
 end
 
 return files
-
---[[
 Copyright © 2013-2014, Windower
 All rights reserved.
 

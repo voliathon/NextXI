@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 namespace Windower
 {
     using System;
@@ -124,11 +100,6 @@ namespace Windower
                 {
                     writer.Write(CrashReporter.PrepareCrashReport(PrepareStackTrace(e.ExceptionObject)));
                 }
-
-                // We're intentionally letting the crash happen so that
-                // the Windows Error Reporting dialog appears. We could
-                // stop it by calling Environment.Exit(-1), but then the
-                // user is left with no indication of what happened.
             }
         }
 
@@ -155,8 +126,6 @@ namespace Windower
                     }
 
                     stackTrace = Convert.ToBase64String(Encoding.UTF8.GetBytes(stackTrace));
-
-                    // Replaced the obsolete EscapedCodeBase wrapper with .Location
                     var path = Environment.ProcessPath;
                     _ = Process.Start(path, "report-crash --signature \"" + signature +
                         "\" --stack-trace \"" + stackTrace + "\" \"" + dumpFile.Replace("\"", "\\\"") + "\"");

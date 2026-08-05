@@ -1,10 +1,5 @@
-------------------------------------------------------------------------------
--- DynASM x86/x64 module.
---
 
 local x64 = x64
-
--- Module information:
 local _info = {
   arch =	x64 and "x64" or "x86",
   description =	"DynASM x86/x64 module",
@@ -14,11 +9,7 @@ local _info = {
   author =	"Mike Pall",
   license =	"MIT",
 }
-
--- Exported glue functions for the arch-specific module.
 local _M = { _info = _info }
-
--- Cache library functions.
 local type, tonumber, pairs, ipairs = type, tonumber, pairs, ipairs
 local assert, unpack, setmetatable = assert, unpack or table.unpack, setmetatable
 local _s = string
@@ -27,60 +18,29 @@ local find, match, gmatch, gsub = _s.find, _s.match, _s.gmatch, _s.gsub
 local concat, sort, remove = table.concat, table.sort, table.remove
 local bit = bit or require("bit")
 local band, bxor, shl, shr = bit.band, bit.bxor, bit.lshift, bit.rshift
-
--- Inherited tables and callbacks.
 local g_opt, g_arch
 local wline, werror, wfatal, wwarn
-
--- Action name list.
--- CHECK: Keep this in sync with the C code!
 local action_names = {
-  -- int arg, 1 buffer pos:
   "DISP",  "IMM_S", "IMM_B", "IMM_W", "IMM_D",  "IMM_WB", "IMM_DB",
-  -- action arg (1 byte), int arg, 1 buffer pos (reg/num):
   "VREG", "SPACE",
-  -- ptrdiff_t arg, 1 buffer pos (address): !x64
   "SETLABEL", "REL_A",
-  -- action arg (1 byte) or int arg, 2 buffer pos (link, offset):
   "REL_LG", "REL_PC",
-  -- action arg (1 byte) or int arg, 1 buffer pos (link):
   "IMM_LG", "IMM_PC",
-  -- action arg (1 byte) or int arg, 1 buffer pos (offset):
   "LABEL_LG", "LABEL_PC",
-  -- action arg (1 byte), 1 buffer pos (offset):
   "ALIGN",
-  -- action args (2 bytes), no buffer pos.
   "EXTERN",
-  -- action arg (1 byte), no buffer pos.
   "ESC",
-  -- no action arg, no buffer pos.
   "MARK",
-  -- action arg (1 byte), no buffer pos, terminal action:
   "SECTION",
-  -- no args, no buffer pos, terminal action:
   "STOP"
 }
-
--- Maximum number of section buffer positions for dasm_put().
--- CHECK: Keep this in sync with the C code!
 local maxsecpos = 25 -- Keep this low, to avoid excessively long C lines.
-
--- Action name -> action number (dynamically generated below).
 local map_action = {}
--- First action number. Everything below does not need to be escaped.
 local actfirst = 256-#action_names
-
--- Action list buffer and string (only used to remove dupes).
 local actlist = {}
 local actstr = ""
-
--- Argument list for next dasm_put(). Start with offset 0 into action list.
 local actargs = { 0 }
-
--- Current number of section buffer positions for dasm_put().
 local secpos = 1
-
--- VREG kind encodings, pre-shifted by 5 bits.
 local map_vreg = {
   ["modrm.rm.m"] = 0x00,
   ["modrm.rm.r"] = 0x20,
@@ -91,19 +51,11 @@ local map_vreg = {
   ["vex.v"] =      0xa0,
   ["imm.hi"] =     0xc0,
 }
-
--- Current number of VREG actions contributing to REX/VEX shrinkage.
 local vreg_shrink_count = 0
-
-------------------------------------------------------------------------------
-
--- Compute action numbers for action names.
 for n,name in ipairs(action_names) do
   local num = actfirst + n - 1
   map_action[name] = num
 end
-
--- Dump action names and numbers.
 local function dumpactions(out)
   out:write("DynASM encoding engine action codes:\n")
   for n,name in ipairs(action_names) do
@@ -112,8 +64,6 @@ local function dumpactions(out)
   end
   out:write("\n")
 end
-
--- Write action list buffer as a huge static C array.
 local function writeactions(out, name)
   local nn = #actlist
   local last = actlist[nn] or 255
@@ -130,23 +80,15 @@ local function writeactions(out, name)
   end
   out:write(s, last, "\n};\n\n") -- Add last byte back.
 end
-
-------------------------------------------------------------------------------
-
--- Add byte to action list.
 local function wputxb(n)
   assert(n >= 0 and n <= 255 and n % 1 == 0, "byte out of range")
   actlist[#actlist+1] = n
 end
-
--- Add action to list with optional arg. Advance buffer pos, too.
 local function waction(action, a, num)
   wputxb(assert(map_action[action], "bad action name `"..action.."'"))
   if a then actargs[#actargs+1] = a end
   if a or num then secpos = secpos + (num or 1) end
 end
-
--- Optionally add a VREG action.
 local function wvreg(kind, vreg, psz, sk, defer)
   if not vreg then return end
   waction("VREG", vreg)
@@ -160,13 +102,9 @@ local function wvreg(kind, vreg, psz, sk, defer)
   end
   wputxb(b + (psz or 0))
 end
-
--- Add call to embedded DynASM C code.
 local function wcall(func, args)
   wline(format("dasm_%s(Dst, %s);", func, concat(args, ", ")), true)
 end
-
--- Delete duplicate action list chunks. A tad slow, but so what.
 local function dedupechunk(offset)
   local al, as = actlist, actstr
   local chunk = char(unpack(al, offset+1, #al))
@@ -178,8 +116,6 @@ local function dedupechunk(offset)
     actstr = as..chunk
   end
 end
-
--- Flush action list (intervening C code or buffer pos overflow).
 local function wflush(term)
   local offset = actargs[1]
   if #actlist == offset then return end -- Nothing to flush.
@@ -189,16 +125,10 @@ local function wflush(term)
   actargs = { #actlist } -- Actionlist offset is 1st arg to next dasm_put().
   secpos = 1 -- The actionlist offset occupies a buffer position, too.
 end
-
--- Put escaped byte.
 local function wputb(n)
   if n >= actfirst then waction("ESC") end -- Need to escape byte.
   wputxb(n)
 end
-
-------------------------------------------------------------------------------
-
--- Global label name -> global label number. With auto assignment on 1st use.
 local next_global = 10
 local map_global = setmetatable({}, { __index = function(t, name)
   if not match(name, "^[%a_][%w_@]*$") then werror("bad global label") end
@@ -208,8 +138,6 @@ local map_global = setmetatable({}, { __index = function(t, name)
   t[name] = n
   return n
 end})
-
--- Dump global labels.
 local function dumpglobals(out, lvl)
   local t = {}
   for name, n in pairs(map_global) do t[n] = name end
@@ -219,8 +147,6 @@ local function dumpglobals(out, lvl)
   end
   out:write("\n")
 end
-
--- Write global label enum.
 local function writeglobals(out, prefix)
   local t = {}
   for name, n in pairs(map_global) do t[n] = name end
@@ -230,8 +156,6 @@ local function writeglobals(out, prefix)
   end
   out:write("  ", prefix, "_MAX\n};\n")
 end
-
--- Write global label names.
 local function writeglobalnames(out, name)
   local t = {}
   for name, n in pairs(map_global) do t[n] = name end
@@ -241,21 +165,14 @@ local function writeglobalnames(out, name)
   end
   out:write("  (const char *)0\n};\n")
 end
-
-------------------------------------------------------------------------------
-
--- Extern label name -> extern label number. With auto assignment on 1st use.
 local next_extern = -1
 local map_extern = setmetatable({}, { __index = function(t, name)
-  -- No restrictions on the name for now.
   local n = next_extern
   if n < -256 then werror("too many extern labels") end
   next_extern = n - 1
   t[name] = n
   return n
 end})
-
--- Dump extern labels.
 local function dumpexterns(out, lvl)
   local t = {}
   for name, n in pairs(map_extern) do t[-n] = name end
@@ -265,8 +182,6 @@ local function dumpexterns(out, lvl)
   end
   out:write("\n")
 end
-
--- Write extern label names.
 local function writeexternnames(out, name)
   local t = {}
   for name, n in pairs(map_extern) do t[-n] = name end
@@ -276,10 +191,6 @@ local function writeexternnames(out, name)
   end
   out:write("  (const char *)0\n};\n")
 end
-
-------------------------------------------------------------------------------
-
--- Arch-specific maps.
 local map_archdef = {}		-- Ext. register name -> int. name.
 local map_reg_rev = {}		-- Int. register name -> ext. name.
 local map_reg_num = {}		-- Int. register name -> register number.
@@ -293,8 +204,6 @@ local map_type = {}		-- Type name -> { ctype, reg }
 local ctypenum = 0		-- Type number (for _PTx macros).
 
 local addrsize = x64 and "q" or "d"	-- Size for address operands.
-
--- Helper functions to fill register maps.
 local function mkrmap(sz, cl, names)
   local cname = format("@%s", sz)
   reg_list[#reg_list+1] = cname
@@ -343,8 +252,6 @@ local function mkrmap(sz, cl, names)
   end
   reg_list[#reg_list+1] = ""
 end
-
--- Integer registers (qword, dword, word and byte sized).
 if x64 then
   mkrmap("q", "Rq", {"rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi"})
 end
@@ -355,53 +262,32 @@ map_reg_valid_index[map_archdef.esp] = false
 if x64 then map_reg_valid_index[map_archdef.rsp] = false end
 if x64 then map_reg_needrex[map_archdef.Rb] = true end
 map_archdef["Ra"] = "@"..addrsize
-
--- FP registers (internally tword sized, but use "f" as operand size).
 mkrmap("f", "Rf")
-
--- SSE registers (oword sized, but qword and dword accessible).
 mkrmap("o", "xmm")
-
--- AVX registers (yword sized, but oword, qword and dword accessible).
 mkrmap("y", "ymm")
-
--- Operand size prefixes to codes.
 local map_opsize = {
   byte = "b", word = "w", dword = "d", qword = "q", oword = "o", yword = "y",
   tword = "t", aword = addrsize,
 }
-
--- Operand size code to number.
 local map_opsizenum = {
   b = 1, w = 2, d = 4, q = 8, o = 16, y = 32, t = 10,
 }
-
--- Operand size code to name.
 local map_opsizename = {
   b = "byte", w = "word", d = "dword", q = "qword", o = "oword", y = "yword",
   t = "tword", f = "fpword",
 }
-
--- Valid index register scale factors.
 local map_xsc = {
   ["1"] = 0, ["2"] = 1, ["4"] = 2, ["8"] = 3,
 }
-
--- Condition codes.
 local map_cc = {
   o = 0, no = 1, b = 2, nb = 3, e = 4, ne = 5, be = 6, nbe = 7,
   s = 8, ns = 9, p = 10, np = 11, l = 12, nl = 13, le = 14, nle = 15,
   c = 2, nae = 2, nc = 3, ae = 3, z = 4, nz = 5, na = 6, a = 7,
   pe = 10, po = 11, nge = 12, ge = 13, ng = 14, g = 15,
 }
-
-
--- Reverse defines for registers.
 function _M.revdef(s)
   return gsub(s, "@%w+", map_reg_rev)
 end
-
--- Dump register names and numbers
 local function dumpregs(out)
   out:write("Register names, sizes and internal numbers:\n")
   for _,reg in ipairs(reg_list) do
@@ -416,10 +302,6 @@ local function dumpregs(out)
     end
   end
 end
-
-------------------------------------------------------------------------------
-
--- Put action for label arg (IMM_LG, IMM_PC, REL_LG, REL_PC).
 local function wputlabel(aprefix, imm, num)
   if type(imm) == "number" then
     if imm < 0 then
@@ -434,8 +316,6 @@ local function wputlabel(aprefix, imm, num)
     waction(aprefix.."PC", imm, num)
   end
 end
-
--- Put signed byte or arg.
 local function wputsbarg(n)
   if type(n) == "number" then
     if n < -128 or n > 127 then
@@ -445,8 +325,6 @@ local function wputsbarg(n)
     wputb(n)
   else waction("IMM_S", n) end
 end
-
--- Put unsigned byte or arg.
 local function wputbarg(n)
   if type(n) == "number" then
     if n < 0 or n > 255 then
@@ -455,8 +333,6 @@ local function wputbarg(n)
     wputb(n)
   else waction("IMM_B", n) end
 end
-
--- Put unsigned word or arg.
 local function wputwarg(n)
   if type(n) == "number" then
     if shr(n, 16) ~= 0 then
@@ -465,8 +341,6 @@ local function wputwarg(n)
     wputb(band(n, 255)); wputb(shr(n, 8));
   else waction("IMM_W", n) end
 end
-
--- Put signed or unsigned dword or arg.
 local function wputdarg(n)
   local tn = type(n)
   if tn == "number" then
@@ -480,8 +354,6 @@ local function wputdarg(n)
     waction("IMM_D", n)
   end
 end
-
--- Put signed or unsigned qword or arg.
 local function wputqarg(n)
   local tn = type(n)
   if tn == "number" then -- This is only used for numbers from -2^31..2^32-1.
@@ -496,8 +368,6 @@ local function wputqarg(n)
     waction("IMM_D", format("(unsigned int)((unsigned long long)(%s)>>32)", n))
   end
 end
-
--- Put operand-size dependent number or arg (defaults to dword).
 local function wputszarg(sz, n)
   if not sz or sz == "d" or sz == "q" then wputdarg(n)
   elseif sz == "w" then wputwarg(n)
@@ -505,8 +375,6 @@ local function wputszarg(sz, n)
   elseif sz == "s" then wputsbarg(n)
   else werror("bad operand size") end
 end
-
--- Put multi-byte opcode with operand-size dependent modifications.
 local function wputop(sz, op, rex, vex, vregr, vregxb)
   local psz, sk = 0, nil
   if vex then
@@ -547,7 +415,6 @@ local function wputop(sz, op, rex, vex, vregr, vregxb)
   end
   local r
   if sz == "w" then wputb(102) end
-  -- Needs >32 bit numbers, but only for crc32 eax, word [ebx]
   if op >= 4294967296 then r = op%4294967296 wputb((op-r)/4294967296) op = r end
   if op >= 16777216 then wputb(shr(op, 24)); op = band(op, 0xffffff) end
   if op >= 65536 then
@@ -569,22 +436,16 @@ local function wputop(sz, op, rex, vex, vregr, vregxb)
   wputb(op)
   return psz, sk
 end
-
--- Put ModRM or SIB formatted byte.
 local function wputmodrm(m, s, rm, vs, vrm)
   assert(m < 4 and s < 16 and rm < 16, "bad modrm operands")
   wputb(shl(m, 6) + shl(band(s, 7), 3) + band(rm, 7))
 end
-
--- Put ModRM/SIB plus optional displacement.
 local function wputmrmsib(t, imark, s, vsreg, psz, sk)
   local vreg, vxreg
   local reg, xreg = t.reg, t.xreg
   if reg and reg < 0 then reg = 0; vreg = t.vreg end
   if xreg and xreg < 0 then xreg = 0; vxreg = t.vxreg end
   if s < 0 then s = 0 end
-
-  -- Register mode.
   if sub(t.mode, 1, 1) == "r" then
     wputmodrm(3, s, reg)
     wvreg("modrm.reg", vsreg, psz+1, sk, vreg)
@@ -594,19 +455,15 @@ local function wputmrmsib(t, imark, s, vsreg, psz, sk)
 
   local disp = t.disp
   local tdisp = type(disp)
-  -- No base register?
   if not reg then
     local riprel = false
     if xreg then
-      -- Indexed mode with index register only.
-      -- [xreg*xsc+disp] -> (0, s, esp) (xsc, xreg, ebp)
       wputmodrm(0, s, 4)
       if imark == "I" then waction("MARK") end
       wvreg("modrm.reg", vsreg, psz+1, sk, vxreg)
       wputmodrm(t.xsc, xreg, 5)
       wvreg("sib.index", vxreg, psz+2, sk)
     else
-      -- Pure 32 bit displacement.
       if x64 and tdisp ~= "table" then
 	wputmodrm(0, s, 4) -- [disp] -> (0, s, esp) (0, esp, ebp)
 	wvreg("modrm.reg", vsreg, psz+1, sk)
@@ -623,7 +480,6 @@ local function wputmrmsib(t, imark, s, vsreg, psz, sk)
       if match("UWSiI", imark) then
 	werror("NYI: rip-relative displacement followed by immediate")
       end
-      -- The previous byte in the action buffer cannot be 0xe9 or 0x80-0x8f.
       if disp[2] == "iPJ" then
 	waction("REL_A", disp[1])
       else
@@ -644,8 +500,6 @@ local function wputmrmsib(t, imark, s, vsreg, psz, sk)
   elseif tdisp == "table" then
     m = 2
   end
-
-  -- Index register present or esp as base register: need SIB encoding.
   if xreg or band(reg, 7) == 4 then
     wputmodrm(m or 2, s, 4) -- ModRM.
     if m == nil or imark == "I" then waction("MARK") end
@@ -660,16 +514,10 @@ local function wputmrmsib(t, imark, s, vsreg, psz, sk)
     wvreg("modrm.reg", vsreg, psz+1, sk, vreg)
     wvreg("modrm.rm.m", vreg, psz+1, sk)
   end
-
-  -- Put displacement.
   if m == 1 then wputsbarg(disp)
   elseif m == 2 then wputdarg(disp)
   elseif m == nil then waction("DISP", disp) end
 end
-
-------------------------------------------------------------------------------
-
--- Return human-readable operand mode string.
 local function opmodestr(op, args)
   local m = {}
   for i=1,#args do
@@ -678,8 +526,6 @@ local function opmodestr(op, args)
   end
   return op.." "..concat(m, ",")
 end
-
--- Convert number to valid integer or nil.
 local function toint(expr, isqword)
   local n = tonumber(expr)
   if n then
@@ -695,25 +541,18 @@ local function toint(expr, isqword)
     return n
   end
 end
-
--- Parse immediate expression.
 local function immexpr(expr)
-  -- &expr (pointer)
   if sub(expr, 1, 1) == "&" then
     return "iPJ", format("(ptrdiff_t)(%s)", sub(expr,2))
   end
 
   local prefix = sub(expr, 1, 2)
-  -- =>expr (pc label reference)
   if prefix == "=>" then
     return "iJ", sub(expr, 3)
   end
-  -- ->name (global label reference)
   if prefix == "->" then
     return "iJ", map_global[sub(expr, 3)]
   end
-
-  -- [<>][1-9] (local label reference)
   local dir, lnum = match(expr, "^([<>])([1-9])$")
   if dir then -- Fwd: 247-255, Bkwd: 1-9.
     return "iJ", lnum + (dir == ">" and 246 or 0)
@@ -723,12 +562,8 @@ local function immexpr(expr)
   if extname then
     return "iJ", map_extern[extname]
   end
-
-  -- expr (interpreted as immediate)
   return "iI", expr
 end
-
--- Parse displacement expression: +-num, +-expr, +-opsize*num
 local function dispexpr(expr)
   local disp = expr == "" and 0 or toint(expr)
   if disp then return disp end
@@ -751,8 +586,6 @@ local function dispexpr(expr)
   end
   return expr -- Need to return original signed expression.
 end
-
--- Parse register or type expression.
 local function rtexpr(expr)
   if not expr then return end
   local tname, ovreg = match(expr, "^([%w_]+):(@[%w_]+)$")
@@ -770,8 +603,6 @@ local function rtexpr(expr)
   end
   return expr, map_reg_num[expr]
 end
-
--- Parse operand and return { mode, opsize, reg, xreg, xsc, disp, imm }.
 local function parseoperand(param, isqword)
   local t = {}
 
@@ -786,20 +617,15 @@ local function parseoperand(param, isqword)
   repeat
     if br then
       t.mode = "xm"
-
-      -- [disp]
       t.disp = toint(br)
       if t.disp then
 	t.mode = x64 and "xm" or "xmO"
 	break
       end
-
-      -- [reg...]
       local tp
       local reg, tailr = match(br, "^([@%w_:]+)%s*(.*)$")
       reg, t.reg, tp = rtexpr(reg)
       if not t.reg then
-	-- [expr]
 	t.mode = x64 and "xm" or "xmO"
 	t.disp = dispexpr("+"..br)
 	break
@@ -809,8 +635,6 @@ local function parseoperand(param, isqword)
 	t.vreg, tailr = match(tailr, "^(%b())(.*)$")
 	if not t.vreg then werror("bad variable register expression") end
       end
-
-      -- [xreg*xsc] or [xreg*xsc+-disp] or [xreg*xsc+-expr]
       local xsc, tailsc = match(tailr, "^%*%s*([1248])%s*(.*)$")
       if xsc then
 	if not map_reg_valid_index[reg] then
@@ -827,16 +651,11 @@ local function parseoperand(param, isqword)
       if not map_reg_valid_base[reg] then
 	werror("bad base register `"..map_reg_rev[reg].."'")
       end
-
-      -- [reg] or [reg+-disp]
       t.disp = toint(tailr) or (tailr == "" and 0)
       if t.disp then break end
-
-      -- [reg+xreg...]
       local xreg, tailx = match(tailr, "^%+%s*([@%w_:]+)%s*(.*)$")
       xreg, t.xreg, tp = rtexpr(xreg)
       if not t.xreg then
-	-- [reg+-expr]
 	t.disp = dispexpr(tailr)
 	break
       end
@@ -848,18 +667,13 @@ local function parseoperand(param, isqword)
 	t.vxreg, tailx = match(tailx, "^(%b())(.*)$")
 	if not t.vxreg then werror("bad variable register expression") end
       end
-
-      -- [reg+xreg*xsc...]
       local xsc, tailsc = match(tailx, "^%*%s*([1248])%s*(.*)$")
       if xsc then
 	t.xsc = map_xsc[xsc]
 	tailx = tailsc
       end
-
-      -- [...] or [...+-disp] or [...+-expr]
       t.disp = dispexpr(tailx)
     else
-      -- imm or opsize*imm
       local imm = toint(expr, isqword)
       if not imm and sub(expr, 1, 1) == "*" and t.opsize then
 	imm = toint(sub(expr, 2))
@@ -887,7 +701,6 @@ local function parseoperand(param, isqword)
 	  t.vreg, tailr = match(tailr, "^(%b())(.*)$")
 	  if not t.vreg then werror("bad variable register expression") end
 	end
-	-- reg
 	if tailr == "" then
 	  if t.opsize then werror("bad operand size override") end
 	  t.opsize = map_reg_opsize[reg]
@@ -902,8 +715,6 @@ local function parseoperand(param, isqword)
 	  t.needrex = map_reg_needrex[reg]
 	  break
 	end
-
-	-- type[idx], type[idx].field, type->field -> [reg+offset_expr]
 	if not tp then werror("bad operand `"..param.."'") end
 	t.mode = "xm"
 	t.disp = format(tp.ctypefmt, tailr)
@@ -920,147 +731,24 @@ local function parseoperand(param, isqword)
   until true
   return t
 end
-
-------------------------------------------------------------------------------
--- x86 Template String Description
--- ===============================
---
--- Each template string is a list of [match:]pattern pairs,
--- separated by "|". The first match wins. No match means a
--- bad or unsupported combination of operand modes or sizes.
---
--- The match part and the ":" is omitted if the operation has
--- no operands. Otherwise the first N characters are matched
--- against the mode strings of each of the N operands.
---
--- The mode string for each operand type is (see parseoperand()):
---   Integer register: "rm", +"R" for eax, ax, al, +"C" for cl
---   FP register:      "f",  +"F" for st0
---   Index operand:    "xm", +"O" for [disp] (pure offset)
---   Immediate:        "i",  +"S" for signed 8 bit, +"1" for 1,
---                     +"I" for arg, +"P" for pointer
---   Any:              +"J" for valid jump targets
---
--- So a match character "m" (mixed) matches both an integer register
--- and an index operand (to be encoded with the ModRM/SIB scheme).
--- But "r" matches only a register and "x" only an index operand
--- (e.g. for FP memory access operations).
---
--- The operand size match string starts right after the mode match
--- characters and ends before the ":". "dwb" or "qdwb" is assumed, if empty.
--- The effective data size of the operation is matched against this list.
---
--- If only the regular "b", "w", "d", "q", "t" operand sizes are
--- present, then all operands must be the same size. Unspecified sizes
--- are ignored, but at least one operand must have a size or the pattern
--- won't match (use the "byte", "word", "dword", "qword", "tword"
--- operand size overrides. E.g.: mov dword [eax], 1).
---
--- If the list has a "1" or "2" prefix, the operand size is taken
--- from the respective operand and any other operand sizes are ignored.
--- If the list contains only ".", all operand sizes are ignored.
--- If the list has a "/" prefix, the concatenated (mixed) operand sizes
--- are compared to the match.
---
--- E.g. "rrdw" matches for either two dword registers or two word
--- registers. "Fx2dq" matches an st0 operand plus an index operand
--- pointing to a dword (float) or qword (double).
---
--- Every character after the ":" is part of the pattern string:
---   Hex chars are accumulated to form the opcode (left to right).
---   "n"       disables the standard opcode mods
---             (otherwise: -1 for "b", o16 prefix for "w", rex.w for "q")
---   "X"       Force REX.W.
---   "r"/"R"   adds the reg. number from the 1st/2nd operand to the opcode.
---   "m"/"M"   generates ModRM/SIB from the 1st/2nd operand.
---             The spare 3 bits are either filled with the last hex digit or
---             the result from a previous "r"/"R". The opcode is restored.
---   "u"       Use VEX encoding, vvvv unused.
---   "v"/"V"   Use VEX encoding, vvvv from 1st/2nd operand (the operand is
---             removed from the list used by future characters).
---   "w"       Use VEX encoding, vvvv from 3rd operand.
---   "L"       Force VEX.L
---
--- All of the following characters force a flush of the opcode:
---   "o"/"O"   stores a pure 32 bit disp (offset) from the 1st/2nd operand.
---   "s"       stores a 4 bit immediate from the last register operand,
---             followed by 4 zero bits.
---   "S"       stores a signed 8 bit immediate from the last operand.
---   "U"       stores an unsigned 8 bit immediate from the last operand.
---   "W"       stores an unsigned 16 bit immediate from the last operand.
---   "i"       stores an operand sized immediate from the last operand.
---   "I"       dito, but generates an action code to optionally modify
---             the opcode (+2) for a signed 8 bit immediate.
---   "J"       generates one of the REL action codes from the last operand.
---
-------------------------------------------------------------------------------
-
--- Template strings for x86 instructions. Ordered by first opcode byte.
--- Unimplemented opcodes (deliberate omissions) are marked with *.
 local map_op = {
-  -- 00-05: add...
-  -- 06: *push es
-  -- 07: *pop es
-  -- 08-0D: or...
-  -- 0E: *push cs
-  -- 0F: two byte opcode prefix
-  -- 10-15: adc...
-  -- 16: *push ss
-  -- 17: *pop ss
-  -- 18-1D: sbb...
-  -- 1E: *push ds
-  -- 1F: *pop ds
-  -- 20-25: and...
   es_0 =	"26",
-  -- 27: *daa
-  -- 28-2D: sub...
   cs_0 =	"2E",
-  -- 2F: *das
-  -- 30-35: xor...
   ss_0 =	"36",
-  -- 37: *aaa
-  -- 38-3D: cmp...
   ds_0 =	"3E",
-  -- 3F: *aas
   inc_1 =	x64 and "m:FF0m" or "rdw:40r|m:FF0m",
   dec_1 =	x64 and "m:FF1m" or "rdw:48r|m:FF1m",
   push_1 =	(x64 and "rq:n50r|rw:50r|mq:nFF6m|mw:FF6m" or
 			 "rdw:50r|mdw:FF6m").."|S.:6AS|ib:n6Ai|i.:68i",
   pop_1 =	x64 and "rq:n58r|rw:58r|mq:n8F0m|mw:8F0m" or "rdw:58r|mdw:8F0m",
-  -- 60: *pusha, *pushad, *pushaw
-  -- 61: *popa, *popad, *popaw
-  -- 62: *bound rdw,x
-  -- 63: x86: *arpl mw,rw
   movsxd_2 =	x64 and "rm/qd:63rM",
   fs_0 =	"64",
   gs_0 =	"65",
   o16_0 =	"66",
   a16_0 =	not x64 and "67" or nil,
   a32_0 =	x64 and "67",
-  -- 68: push idw
-  -- 69: imul rdw,mdw,idw
-  -- 6A: push ib
-  -- 6B: imul rdw,mdw,S
-  -- 6C: *insb
-  -- 6D: *insd, *insw
-  -- 6E: *outsb
-  -- 6F: *outsd, *outsw
-  -- 70-7F: jcc lb
-  -- 80: add... mb,i
-  -- 81: add... mdw,i
-  -- 82: *undefined
-  -- 83: add... mdw,S
   test_2 =	"mr:85Rm|rm:85rM|Ri:A9ri|mi:F70mi",
-  -- 86: xchg rb,mb
-  -- 87: xchg rdw,mdw
-  -- 88: mov mb,r
-  -- 89: mov mdw,r
-  -- 8A: mov r,mb
-  -- 8B: mov r,mdw
-  -- 8C: *mov mdw,seg
   lea_2 =	"rx1dq:8DrM",
-  -- 8E: *mov seg,mdw
-  -- 8F: pop mdw
   nop_0 =	"90",
   xchg_2 =	"Rrqdw:90R|rRqdw:90r|rm:87rM|mr:87Rm",
   cbw_0 =	"6698",
@@ -1069,7 +757,6 @@ local map_op = {
   cwd_0 =	"6699",
   cdq_0 =	"99",
   cqo_0 =	"4899",
-  -- 9A: *call iw:idw
   wait_0 =	"9B",
   fwait_0 =	"9B",
   pushf_0 =	"9C",
@@ -1087,8 +774,6 @@ local map_op = {
   cmpsb_0 =	"A6",
   cmpsw_0 =	"66A7",
   cmpsd_0 =	"A7",
-  -- A8: test Rb,i
-  -- A9: test Rdw,i
   stosb_0 =	"AA",
   stosw_0 =	"66AB",
   stosd_0 =	"AB",
@@ -1098,49 +783,14 @@ local map_op = {
   scasb_0 =	"AE",
   scasw_0 =	"66AF",
   scasd_0 =	"AF",
-  -- B0-B7: mov rb,i
-  -- B8-BF: mov rdw,i
-  -- C0: rol... mb,i
-  -- C1: rol... mdw,i
   ret_1 =	"i.:nC2W",
   ret_0 =	"C3",
-  -- C4: *les rdw,mq
-  -- C5: *lds rdw,mq
-  -- C6: mov mb,i
-  -- C7: mov mdw,i
-  -- C8: *enter iw,ib
   leave_0 =	"C9",
-  -- CA: *retf iw
-  -- CB: *retf
   int3_0 =	"CC",
   int_1 =	"i.:nCDU",
   into_0 =	"CE",
-  -- CF: *iret
-  -- D0: rol... mb,1
-  -- D1: rol... mdw,1
-  -- D2: rol... mb,cl
-  -- D3: rol... mb,cl
-  -- D4: *aam ib
-  -- D5: *aad ib
-  -- D6: *salc
-  -- D7: *xlat
-  -- D8-DF: floating point ops
-  -- E0: *loopne
-  -- E1: *loope
-  -- E2: *loop
-  -- E3: *jcxz, *jecxz
-  -- E4: *in Rb,ib
-  -- E5: *in Rdw,ib
-  -- E6: *out ib,Rb
-  -- E7: *out ib,Rdw
   call_1 =	x64 and "mq:nFF2m|J.:E8nJ" or "md:FF2m|J.:E8J",
   jmp_1 =	x64 and "mq:nFF4m|J.:E9nJ" or "md:FF4m|J.:E9J", -- short: EB
-  -- EA: *jmp iw:idw
-  -- EB: jmp ib
-  -- EC: *in Rb,dx
-  -- ED: *in Rdw,dx
-  -- EE: *out dx,Rb
-  -- EF: *out dx,Rdw
   lock_0 =	"F0",
   int1_0 =	"F1",
   repne_0 =	"F2",
@@ -1150,19 +800,11 @@ local map_op = {
   repz_0 =	"F3",
   endbr32_0 =	"F30F1EFB",
   endbr64_0 =	"F30F1EFA",
-  -- F4: *hlt
   cmc_0 =	"F5",
-  -- F6: test... mb,i; div... mb
-  -- F7: test... mdw,i; div... mdw
   clc_0 =	"F8",
   stc_0 =	"F9",
-  -- FA: *cli
   cld_0 =	"FC",
   std_0 =	"FD",
-  -- FE: inc... mb
-  -- FF: inc... mdw
-
-  -- misc ops
   not_1 =	"m:F72m",
   neg_1 =	"m:F73m",
   mul_1 =	"m:F74m",
@@ -1190,8 +832,6 @@ local map_op = {
   rdtsc_0 =	"0F31", -- P1+
   rdpmc_0 =	"0F33", -- P6+
   cpuid_0 =	"0FA2", -- P1+
-
-  -- floating point ops
   fst_1 =	"ff:DDD0r|xd:D92m|xq:nDD2m",
   fstp_1 =	"ff:DDD8r|xd:D93m|xq:nDD3m|xt:DB7m",
   fld_1 =	"ff:D9C0r|xd:D90m|xq:nDD0m|xt:DB5m",
@@ -1233,16 +873,11 @@ local map_op = {
   fnclex_0 =	"DBE2",
 
   fnop_0 =	"D9D0",
-  -- D9D1-D9DF: unassigned
 
   fchs_0 =	"D9E0",
   fabs_0 =	"D9E1",
-  -- D9E2: unassigned
-  -- D9E3: unassigned
   ftst_0 =	"D9E4",
   fxam_0 =	"D9E5",
-  -- D9E6: unassigned
-  -- D9E7: unassigned
   fld1_0 =	"D9E8",
   fldl2t_0 =	"D9E9",
   fldl2e_0 =	"D9EA",
@@ -1250,7 +885,6 @@ local map_op = {
   fldlg2_0 =	"D9EC",
   fldln2_0 =	"D9ED",
   fldz_0 =	"D9EE",
-  -- D9EF: unassigned
 
   f2xm1_0 =	"D9F0",
   fyl2x_0 =	"D9F1",
@@ -1268,8 +902,6 @@ local map_op = {
   fscale_0 =	"D9FD",
   fsin_0 =	"D9FE",
   fcos_0 =	"D9FF",
-
-  -- SSE, SSE2
   andnpd_2 =	"rmo:660F55rM",
   andnps_2 =	"rmo:0F55rM",
   andpd_2 =	"rmo:660F54rM",
@@ -1366,8 +998,6 @@ local map_op = {
   unpcklps_2 =	"rmo:0F14rM",
   xorpd_2 =	"rmo:660F57rM",
   xorps_2 =	"rmo:0F57rM",
-
-  -- SSE3 ops
   fisttp_1 =	"xw:nDF1m|xd:DB1m|xq:nDD1m",
   addsubpd_2 =	"rmo:660FD0rM",
   addsubps_2 =	"rmo:F20FD0rM",
@@ -1379,8 +1009,6 @@ local map_op = {
   movddup_2 =	"rmo:F20F12rM",
   movshdup_2 =	"rmo:F30F16rM",
   movsldup_2 =	"rmo:F30F12rM",
-
-  -- SSSE3 ops
   pabsb_2 =	"rmo:660F381CrM",
   pabsd_2 =	"rmo:660F381ErM",
   pabsw_2 =	"rmo:660F381DrM",
@@ -1397,8 +1025,6 @@ local map_op = {
   psignb_2 =	"rmo:660F3808rM",
   psignd_2 =	"rmo:660F380ArM",
   psignw_2 =	"rmo:660F3809rM",
-
-  -- SSE4.1 ops
   blendpd_3 =	"rmio:660F3A0DrMU",
   blendps_3 =	"rmio:660F3A0CrMU",
   blendvpd_3 =	"rmRo:660F3815rM",
@@ -1416,7 +1042,6 @@ local map_op = {
   pextrb_3 =	"rri/do:660F3A14nRmU|rri/qo:|xri/bo:",
   pextrd_3 =	"mri/do:660F3A16RmU",
   pextrq_3 =	"mri/qo:660F3A16RmU",
-  -- pextrw is SSE2, mem operand is SSE4.1 only
   phminposuw_2 = "rmo:660F3841rM",
   pinsrb_3 =	"rri/od:660F3A20nrMU|rxi/ob:",
   pinsrd_3 =	"rmi/od:660F3A22rMU",
@@ -1448,8 +1073,6 @@ local map_op = {
   roundps_3 =	"rmio:660F3A08rMU",
   roundsd_3 =	"rrio:660F3A0BrMU|rxi/oq:",
   roundss_3 =	"rrio:660F3A0ArMU|rxi/od:",
-
-  -- SSE4.2 ops
   crc32_2 =	"rmqd:F20F38F1rM|rm/dw:66F20F38F1rM|rm/db:F20F38F0rM|rm/qb:",
   pcmpestri_3 =	"rmio:660F3A61rMU",
   pcmpestrm_3 =	"rmio:660F3A60rMU",
@@ -1457,8 +1080,6 @@ local map_op = {
   pcmpistri_3 =	"rmio:660F3A63rMU",
   pcmpistrm_3 =	"rmio:660F3A62rMU",
   popcnt_2 =	"rmqdw:F30FB8rM",
-
-  -- SSE4a
   extrq_2 =	"rro:660F79rM",
   extrq_3 =	"riio:660F780mUU",
   insertq_2 =	"rro:F20F79rM",
@@ -1466,9 +1087,6 @@ local map_op = {
   lzcnt_2 =	"rmqdw:F30FBDrM",
   movntsd_2 =	"xr/qo:nF20F2BRm",
   movntss_2 =	"xr/do:F30F2BRm",
-  -- popcnt is also in SSE4.2
-
-  -- AES-NI
   aesdec_2 =	"rmo:660F38DErM",
   aesdeclast_2 = "rmo:660F38DFrM",
   aesenc_2 =	"rmo:660F38DCrM",
@@ -1476,8 +1094,6 @@ local map_op = {
   aesimc_2 =	"rmo:660F38DBrM",
   aeskeygenassist_3 = "rmio:660F3ADFrMU",
   pclmulqdq_3 =	"rmio:660F3A44rMU",
-
-   -- AVX FP ops
   vaddsubpd_3 =	"rrmoy:660FVD0rM",
   vaddsubps_3 =	"rrmoy:F20FVD0rM",
   vandpd_3 =	"rrmoy:660FV54rM",
@@ -1583,16 +1199,10 @@ local map_op = {
   vxorps_3 =	"rrmoy:0FV57rM",
   vzeroall_0 =	"0FuL77",
   vzeroupper_0 = "0Fu77",
-
-  -- AVX2 FP ops
   vbroadcastss_2 = "rx/od:660F38u18rM|rx/yd:|rro:|rr/yo:",
   vbroadcastsd_2 = "rx/yq:660F38u19rM|rr/yo:",
-  -- *vgather* (!vsib)
   vpermpd_3 =	"rmiy:660F3AuX01rMU",
   vpermps_3 =	"rrmy:660F38V16rM",
-
-  -- AVX, AVX2 integer ops
-  -- In general, xmm requires AVX, ymm requires AVX2.
   vaesdec_3 =  "rrmo:660F38VDErM",
   vaesdeclast_3 = "rrmo:660F38VDFrM",
   vaesenc_3 =  "rrmo:660F38VDCrM",
@@ -1678,8 +1288,6 @@ local map_op = {
   vpsrld_3 =	"rrmoy:660FVD2rM|rrioy:660Fv722mU",
   vpsrlq_3 =	"rrmoy:660FVD3rM|rrioy:660Fv732mU",
   vptest_2 =	"rmoy:660F38u17rM",
-
-  -- AVX2 integer ops
   vbroadcasti128_2 = "rx/yo:660F38u5ArM",
   vinserti128_4 = "rrmi/yyo:660F3AV38rMU",
   vextracti128_3 = "mri/oy:660F3AuL39RmU",
@@ -1690,7 +1298,6 @@ local map_op = {
   vpbroadcastq_2 = "rro:660F38u59rM|rx/oq:|rr/yo:|rx/yq:",
   vpermd_3 =	"rrmy:660F38V36rM",
   vpermq_3 =	"rmiy:660F3AuX00rMU",
-  -- *vpgather* (!vsib)
   vperm2i128_4 = "rrmiy:660F3AV46rMU",
   vpmaskmovd_3 = "rrxoy:660F38V8CrM|xrroy:660F38V8ERm",
   vpmaskmovq_3 = "rrxoy:660F38VX8CrM|xrroy:660F38VX8ERm",
@@ -1699,20 +1306,14 @@ local map_op = {
   vpsravd_3 =	"rrmoy:660F38V46rM",
   vpsrlvd_3 =	"rrmoy:660F38V45rM",
   vpsrlvq_3 =	"rrmoy:660F38VX45rM",
-
-  -- Intel ADX
   adcx_2 =	"rmqd:660F38F6rM",
   adox_2 =	"rmqd:F30F38F6rM",
-
-  -- BMI1
   andn_3 =	"rrmqd:0F38VF2rM",
   bextr_3 =	"rmrqd:0F38wF7rM",
   blsi_2 =	"rmqd:0F38vF33m",
   blsmsk_2 =	"rmqd:0F38vF32m",
   blsr_2 =	"rmqd:0F38vF31m",
   tzcnt_2 =	"rmqdw:F30FBCrM",
-
-  -- BMI2
   bzhi_3 =	"rmrqd:0F38wF5rM",
   mulx_3 =	"rrmqd:F20F38VF6rM",
   pdep_3 =	"rrmqd:F20F38VF5rM",
@@ -1721,8 +1322,6 @@ local map_op = {
   sarx_3 =	"rmrqd:F30F38wF7rM",
   shrx_3 =	"rmrqd:F20F38wF7rM",
   shlx_3 =	"rmrqd:660F38wF7rM",
-
-  -- FMA3
   vfmaddsub132pd_3 = "rrmoy:660F38VX96rM",
   vfmaddsub132ps_3 = "rrmoy:660F38V96rM",
   vfmaddsub213pd_3 = "rrmoy:660F38VXA6rM",
@@ -1789,10 +1388,6 @@ local map_op = {
   vfnmsub231sd_3 = "rrro:660F38VXBFrM|rrx/ooq:",
   vfnmsub231ss_3 = "rrro:660F38VBFrM|rrx/ood:",
 }
-
-------------------------------------------------------------------------------
-
--- Arithmetic ops.
 for name,n in pairs{ add = 0, ["or"] = 1, adc = 2, sbb = 3,
 		     ["and"] = 4, sub = 5, xor = 6, cmp = 7 } do
   local n8 = shl(n, 3)
@@ -1800,21 +1395,15 @@ for name,n in pairs{ add = 0, ["or"] = 1, adc = 2, sbb = 3,
     "mr:%02XRm|rm:%02XrM|mI1qdw:81%XmI|mS1qdw:83%XmS|Ri1qdwb:%02Xri|mi1qdwb:81%Xmi",
     1+n8, 3+n8, n, n, 5+n8, n)
 end
-
--- Shift ops.
 for name,n in pairs{ rol = 0, ror = 1, rcl = 2, rcr = 3,
 		     shl = 4, shr = 5,          sar = 7, sal = 4 } do
   map_op[name.."_2"] = format("m1:D1%Xm|mC1qdwb:D3%Xm|mi:C1%XmU", n, n, n)
 end
-
--- Conditional ops.
 for cc,n in pairs(map_cc) do
   map_op["j"..cc.."_1"] = format("J.:n0F8%XJ", n) -- short: 7%X
   map_op["set"..cc.."_1"] = format("mb:n0F9%X2m", n)
   map_op["cmov"..cc.."_2"] = format("rmqdw:0F4%XrM", n) -- P6+
 end
-
--- FP arithmetic ops.
 for name,n in pairs{ add = 0, mul = 1, com = 2, comp = 3,
 		     sub = 4, subr = 5, div = 6, divr = 7 } do
   local nc = 0xc0 + shl(n, 3)
@@ -1830,15 +1419,11 @@ for name,n in pairs{ add = 0, mul = 1, com = 2, comp = 3,
   end
   map_op["fi"..name.."_1"] = format("xd:DA%Xm|xw:nDE%Xm", n, n)
 end
-
--- FP conditional moves.
 for cc,n in pairs{ b=0, e=1, be=2, u=3, nb=4, ne=5, nbe=6, nu=7 } do
   local nc = 0xdac0 + shl(band(n, 3), 3) + shl(band(n, 4), 6)
   map_op["fcmov"..cc.."_1"] = format("ff:%04Xr", nc) -- P6+
   map_op["fcmov"..cc.."_2"] = format("Fff:%04XR", nc) -- P6+
 end
-
--- SSE / AVX FP arithmetic ops.
 for name,n in pairs{ sqrt = 1, add = 8, mul = 9,
 		     sub = 12, min = 13, div = 14, max = 15 } do
   map_op[name.."ps_2"] = format("rmo:0F5%XrM", n)
@@ -1852,8 +1437,6 @@ for name,n in pairs{ sqrt = 1, add = 8, mul = 9,
     map_op["v"..name.."sd_3"] = format("rrro:F20FV5%XrM|rrx/ooq:", n)
   end
 end
-
--- SSE2 / AVX / AVX2 integer arithmetic ops (66 0F leaf).
 for name,n in pairs{
   paddb = 0xFC, paddw = 0xFD, paddd = 0xFE, paddq = 0xD4,
   paddsb = 0xEC, paddsw = 0xED, packssdw = 0x6B,
@@ -1875,23 +1458,14 @@ for name,n in pairs{
   map_op["v"..name.."_3"] = format("rrmoy:660FV%02XrM", n)
 end
 
-------------------------------------------------------------------------------
-
 local map_vexarg = { u = false, v = 1, V = 2, w = 3 }
-
--- Process pattern string.
 local function dopattern(pat, args, sz, op, needrex)
   local digit, addin, vex
   local opcode = 0
   local szov = sz
   local narg = 1
   local rex = 0
-
-  -- Limit number of section buffer positions used by a single dasm_put().
-  -- A single opcode needs a maximum of 6 positions.
   if secpos+6 > maxsecpos then wflush() end
-
-  -- Process each character.
   for c in gmatch(pat.."|", ".") do
     if match(c, "%x") then	-- Hex digit.
       digit = byte(c) - 48
@@ -1931,7 +1505,6 @@ local function dopattern(pat, args, sz, op, needrex)
       local psz, sk = wputop(szov, opcode, rex, vex, s < 0, t.vreg or t.vxreg)
       opcode = nil
       local imark = sub(pat, -1) -- Force a mark (ugly).
-      -- Put ModRM/SIB with regno/last digit as spare.
       wputmrmsib(t, imark, s, addin and addin.vreg, psz, sk)
       addin = nil
     elseif map_vexarg[c] ~= nil then -- Encode using VEX prefix
@@ -1973,7 +1546,6 @@ local function dopattern(pat, args, sz, op, needrex)
       elseif c == "O" then
 	wputdarg(args[2].disp); narg = 3
       else
-	-- Anything else is an immediate operand.
 	local a = args[narg]
 	narg = narg + 1
 	local mode, imm = a.mode, a.imm
@@ -2015,17 +1587,11 @@ local function dopattern(pat, args, sz, op, needrex)
     end
   end
 end
-
-------------------------------------------------------------------------------
-
--- Mapping of operand modes to short names. Suppress output with '#'.
 local map_modename = {
   r = "reg", R = "eax", C = "cl", x = "mem", m = "mrm", i = "imm",
   f = "stx", F = "st0", J = "lbl", ["1"] = "1",
   I = "#", S = "#", O = "#",
 }
-
--- Return a table/string showing all possible operand modes.
 local function templatehelp(template, nparams)
   if nparams == 0 then return "" end
   local t = {}
@@ -2038,27 +1604,19 @@ local function templatehelp(template, nparams)
   end
   return t
 end
-
--- Match operand modes against mode match part of template.
 local function matchtm(tm, args)
   for i=1,#args do
     if not match(args[i].mode, sub(tm, i, i)) then return end
   end
   return true
 end
-
--- Handle opcodes defined with template strings.
 map_op[".template__"] = function(params, template, nparams)
   if not params then return templatehelp(template, nparams) end
   local args = {}
-
-  -- Zero-operand opcodes have no match part.
   if #params == 0 then
     dopattern(template, args, "d", params.op, nil)
     return
   end
-
-  -- Determine common operand size (coerce undefined size) or flag as mixed.
   local sz, szmix, needrex
   for i,p in ipairs(params) do
     args[i] = parseoperand(p)
@@ -2075,11 +1633,8 @@ map_op[".template__"] = function(params, template, nparams)
       end
     end
   end
-
-  -- Try all match:pattern pairs (separated by '|').
   local gotmatch, lastpat
   for tm in gmatch(template, "[^%|]+") do
-    -- Split off size match (starts after mode match) and pattern string.
     local szm, pat = match(tm, "^(.-):(.*)$", #args+1)
     if pat == "" then pat = lastpat else lastpat = pat end
     if matchtm(tm, args) then
@@ -2118,10 +1673,6 @@ map_op[".template__"] = function(params, template, nparams)
 
   werror(msg.." in `"..opmodestr(params.op, args).."'")
 end
-
-------------------------------------------------------------------------------
-
--- x64-specific opcode for 64 bit immediates and displacements.
 if x64 then
   function map_op.mov64_2(params)
     if not params then return { "reg, imm", "reg, [disp]", "[disp], reg" } end
@@ -2162,10 +1713,6 @@ if x64 then
     waction("IMM_D", format("(unsigned int)((%s)>>32)", op64))
   end
 end
-
-------------------------------------------------------------------------------
-
--- Pseudo-opcodes for data storage.
 local function op_data(params)
   if not params then return "imm..." end
   local sz = sub(params.op, 2, 2)
@@ -2195,56 +1742,39 @@ map_op[".aword_*"] = op_data
 map_op[".long_*"] = op_data
 map_op[".quad_*"] = op_data
 map_op[".addr_*"] = op_data
-
-------------------------------------------------------------------------------
-
--- Pseudo-opcode to mark the position where the action list is to be emitted.
 map_op[".actionlist_1"] = function(params)
   if not params then return "cvar" end
   local name = params[1] -- No syntax check. You get to keep the pieces.
   wline(function(out) writeactions(out, name) end)
 end
-
--- Pseudo-opcode to mark the position where the global enum is to be emitted.
 map_op[".globals_1"] = function(params)
   if not params then return "prefix" end
   local prefix = params[1] -- No syntax check. You get to keep the pieces.
   wline(function(out) writeglobals(out, prefix) end)
 end
-
--- Pseudo-opcode to mark the position where the global names are to be emitted.
 map_op[".globalnames_1"] = function(params)
   if not params then return "cvar" end
   local name = params[1] -- No syntax check. You get to keep the pieces.
   wline(function(out) writeglobalnames(out, name) end)
 end
-
--- Pseudo-opcode to mark the position where the extern names are to be emitted.
 map_op[".externnames_1"] = function(params)
   if not params then return "cvar" end
   local name = params[1] -- No syntax check. You get to keep the pieces.
   wline(function(out) writeexternnames(out, name) end)
 end
-
-------------------------------------------------------------------------------
-
--- Label pseudo-opcode (converted from trailing colon form).
 map_op[".label_2"] = function(params)
   if not params then return "[1-9] | ->global | =>pcexpr  [, addr]" end
   if secpos+2 > maxsecpos then wflush() end
   local a = parseoperand(params[1])
   local mode, imm = a.mode, a.imm
   if type(imm) == "number" and (mode == "iJ" or (imm >= 1 and imm <= 9)) then
-    -- Local label (1: ... 9:) or global label (->global:).
     waction("LABEL_LG", nil, 1)
     wputxb(imm)
   elseif mode == "iJ" then
-    -- PC label (=>pcexpr:).
     waction("LABEL_PC", imm)
   else
     werror("bad label definition")
   end
-  -- SETLABEL must immediately follow LABEL_LG/LABEL_PC.
   local addr = params[2]
   if addr then
     local a = parseoperand(addr)
@@ -2256,17 +1786,12 @@ map_op[".label_2"] = function(params)
   end
 end
 map_op[".label_1"] = map_op[".label_2"]
-
-------------------------------------------------------------------------------
-
--- Alignment pseudo-opcode.
 map_op[".align_1"] = function(params)
   if not params then return "numpow2" end
   if secpos+1 > maxsecpos then wflush() end
   local align = tonumber(params[1]) or map_opsizenum[map_opsize[params[1]]]
   if align then
     local x = align
-    -- Must be a power of 2 in the range (2 ... 256).
     for i=1,8 do
       x = x / 2
       if x == 1 then
@@ -2278,8 +1803,6 @@ map_op[".align_1"] = function(params)
   end
   werror("bad alignment")
 end
-
--- Spacing pseudo-opcode.
 map_op[".space_2"] = function(params)
   if not params then return "num [, filler]" end
   if secpos+1 > maxsecpos then wflush() end
@@ -2292,10 +1815,6 @@ map_op[".space_2"] = function(params)
   wputxb(fill or 0)
 end
 map_op[".space_1"] = map_op[".space_2"]
-
-------------------------------------------------------------------------------
-
--- Pseudo-opcode for (primitive) type definitions (map to C types).
 map_op[".type_3"] = function(params, nparams)
   if not params then
     return nparams == 2 and "name, ctype" or "name, ctype, reg"
@@ -2311,9 +1830,7 @@ map_op[".type_3"] = function(params, nparams)
   if reg and not map_reg_valid_base[reg] then
     werror("bad base register `"..(map_reg_rev[reg] or reg).."'")
   end
-  -- Add #type to defines. A bit unclean to put it in map_archdef.
   map_archdef["#"..name] = "sizeof("..ctype..")"
-  -- Add new type and emit shortcut define.
   local num = ctypenum + 1
   map_type[name] = {
     ctype = ctype,
@@ -2324,8 +1841,6 @@ map_op[".type_3"] = function(params, nparams)
   ctypenum = num
 end
 map_op[".type_2"] = map_op[".type_3"]
-
--- Dump type definitions.
 local function dumptypes(out, lvl)
   local t = {}
   for name in pairs(map_type) do t[#t+1] = name end
@@ -2338,47 +1853,29 @@ local function dumptypes(out, lvl)
   end
   out:write("\n")
 end
-
-------------------------------------------------------------------------------
-
--- Set the current section.
 function _M.section(num)
   waction("SECTION")
   wputxb(num)
   wflush(true) -- SECTION is a terminal action.
 end
-
-------------------------------------------------------------------------------
-
--- Dump architecture description.
 function _M.dumparch(out)
   out:write(format("DynASM %s version %s, released %s\n\n",
     _info.arch, _info.version, _info.release))
   dumpregs(out)
   dumpactions(out)
 end
-
--- Dump all user defined elements.
 function _M.dumpdef(out, lvl)
   dumptypes(out, lvl)
   dumpglobals(out, lvl)
   dumpexterns(out, lvl)
 end
-
-------------------------------------------------------------------------------
-
--- Pass callbacks from/to the DynASM core.
 function _M.passcb(wl, we, wf, ww)
   wline, werror, wfatal, wwarn = wl, we, wf, ww
   return wflush
 end
-
--- Setup the arch-specific module.
 function _M.setup(arch, opt)
   g_arch, g_opt = arch, opt
 end
-
--- Merge the core maps and the arch-specific maps.
 function _M.mergemaps(map_coreop, map_def)
   setmetatable(map_op, { __index = map_coreop })
   setmetatable(map_def, { __index = map_archdef })
@@ -2386,5 +1883,3 @@ function _M.mergemaps(map_coreop, map_def)
 end
 
 return _M
-
-------------------------------------------------------------------------------

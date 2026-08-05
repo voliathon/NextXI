@@ -1,9 +1,7 @@
--- LuaFormatter off
 local -- params
     registry,
     trigger_text_added_key,
     add_text_native_ptr = ...
--- LuaFormatter on
 
 local ffi = require('ffi')
 

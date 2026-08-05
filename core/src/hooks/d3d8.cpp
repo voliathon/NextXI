@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "hooks/d3d8.hpp"
 
 #include "hooklib/hook.hpp"
@@ -71,9 +47,17 @@ void windower::d3d8::install()
 {
     if (!hooks::Direct3DCreate8)
     {
+        // Explicitly force Windows to map the DLL using standard search order.
+        // This guarantees that if the launcher placed dgVoodoo2 in the game directory,
+        // Windows will lock onto the local proxy DLL instead of the System32 default.
+        ::LoadLibraryW(L"d3d8.dll");
+
         hooks::Direct3DCreate8 = hooklib::make_hook<false>(
             u8"d3d8.dll", u8"Direct3DCreate8", callbacks::Direct3DCreate8);
     }
 }
 
-void windower::d3d8::uninstall() noexcept { hooks::Direct3DCreate8 = {}; }
+void windower::d3d8::uninstall() noexcept
+{
+    hooks::Direct3DCreate8 = {};
+}

@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "windower.hpp"
 
 #include "addon/addon.hpp"
@@ -30,19 +6,18 @@
 #include "addon/modules/windower.lua.hpp"
 #include "core.hpp"
 #include "utility.hpp"
+#include "utilities/paths.hpp"
 #include "version.hpp"
 
 #include "../../scanner.hpp"
 #include <windows.h>
 
 #include <string>
+#include <span>
+
 
 #include <filesystem>
 #include <fstream>
-
-
-// Bridge functions for the windower module. These are used to expose core
-// functionality to addons, and are not intended for use by addons directly.
 namespace
 {
 extern "C" char const* get_package_list_ffi()
@@ -63,8 +38,6 @@ extern "C" char const* get_package_list_ffi()
         result.append(
             reinterpret_cast<char const*>(pkg->path().u8string().c_str()));
         result.append("|");
-
-        // Check for the Readme securely in C++
         const bool has_readme =
             std::filesystem::exists(pkg->path() / u8"README.md");
         result.append(has_readme ? "1" : "0");
@@ -77,8 +50,6 @@ extern "C" char const* read_market_file_ffi(char const* filename)
 {
     static std::string content;
     content.clear();
-
-    // Call the standalone windower::user_path() function
     auto dir  = windower::user_path() / u8"addons" / u8"NextXIMarket";
     auto path = dir / reinterpret_cast<const char8_t*>(filename);
 
@@ -94,7 +65,6 @@ extern "C" char const* read_market_file_ffi(char const* filename)
 
 extern "C" void write_market_file_ffi(char const* filename, char const* data)
 {
-    // Call the standalone windower::user_path() function
     auto dir = windower::user_path() / u8"addons" / u8"NextXIMarket";
     std::filesystem::create_directories(dir);
 
@@ -105,8 +75,6 @@ extern "C" void write_market_file_ffi(char const* filename, char const* data)
         file << data;
     }
 }
-
-// New function to read the file securely
 extern "C" char const* get_package_readme_ffi(char const* pkg_name)
 {
     static std::string content;
@@ -132,7 +100,6 @@ extern "C" char const* get_package_readme_ffi(char const* pkg_name)
 
 extern "C" char const* get_ffxi_player_ffi()
 {
-    // MOCK IMPLEMENTATION: In the future, this will read the player struct from FFXI memory
     static std::string player_json = 
         "{ \"name\": \"NextXIPlayer\", \"hp\": 1000, \"mp\": 500, \"tp\": 3000, "
         "\"main_job_id\": 1, \"main_job_level\": 99, \"sub_job_id\": 4, \"sub_job_level\": 49 }";
@@ -141,7 +108,6 @@ extern "C" char const* get_ffxi_player_ffi()
 
 extern "C" char const* get_ffxi_items_ffi()
 {
-    // MOCK IMPLEMENTATION: Will read inventory memory
     static std::string items_json = 
         "{ \"inventory\": [ { \"id\": 4100, \"count\": 1 }, { \"id\": 4101, \"count\": 99 } ], "
         "\"equipment\": { \"main\": 4100, \"sub\": 0 } }";
@@ -150,9 +116,104 @@ extern "C" char const* get_ffxi_items_ffi()
 
 extern "C" char const* get_ffxi_spells_ffi()
 {
-    // MOCK IMPLEMENTATION: Will read spells memory array
     static std::string spells_json = "[ 1, 2, 3, 4, 5 ]";
     return spells_json.c_str();
+}
+
+struct entity_slot_t
+{
+    uint32_t id;
+    char     name[24];
+    float    x, y, z;
+};
+
+#pragma pack(push, 1)
+struct ffxi_entity_memory
+{
+    std::byte padding1[0x04];
+    float x;
+    float z;
+    float y;
+    std::byte padding2[0x078 - 0x010];
+    uint32_t id;
+    char name[24];
+};
+#pragma pack(pop)
+
+// Suppress pointer arithmetic warnings required to read arbitrary offsets
+[[gsl::suppress("bounds.1"), gsl::suppress("type.1")]]
+static void** seh_resolve_entity_ptr(void* const match_addr) noexcept
+{
+    if (!match_addr)
+    {
+        return nullptr;
+    }
+
+    void** out = nullptr;
+    __try
+    {
+        // Use memcpy instead of dereferencing a casted pointer
+        auto const* const ptr = static_cast<std::byte const*>(match_addr) + 9;
+        std::memcpy(&out, ptr, sizeof(void**));
+    }
+    __except (GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH)
+    {
+        out = nullptr;
+    }
+    return out;
+}
+
+static bool seh_read_entity_slot(void** const arr, int const idx, gsl::not_null<entity_slot_t*> const out) noexcept
+{
+    if (!arr) return false;
+
+    __try
+    {
+        std::span<void*> const arr_span{ arr, 2304 };
+        void* const ent = gsl::at(arr_span, idx);
+        if (!ent) return false;
+
+        auto const* const mem = static_cast<ffxi_entity_memory const*>(ent);
+        if (!mem) return false; // Fixes f.23
+
+        out->id = mem->id;
+        if (out->id == 0) return false;
+
+        std::span<char, 24> out_name_span{ out->name };
+        std::fill(out_name_span.begin(), out_name_span.end(), '\0');
+
+        std::span<char const, 23> const in_name_span{ mem->name, 23 };
+
+        for (std::size_t j = 0; j < 23; ++j)
+        {
+            auto const ch = gsl::at(in_name_span, j);
+            if (ch == '\0') break;
+
+            auto const uch = static_cast<unsigned char>(ch);
+            if (uch < 0x20 || uch == '"' || uch == '\\')
+            {
+                gsl::at(out_name_span, j) = '?';
+            }
+            else
+            {
+                gsl::at(out_name_span, j) = ch;
+            }
+        }
+
+        if (gsl::at(out_name_span, 0) == '\0') return false;
+
+        out->x = mem->x;
+        out->z = mem->z;
+        out->y = mem->y;
+
+        if (out->x != out->x || out->y != out->y || out->z != out->z) return false;
+
+        return true;
+    }
+    __except (GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH)
+    {
+        return false;
+    }
 }
 
 extern "C" char const* get_ffxi_entities_ffi()
@@ -161,64 +222,54 @@ extern "C" char const* get_ffxi_entities_ffi()
     static void** entity_array_ptr = nullptr;
     static bool scanned = false;
 
-    if (!scanned)
+    if (!scanned && ::GetModuleHandleW(L"FFXiMain.dll"))
     {
-        if (::GetModuleHandleW(L"FFXiMain.dll"))
+        scanned = true;
+        windower::signature const sig{ u8"8B560C8B042A8B0485" };
+        auto results = windower::scan<1>(u8"FFXiMain.dll", sig);
+
+        // Fix bounds.4 by using gsl::at
+        if (results.size() > 0 && gsl::at(results, 0))
         {
-            scanned = true;
-            windower::signature sig{u8"8B560C8B042A8B0485"};
-            auto results = windower::scan<1>(u8"FFXiMain.dll", sig);
-            // Guard: only dereference if the signature scan returned a valid (non-null) address.
-            // If results[0] is null (module not found or signature mismatch), (char*)null + 9
-            // equals 0x9, which causes an access violation (crash at address 0x9).
-            if (results[0])
-            {
-                void* match_addr = static_cast<void*>(results[0]);
-                // The instruction is: mov eax, [eax*4 + XXXXXXXX]  (8B 04 85 XX XX XX XX)
-                // The embedded 4-byte absolute address XXXXXXXX sits at byte offset 9 from
-                // the start of our matched pattern (3 bytes for 8B56 0C + 3 bytes for 8B04 2A
-                // + 3 bytes for 8B04 85 = 9 bytes before the address operand).
-                entity_array_ptr = *reinterpret_cast<void***>(
-                    static_cast<char*>(match_addr) + 9);
-            }
+            entity_array_ptr = seh_resolve_entity_ptr(static_cast<void*>(gsl::at(results, 0)));
+            if (!entity_array_ptr) scanned = false;
         }
     }
 
     entities_json = "[";
-    if (entity_array_ptr && !::IsBadReadPtr(entity_array_ptr, 2304 * sizeof(void*)))
+
+    if (entity_array_ptr)
     {
         bool first = true;
+        entity_slot_t slot;
+
         for (int i = 0; i < 2304; ++i)
         {
-            void* ent = entity_array_ptr[i];
-            if (ent && !::IsBadReadPtr(ent, 0x0A0))
-            {
-                uint32_t id = *(uint32_t*)((char*)ent + 0x078);
-                if (id == 0) continue;
+            if (!seh_read_entity_slot(entity_array_ptr, i, &slot)) continue;
 
-                char name[24] = {0};
-                memcpy(name, (char*)ent + 0x07C, 24);
-                name[23] = '\0'; // ensure null termination
-                if (strlen(name) == 0) continue;
+            if (!first) entities_json += ",";
+            first = false;
 
-                float x = *(float*)((char*)ent + 0x004);
-                float z = *(float*)((char*)ent + 0x008);
-                float y = *(float*)((char*)ent + 0x00C);
+            // Fix bounds.3 (array decay) by using std::array and .data()
+            std::array<char, 256> buffer{};
+            std::span<char const> const name_span{ slot.name };
 
-                if (!first) entities_json += ",";
-                first = false;
+            std::snprintf(buffer.data(), buffer.size(),
+                "{\"id\":%u,\"name\":\"%s\",\"x\":%.2f,\"y\":%.2f,\"z\":%.2f,\"target_id\":0}",
+                slot.id, name_span.data(),
+                static_cast<double>(slot.x), static_cast<double>(slot.y), static_cast<double>(slot.z));
 
-                char buffer[256];
-                snprintf(buffer, sizeof(buffer), "{\"id\":%u,\"name\":\"%s\",\"x\":%f,\"y\":%f,\"z\":%f,\"target_id\":0}", id, name, x, y, z);
-                entities_json += buffer;
-            }
+            entities_json.append(buffer.data());
         }
     }
-    entities_json += "]";
 
+    entities_json += "]";
     return entities_json.c_str();
 }
 
+// Use MSVC pragmas to bypass the extern "C" parsing bug
+#pragma warning(push)
+#pragma warning(disable: 26446)
 extern "C" void project_ffi(float const* in_pos, float* out_screen)
 {
     auto const& core = windower::core::instance();
@@ -226,30 +277,32 @@ extern "C" void project_ffi(float const* in_pos, float* out_screen)
     auto const& p = core.projection_matrix;
     auto const& vp = core.viewport;
 
-    // View Transform
-    float vx = in_pos[0]*v.m[0][0] + in_pos[1]*v.m[1][0] + in_pos[2]*v.m[2][0] + v.m[3][0];
-    float vy = in_pos[0]*v.m[0][1] + in_pos[1]*v.m[1][1] + in_pos[2]*v.m[2][1] + v.m[3][1];
-    float vz = in_pos[0]*v.m[0][2] + in_pos[1]*v.m[1][2] + in_pos[2]*v.m[2][2] + v.m[3][2];
-    float vw = in_pos[0]*v.m[0][3] + in_pos[1]*v.m[1][3] + in_pos[2]*v.m[2][3] + v.m[3][3];
+    std::span<float const, 3> const in_span{ in_pos, 3 };
+    std::span<float, 2> const out_span{ out_screen, 2 };
 
-    // Projection Transform
-    float cx = vx*p.m[0][0] + vy*p.m[1][0] + vz*p.m[2][0] + vw*p.m[3][0];
-    float cy = vx*p.m[0][1] + vy*p.m[1][1] + vz*p.m[2][1] + vw*p.m[3][1];
-    float cw = vx*p.m[0][3] + vy*p.m[1][3] + vz*p.m[2][3] + vw*p.m[3][3];
+    float const vx = in_span[0] * v.m[0][0] + in_span[1] * v.m[1][0] + in_span[2] * v.m[2][0] + v.m[3][0];
+    float const vy = in_span[0] * v.m[0][1] + in_span[1] * v.m[1][1] + in_span[2] * v.m[2][1] + v.m[3][1];
+    float const vz = in_span[0] * v.m[0][2] + in_span[1] * v.m[1][2] + in_span[2] * v.m[2][2] + v.m[3][2];
+    float const vw = in_span[0] * v.m[0][3] + in_span[1] * v.m[1][3] + in_span[2] * v.m[2][3] + v.m[3][3];
+    float const cx = vx * p.m[0][0] + vy * p.m[1][0] + vz * p.m[2][0] + vw * p.m[3][0];
+    float const cy = vx * p.m[0][1] + vy * p.m[1][1] + vz * p.m[2][1] + vw * p.m[3][1];
+    float const cw = vx * p.m[0][3] + vy * p.m[1][3] + vz * p.m[2][3] + vw * p.m[3][3];
 
     if (cw < 0.1f) // Behind camera
     {
-        out_screen[0] = -1.0f;
-        out_screen[1] = -1.0f;
+        out_span[0] = -1.0f;
+        out_span[1] = -1.0f;
         return;
     }
 
-    float ndcx = cx / cw;
-    float ndcy = cy / cw;
+    float const ndcx = cx / cw;
+    float const ndcy = cy / cw;
 
-    out_screen[0] = vp.X + (1.0f + ndcx) * vp.Width / 2.0f;
-    out_screen[1] = vp.Y + (1.0f - ndcy) * vp.Height / 2.0f;
+    out_span[0] = vp.X + (1.0f + ndcx) * vp.Width / 2.0f;
+    out_span[1] = vp.Y + (1.0f - ndcy) * vp.Height / 2.0f;
 }
+#pragma warning(pop)
+
 }
 
 int windower::load_windower_module(lua::state s)
@@ -295,9 +348,6 @@ int windower::load_windower_module(lua::state s)
         lua::push(guard, lua::nil); // package_path
         lua::push(guard, lua::nil); // package_name
     }
-
-    // Push the get_package_list function as a closure, so it can be called from
-    // Lua to retrieve the list of installed packages.
     lua::push(guard, &get_package_list_ffi); // <--- Use the FFI safe pointer
     lua::push(guard, &get_package_readme_ffi);
     lua::push(guard, &read_market_file_ffi); 
@@ -308,8 +358,6 @@ int windower::load_windower_module(lua::state s)
     lua::push(guard, &get_ffxi_spells_ffi);
     lua::push(guard, &get_ffxi_entities_ffi);
     lua::push(guard, &project_ffi);
-
-    // The windower module expects 25 upvalues, which are the values we just pushed
     lua::call(guard, 25);
 
     return guard.release();

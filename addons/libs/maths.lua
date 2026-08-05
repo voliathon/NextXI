@@ -1,4 +1,3 @@
---[[
     A few math helper functions.
 ]]
 local debug = debug or require('debug')
@@ -23,30 +22,18 @@ debug.setmetatable(0, {
         return math[k] or (_raw and _raw.error or error)(string.format('"%s" is not defined for numbers', tostring(k)), 2)
     end
 })
-
--- Order of digits for higher base math
 local digitorder = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'}
-
--- Constants
 math.e = math.exp(1)
 math.tau = 2 * math.pi
 math.phi = (1 + math.sqrt(5))/2
-
--- Rounds to prec decimal digits. Accepts negative numbers for precision.
 function math.round(num, prec)
     local mult = 10^(prec or 0)
     return (num * mult + 0.5):floor() / mult 
 end
-
--- Returns the sign of num, -1 for a negative number, +1 for a positive number and 0 for 0.
 function math.sgn(num)
     return num > 0 and 1 or num < 0 and -1 or 0
 end
-
--- Backs up the old log function.
 _raw.math.log = math.log
-
--- Returns an arbitrary-base logarithm. Defaults to e.
 function math.log(val, base)
     if not base then
         return _raw.math.log(val)
@@ -54,23 +41,15 @@ function math.log(val, base)
 
     return _raw.math.log(val)/_raw.math.log(base)
 end
-
--- Returns a binary string representation of val.
 function math.binary(val)
     return val:base(2)
 end
-
--- Returns a octal string representation of val.
 function math.octal(val)
     return val:base(8)
 end
-
--- Returns a hex string representation of val.
 function math.hex(val)
     return val:base(16)
 end
-
--- Converts a number val to a string in base base.
 function math.base(val, base)
     if base == nil or base == 10 or val == 0 then
         return val:string()
@@ -102,11 +81,7 @@ function math.base(val, base)
 
     return str
 end
-
--- tostring wrapper.
 math.string = tostring
-
--- string.char wrapper, to allow method-like calling on numbers.
 math.char = string.char
 
 function math.degree(v)
@@ -116,8 +91,6 @@ end
 function math.radian(v)
     return math.tau * v / 360
 end
-
---[[
 Copyright © 2013-2014, Windower
 All rights reserved.
 

@@ -113,10 +113,6 @@ namespace Windower
 
             if (description != null)
             {
-                // If the user opens a fenced code block but doesn't close
-                // it, it breaks the rest of the report. We could be
-                // smarter about this and only sanitize broken code blocks
-                // but for now we'll just sanitize all of them.
                 description = string.Join(Environment.NewLine,
                     description.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None)
                     .Select(l => l.TrimStart().StartsWith("```", StringComparison.Ordinal) ? '\\' + l.TrimStart() : l));
@@ -131,20 +127,6 @@ namespace Windower
             AppendTable(report, EnvironmentData);
 
             AppendExceptionReport(report, exception, "Exception");
-
-            //if (crashDump != null)
-            //{
-            //    var gistUrl = crashDump.HtmlUrl;
-            //    var dumpFile = crashDump.Files.FirstOrDefault().Value;
-            //    report.AppendLine();
-            //    if (dumpFile != null)
-            //    {
-            //        report.Append("[Crash Dump (");
-            //        report.Append(GetFileSize(dumpFile.Size)).Append(")](");
-            //        report.Append(dumpFile.RawUrl.OriginalString).Append(") | ");
-            //    }
-            //    report.Append("[Gist](").Append(gistUrl.OriginalString).Append(")");
-            //}
 
             return report.ToString();
         }
@@ -177,7 +159,6 @@ namespace Windower
         {
             if (exception != null)
             {
-                // unlikely to occur, but breaks the code block if it does.
                 exception = string.Join(Environment.NewLine,
                     exception.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
                     .Where(l => l.Trim() != "```"));

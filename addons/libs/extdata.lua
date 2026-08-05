@@ -1,9 +1,6 @@
--- Extdata lib first pass (NextXI Polyfill Port)
 
 local pack = require('pack')
 local res = require('resources')
-
--- MASSIVE LOOKUP TABLES AND OTHER CONSTANTS
 
 local decode = {}
 
@@ -131,9 +128,6 @@ augment_values = {
         [0x051] = {{stat="Eva.", offset=1}, {stat="/Mag. Eva.", offset=1}},
         [0x052] = {{stat="MP", offset=1,multiplier=2}},
         [0x053] = {{stat="MP", offset=1,multiplier=3}},
-
-        
-        -- Need to figure out how to handle this section. The Pet: prefix is only used once despite how many augments are used.
         [0x060] = {{stat="Pet: Accuracy", offset=1}, {stat="Pet: Rng. Acc.", offset=1}}, -- Pet: Accuracy+5 Rng.Acc.+5
         [0x061] = {{stat="Pet: Attack", offset=1}, {stat="Pet: Rng.Atk.", offset=1}}, -- Pet: Attack +5 Rng.Atk.+5
         [0x062] = {{stat="Pet: Evasion", offset=1}},
@@ -169,21 +163,6 @@ augment_values = {
 
 
         [0x080] = {{stat="Pet:",offset = 0}},
-        --[0x081: Accuracy +1 Ranged Acc. +0 | value + 1
-        --[0x082: Attack +1 Ranged Atk. +0 | value + 1
-        --[0x083: Mag. Acc. +1 "Mag.Atk.Bns."+0 | value + 1
-        --[0x084: "Double Atk."+1 "Crit. hit +0 | value + 1
-
-        --0x080~0x084 are pet augs with a pair of stats with 0x080 being just "Pet:"
-        --the second stat starts at 0. the previous pet augs add +2. the first previous non pet aug adds +2. any other non pet aug will add +1.
-        --any aug >= 0x032 will be added after the pet stack and will not be counted to increase the 2nd pet's aug stat and will be prolly assigned to the pet.
-        --https://gist.github.com/giulianoriccio/6df4fbd1f2a166fed041/raw/4e1d1103e7fe0e69d25f8264387506b5e38296a7/augs
-        
-        -- Byrth's note: These augments are just weird and I have no evidence that SE actually uses them.
-        -- The first argument of the augment has its potency calculated normally (using the offset). The second argument
-        -- has its potency calculated using an offset equal to 2*its position in the augment list (re-ordered from biggest to lowest IDs)
-        -- So having 0x80 -> 0x81 -> 0x82 results in the same augments as 0x80 -> 0x82 -> 0x81
-        -- In that case, Acc/Atk would be determined by the normal offset, but Racc would be +2 and RAtk would be +4
 
         [0x085] = {{stat='"Mag.Atk.Bns."', offset=1}},
         [0x086] = {{stat='"Mag.Def.Bns."', offset=1}},
@@ -314,7 +293,6 @@ augment_values = {
         [0x172] = {{stat='"Rev. Flourish"', offset=1}},
         [0x173] = {{stat='"Regen" potency', offset=1}},
         [0x174] = {{stat='"Embolden"', offset=1}},
-        -- Empties are Numbered up to 0x17F. Their stat is their index + 1
         [0x200] = {{stat="STR", offset=1}},
         [0x201] = {{stat="DEX", offset=1}},
         [0x202] = {{stat="VIT", offset=1}},
@@ -329,8 +307,6 @@ augment_values = {
         [0x20B] = {{stat="INT", offset=1,multiplier=-1}},
         [0x20C] = {{stat="MND", offset=1,multiplier=-1}},
         [0x20D] = {{stat="CHR", offset=1,multiplier=-1}},
-        -- The below values aren't really right
-        -- They need to be "Ceiling'd"
         [0x20E] = {{stat="STR", offset=1}, {stat="DEX", offset=1, multiplier=-0.5}, {stat="VIT", offset=1, multiplier=-0.5}},
         [0x20F] = {{stat="STR", offset=1}, {stat="DEX", offset=1, multiplier=-0.5}, {stat="AGI", offset=1, multiplier=-0.5}},
         [0x210] = {{stat="STR", offset=1}, {stat="VIT", offset=1, multiplier=-0.5}, {stat="AGI", offset=1, multiplier=-0.5}},
@@ -450,16 +426,12 @@ augment_values = {
         [0x356] = {{stat="Add.eff.:Lowers mag.atk.", offset=1}},
         [0x357] = {{stat="Add.eff.:Lowers mag.def.", offset=1}},
         [0x358] = {{stat="Add.eff.:Lowers mag.acc.", offset=1}},
-        -- 0x359 = 475
         [0x380] = {{stat="Sword enhancement spell damage ", offset=1}},
         [0x381] = {{stat='Enhances "Souleater" effect ', offset=1,percent=true}},
-        
-        -- This is actually a range for static augments that uses all the bits.
         
         [0x390] = {Secondary_Handling = true},
         [0x391] = {Secondary_Handling = true},
         [0x392] = {Secondary_Handling = true},
-        -- The below enhancements aren't visible if their value is 0.
         [0x3A0] = {{stat="Fire Affinity ", offset=0}},
         [0x3A1] = {{stat="Ice Affinity ", offset=0}},
         [0x3A2] = {{stat="Wind Affinity ", offset=0}},
@@ -1165,7 +1137,6 @@ augment_values = {
         [0x09E] = {{stat='Overdrive: Ability delay ',potency=potencies.sp_recast}},
         [0x09F] = {{stat='Trance: Ability delay ',potency=potencies.sp_recast}},
         [0x0A0] = {{stat='Tabula Rasa: Ability delay ',potency=potencies.sp_recast}},
-        -- There are 308 augments total, and they stop being even remotely systematic after this point.
     },
 }
 
@@ -1586,40 +1557,23 @@ soul_plates = {
     [0x1FF] = "Ninja Tool Supply",
 }
 
--- TOOLS FOR HANDLING EXTDATA
-
 tools = {}
 tools.aug = {}
 
 tools.bit = {}
------------------------------------------------------------------------------------
---Name: tools.bit.l_to_r_bit_packed(dat_string,start,stop)
---Args:
----- dat_string - string that is being bit-unpacked to a number
----- start - first bit
----- stop - last bit
------------------------------------------------------------------------------------
---Returns:
----- number from the indicated range of bits 
------------------------------------------------------------------------------------
 function tools.bit.l_to_r_bit_packed(dat_string,start,stop)
     local newval = 0
     
     local c_count = math.ceil(stop/8)
     while c_count >= math.ceil((start+1)/8) do
-        -- Grabs the most significant byte first and works down towards the least significant.
         local cur_val = dat_string:byte(c_count) or 0
         local scal = 1
         
         if c_count == math.ceil(stop/8) then -- Take the least significant bits of the most significant byte
-        -- Moduluses by 2^number of bits into the current byte. So 8 bits in would %256, 1 bit in would %2, etc.
-        -- Cuts off the bottom.
             cur_val = math.floor(cur_val/(2^(8-((stop-1)%8+1)))) -- -1 and +1 set the modulus result range from 1 to 8 instead of 0 to 7.
         end
         
         if c_count == math.ceil((start+1)/8) then -- Take the most significant bits of the least significant byte
-        -- Divides by the significance of the final bit in the current byte. So 8 bits in would /128, 1 bit in would /1, etc.
-        -- Cuts off the top.
             cur_val = cur_val%(2^(8-start%8))
         end
         
@@ -1673,7 +1627,6 @@ function tools.aug.string_augment(sys,id,val)
     local augment_table = augment_values[sys][id]
     if not augment_table then --print('Augments Lib: ',sys,id)
     elseif augment_table.Secondary_Handling then
-        -- This is handling for system 1's indices 0x390~0x392, which have their own static augment lookup table
         augment_table = sp_390_augments[ (id-0x390)*16 + 545 + val]
     end
     if augment_table then
@@ -1767,11 +1720,6 @@ function decode.Augmented(str)
     return rettab
 end
 
-
-
--- EXTDATA subgroups
--- Which subgroup an item falls into depends on its type, which is pulled from the resources based on ites item ID.
-
 function decode.General(str)
     decoded = {type = 'General'}
     if str:byte(13) ~= 0 then
@@ -1849,7 +1797,6 @@ function decode.Furniture(str)
 end
 
 function decode.Flowerpot(str)
-    --[[ 0 = Empty pot, Plant seed menu
         (1) 2-11 = Herb Seeds
         (14?)15-24 = Grain Seeds
         (27?)28-37 = Vegetable Seeds
@@ -1929,7 +1876,6 @@ function decode.SoulPlate(str)
             skill = soul_plates[math.floor(str:byte(21)/128) + str:byte(22)*2 + str:byte(23)%8*(2^9)] or 'Unknown', -- "Breath damage +5%, etc."
             FP = math.floor(str:byte(23)/8) + str:byte(24)%4*16, -- Cost in FP
             name = tools.bit.bit_string(7,str:sub(1,name_end),name_map), -- Name of the monster
---            9D 87 AE C0 = 'Naul'
         }
     return rettab
 end
@@ -1964,7 +1910,6 @@ end
 function decode.AssaultLog(itemid, str) 
     local missions = {
         [2491] = {
-            -- "Leujaoam Log"
             [1] = "Leujaom Cleansing",
             [2] = "Orichalcum Survey",
             [3] = "Escort Professor Chanoix",
@@ -1977,7 +1922,6 @@ function decode.AssaultLog(itemid, str)
             [10] = "Bloody Rhondo"
         },
         [2492] = {
-            -- "Mamool Ja Journal"
             [1] = "Imperial Agent Rescue",
             [2] = "Preemptive Strike",
             [3] = "Sagacious Moors",
@@ -1991,7 +1935,6 @@ function decode.AssaultLog(itemid, str)
         },
     
         [2493] = {
-            -- "Lebros Chronicle"
             [1] = "Excavation Duty",
             [2] = "Lebros Supplies",
             [3] = "Troll Fugitives",
@@ -2004,7 +1947,6 @@ function decode.AssaultLog(itemid, str)
             [10] = "Better than One",
         },
         [2494] = {
-            -- "Periqia Diary"
             [1] = "Seagull Grounded",
             [2] = "Requiem",
             [3] = "Saving Private Ryaaf",
@@ -2017,7 +1959,6 @@ function decode.AssaultLog(itemid, str)
             [10] = "The Price Is Right",
         },
         [2495] = {
-            -- "Ilrusi Ledger"
             [1] = "Golden Salvage",
             [2] = "Lamia No.13",
             [3] = "Extermination",
@@ -2146,7 +2087,6 @@ function decode.Hourglass(str)
     local statuses = {[0] = 'Uninitialized', [1] = 'Active', [2] = 'Active', [3] = 'Spent'}
     local rettab = {type='Hourglass',
         exit_time = str:unpack('I',9),
---        entry_time = str:unpack('I',13),
         zone_id = str:unpack('H',17),
         status_id = str:byte(3)%4,
         status = statuses[rettab.status_id],
@@ -2169,9 +2109,6 @@ function decode.EmptySlot(str)
     
     return rettab
 end
-
-
--- In general, the function used to decode an item's extdata is determined by its type, which can be looked up using its item ID in the resources.
 typ_mapping = {
     [1] = decode.General, -- General
     [2] = decode.General, -- Fight Entry Items
@@ -2186,23 +2123,11 @@ typ_mapping = {
     [12] = decode.Flowerpot, -- Flowerpots
     [14] = decode.Mannequin, -- Mannequins
     [15] = decode.PvPReservation, -- Ballista Books
-    --[16] = decode.Chocobo, -- Chocobo paraphenelia (eggs, cards, slips, etc.)
-    --[17] = decode.ChocoboTicket, -- Chocobo Ticket and Completion Certificate
     [18] = decode.SoulPlate, -- Soul Plates
     [19] = decode.Reflector, -- Soul Reflectors
-    --[20] = decode.AssaultLog, -- Assault Logs for the Mythic quest
     [21] = decode.BonanzaMarble, -- Mog Bonanza Marbles
-    --[22] = decode.MazeTabulaM, -- MMM Maze Tabula M
-    --[23] = decode.MazeTabulaR, -- MMM Maze Tabula R
-    --[24] = decode.MazeVoucher, -- MMM Maze Vouchers
-    --[25] = decode.MazeRunes, -- MMM Maze Runes
-    --[26] = decode.Evoliths, -- Evoliths
-    --[27] = decode.StorageSlip, -- Storage Slips, already handled by slips.lua
     [28] = decode.LegionPass, -- Legion Pass
-    --[29] = decode.MeeblesGrimore, -- Meebles Burrow Grimoires
     }
-
--- However, some items appear to have the function they use hardcoded based purely on their ID.
 id_mapping = {
     [0] = decode.EmptySlot,
     [4237] = decode.Hourglass,
@@ -2213,10 +2138,6 @@ id_mapping = {
     [2494] = decode.AssaultLog+{2494},
     [2495] = decode.AssaultLog+{2495},
     }
-
-
-
--- ACTUAL EXTDATA LIB FUNCTIONS
     
 local extdata = {}
 
@@ -2245,19 +2166,6 @@ function extdata.decode(tab)
     decoded.__raw = tab.extdata
     return decoded
 end
-
-
------------------------------------------------------------------------------------
---Name: compare_augments(goal,current)
---Args:
----- goal - First set of augments
----- current - Second set of augments
------------------------------------------------------------------------------------
---Returns:
----- boolean indicating whether the goal augments are contained within the
-----    current augments. Will return false if there are excess goal augments
-----    or the goal augments do not match the current augments.
------------------------------------------------------------------------------------
 function extdata.compare_augments(goal_augs,current)
     if not current then return false end
     local cur = {}
@@ -2324,9 +2232,6 @@ function extdata.compare_augments(goal_augs,current)
         end
     end
 end
-
--- Encode currently does nothing
---[[local encode = {}
 
 function extdata.encode(tab)
     if tab and type(tab) == 'table' and tab.type and encode[tab.type] then

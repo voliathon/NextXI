@@ -1,6 +1,3 @@
-----------------------------------------------------------------------------
--- LuaJIT ARM disassembler module.
---
 
 local type = type
 local sub, byte, format = string.sub, string.byte, string.format
@@ -9,10 +6,6 @@ local concat = table.concat
 local bit = require("bit")
 local band, bor, ror, tohex = bit.band, bit.bor, bit.ror, bit.tohex
 local lshift, rshift, arshift = bit.lshift, bit.rshift, bit.arshift
-
-------------------------------------------------------------------------------
--- Opcode maps
-------------------------------------------------------------------------------
 
 local map_loadc = {
   shift = 8, mask = 15,
@@ -117,7 +110,6 @@ local map_datac = {
       shift = 8, mask = 15,
       [10] = map_vfps,
       [11] = map_vfpd,
-      -- NYI cdp, mcr, mrc.
     },
     {
       shift = 8, mask = 15,
@@ -340,7 +332,6 @@ local map_mulh = {
 
 local map_misc = {
   shift = 4, mask = 7,
-  -- NYI: decode PSR bits of msr.
   [0] = { shift = 21, mask = 1, [0] = "mrsD", "msrM", },
   { shift = 21, mask = 3, "bxM", false, "clzDM", },
   { shift = 21, mask = 3, "bxjM", },
@@ -388,14 +379,10 @@ local map_condins = {
   [0] = map_datar, map_datai, map_load, map_load1,
   map_loadm, map_branch, map_loadc, map_datac
 }
-
--- NYI: setend.
 local map_uncondins = {
   [0] = false, map_simddata, map_simdload, map_preload,
   false, "blxB", map_loadcu, map_datacu,
 }
-
-------------------------------------------------------------------------------
 
 local map_gpr = {
   [0] = "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
@@ -408,10 +395,6 @@ local map_cond = {
 }
 
 local map_shift = { [0] = "lsl", "lsr", "asr", "ror", }
-
-------------------------------------------------------------------------------
-
--- Output a nicely formatted line with an opcode and operands.
 local function putop(ctx, text, operands)
   local pos = ctx.pos
   local extra = ""
@@ -432,13 +415,9 @@ local function putop(ctx, text, operands)
   end
   ctx.pos = pos + 4
 end
-
--- Fallback for unknown opcodes.
 local function unknown(ctx)
   return putop(ctx, ".long", { "0x"..tohex(ctx.op) })
 end
-
--- Format operand 2 of load/store opcodes.
 local function fmtload(ctx, op, pos)
   local base = map_gpr[band(rshift(op, 16), 15)]
   local x, ofs
@@ -475,8 +454,6 @@ local function fmtload(ctx, op, pos)
   if band(op, 0x01200000) == 0x01200000 then x = x.."!" end
   return x
 end
-
--- Format operand 2 of vector load/store opcodes.
 local function fmtvload(ctx, op, pos)
   local base = map_gpr[band(rshift(op, 16), 15)]
   local ofs = band(op, 255)*4
@@ -496,8 +473,6 @@ local function fmtvr(op, vr, sh0, sh1)
     return format("d%d", band(rshift(op, sh0), 15)+band(rshift(op, sh1-4), 16))
   end
 end
-
--- Disassemble a single instruction.
 local function disass_ins(ctx)
   local pos = ctx.pos
   local b0, b1, b2, b3 = byte(ctx.code, pos+1, pos+4)
@@ -637,10 +612,6 @@ local function disass_ins(ctx)
 
   return putop(ctx, name..suffix, operands)
 end
-
-------------------------------------------------------------------------------
-
--- Disassemble a block of code.
 local function disass_block(ctx, ofs, len)
   if not ofs then ofs = 0 end
   local stop = len and ofs+len or #ctx.code
@@ -648,8 +619,6 @@ local function disass_block(ctx, ofs, len)
   ctx.rel = nil
   while ctx.pos < stop do disass_ins(ctx) end
 end
-
--- Extended API: create a disassembler context. Then call ctx:disass(ofs, len).
 local function create(code, addr, out)
   local ctx = {}
   ctx.code = code
@@ -660,19 +629,13 @@ local function create(code, addr, out)
   ctx.hexdump = 8
   return ctx
 end
-
--- Simple API: disassemble code (a string) at address and output via out.
 local function disass(code, addr, out)
   create(code, addr, out):disass()
 end
-
--- Return register name for RID.
 local function regname(r)
   if r < 16 then return map_gpr[r] end
   return "d"..(r-16)
 end
-
--- Public module functions.
 return {
   create = create,
   disass = disass,

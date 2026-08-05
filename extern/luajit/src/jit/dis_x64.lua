@@ -1,6 +1,3 @@
-----------------------------------------------------------------------------
--- LuaJIT x64 disassembler wrapper module.
---
 
 local dis_x86 = require((string.match(..., ".*%.") or "").."dis_x86")
 return {

@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "addon/addon.hpp"
 
 #include "addon/errors/package_error.hpp"
@@ -82,24 +58,13 @@ int load_internal_module(windower::lua::state s)
     }
     catch (package_error const& e)
     {
-        // ── Global libs fallback ──────────────────────────────────────────
-        // If a module isn't found in the addon's own directory, transparently
-        // fall back to addons/libs/ so every addon can share Windower 4
-        // compatibility libraries without needing local copies.
-        //
-        // Resolution order:
-        //   1. addons/libs/<file>.lua          (flat lib:  strings.lua)
-        //   2. addons/libs/<module>/<file>.lua (dir pkg:   socket/socket.lua)
         auto const libs_root =
             package->path().parent_path() / u8"libs";
-
-        // 1. Flat file in libs root
         if (auto flat = std::ifstream{libs_root / file_name, std::ios::binary};
             flat.is_open())
         {
             lua::load(guard, flat, u8"@libs:" + file_name.u8string());
         }
-        // 2. Directory package: libs/<stem>/<stem>.lua
         else if (auto dir = std::ifstream{
                      libs_root / file_name.stem() / file_name,
                      std::ios::binary};
@@ -112,7 +77,6 @@ int load_internal_module(windower::lua::state s)
         }
         else
         {
-            // Module not found anywhere — report original error
             std::u8string error;
             error.append(u8"\n    [");
             error.append(e.error_code());
@@ -174,10 +138,6 @@ windower::addon::addon(
 
 windower::addon::~addon()
 {
-    // FIX: Force the Lua state and scheduler to shut down while the addon is
-    // still fully alive! This forces all Lua __gc metamethods (like command
-    // unregisters) to run immediately, ensuring they don't try to access dead
-    // C++ memory later in the destruction chain.
     m_scheduler.reset();
     m_root_handle.reset();
     m_interpreter = lua::interpreter{};
@@ -189,37 +149,22 @@ std::shared_ptr<windower::package const> windower::addon::find_dependency(
 {
     if (auto pkg = addon::get_package(s))
     {
-        auto const& dependencies = pkg->dependencies();
-
         auto const& core = core::instance();
+        std::queue<std::shared_ptr<windower::package const>> indirect_dependencies;
 
-        std::queue<std::shared_ptr<windower::package const>>
-            indirect_dependencies;
-        for (auto const& d : dependencies)
+        // Seed the queue with immediate dependencies
+        for (auto const& d : pkg->dependencies())
         {
             if (auto p = core.package_manager->get_package(d.name()))
             {
-                if (d.name() == package_name)
-                {
-                    return p;
-                }
-                if (p->type() == package_type::library)
-                {
-                    for (auto const& temp : p->dependencies())
-                    {
-                        if (auto indirect_dependency =
-                                core.package_manager->get_package(temp.name()))
-                        {
-                            indirect_dependencies.push(indirect_dependency);
-                        }
-                    }
-                }
+                indirect_dependencies.push(p);
             }
         }
 
+        // Seed the queue with implicit developer-mode dependencies
         if (core.settings.developer_mode)
         {
-            lua::stack_guard guard{s};
+            lua::stack_guard guard{ s };
             lua::push(guard, &implicit_packages_key);
             lua::raw_get(guard, lua::registry);
             if (lua::typeof(guard, -1) == lua::type::table)
@@ -228,7 +173,7 @@ std::shared_ptr<windower::package const> windower::addon::find_dependency(
                 while (lua::next(guard, -2))
                 {
                     if (auto p = core.package_manager->get_package(
-                            lua::get<std::u8string>(guard, -1));
+                        lua::get<std::u8string>(guard, -1));
                         p && p->type() == package_type::library)
                     {
                         indirect_dependencies.push(p);
@@ -238,20 +183,23 @@ std::shared_ptr<windower::package const> windower::addon::find_dependency(
             }
         }
 
+        // Process the dependency queue
         while (!indirect_dependencies.empty())
         {
             auto p = indirect_dependencies.front();
             indirect_dependencies.pop();
+
             if (p->name() == package_name)
             {
                 return p;
             }
+
             if (p->type() == package_type::library)
             {
                 for (auto const& temp : p->dependencies())
                 {
                     if (auto indirect_dependency =
-                            core.package_manager->get_package(temp.name()))
+                        core.package_manager->get_package(temp.name()))
                     {
                         indirect_dependencies.push(indirect_dependency);
                     }
@@ -259,6 +207,7 @@ std::shared_ptr<windower::package const> windower::addon::find_dependency(
             }
         }
 
+        // Handle unmet dependencies
         if (core.settings.developer_mode)
         {
             if (auto p = core.package_manager->get_package(package_name))
@@ -274,7 +223,7 @@ std::shared_ptr<windower::package const> windower::addon::find_dependency(
                     u8"package manifest.");
                 core::error(pkg->name(), warning_message);
 
-                lua::stack_guard guard{s};
+                lua::stack_guard guard{ s };
                 lua::push(guard, &implicit_packages_key);
                 lua::raw_get(guard, lua::registry);
                 if (lua::typeof(guard, -1) != lua::type::table)
@@ -292,14 +241,14 @@ std::shared_ptr<windower::package const> windower::addon::find_dependency(
             }
             else
             {
-                throw package_error{u8"PKG:P1", package_name};
+                throw package_error{ u8"PKG:P1", package_name };
             }
         }
 
-        throw package_error{u8"PKG:P2", package_name};
+        throw package_error{ u8"PKG:P2", package_name };
     }
 
-    throw windower_error{u8"INT:2"};
+    throw windower_error{ u8"INT:2" };
 }
 
 std::shared_ptr<windower::package const> windower::addon::package() const

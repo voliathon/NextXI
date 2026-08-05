@@ -1,7 +1,3 @@
-----------------------------------------------------------------------------
--- Lua script to dump the bytecode of the library functions written in Lua.
--- The resulting 'buildvm_libbc.h' is used for the build process of LuaJIT.
-----------------------------------------------------------------------------
 
 local ffi = require("ffi")
 local bit = require("bit")
@@ -70,8 +66,6 @@ local function read_uleb128(p)
   end
   return p, v
 end
-
--- ORDER LJ_T
 local name2itype = {
   str = 5, func = 9, tab = 12, int = 14, num = 15
 }
@@ -130,7 +124,6 @@ local function fixup_dump(dump, fixup)
     p = p + 4
   end
   local ndump = ffi.string(start, n)
-  -- Fixup hi-part of 0x4dp80 to LJ_KEYINDEX.
   ndump = ndump:gsub("\x80\x80\xcd\xaa\x04", "\xff\xff\xf9\xff\x0f")
   return { dump = ndump, startbc = startbc, sizebc = sizebc }
 end

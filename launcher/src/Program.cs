@@ -44,10 +44,6 @@ namespace Windower
     using Windower.UI;
 
     using static System.FormattableString;
-
-    /// <summary>
-    /// The class containing the program entry point.
-    /// </summary>
     [SuppressMessage("Microsoft.Maintainability", "CA1506")]
     public static class Program
     {
@@ -64,10 +60,6 @@ namespace Windower
         public static async Task<TResult> ElevateAsync<T1, T2, T3, TResult>(Func<T1, T2, T3, CancellationToken, TResult> method,
             T1 arg1, T2 arg2, T3 arg3, CancellationToken token) =>
             (TResult)await RemoteCallAsync(true, method, token, arg1, arg2, arg3);
-
-        /// <summary>
-        /// The program entry point.
-        /// </summary>
         private static void Main(string[] args)
         {
             CrashHandler.InstallCrashLogger();
@@ -114,9 +106,6 @@ namespace Windower
             {
                 if (!IsMono)
                 {
-                    // Windows doesn't block the console for non-console
-                    // executables, so clear the current line so things
-                    // don't look too out of place.
                     try
                     {
                         Console.CursorLeft = 0;
@@ -134,7 +123,6 @@ namespace Windower
 
                 if (!IsMono)
                 {
-                    // Print out a dummy prompt.
                     Console.Write(Invariant($"{Directory.GetCurrentDirectory()}>"));
                 }
             }
@@ -228,7 +216,6 @@ namespace Windower
             }
             else
             {
-                // TODO: Implement crash reporter for Linux and macOS.
             }
         }
 
@@ -246,7 +233,6 @@ namespace Windower
 
                 try
                 {
-                    // .NET 10 Fix: Read exactly one line to avoid EOF deadlock
                     using var reader = new StreamReader(pipe, Encoding.UTF8, false, 1024, leaveOpen: true);
                     var json = reader.ReadLine();
                     var call = JsonSerializer.Deserialize<CallDescriptor>(json, jsonOptions);
@@ -271,8 +257,6 @@ namespace Windower
                         throw new InvalidOperationException(
                             Invariant($"Method \"{method.Name}\" does not have \"{nameof(RemoteCallableAttribute)}\"."));
                     }
-
-                    // JSON deserializes objects to JsonElements. Convert them back to real types based on the method signature.
                     var parameters = method.GetParameters();
                     var finalArgs = new object[call.Arguments.Length];
                     for (int i = 0; i < call.Arguments.Length; i++)
@@ -309,7 +293,6 @@ namespace Windower
                 }
                 finally
                 {
-                    // .NET 10 Fix: Write exactly one line and instantly flush it through the pipe
                     using var writer = new StreamWriter(pipe, Encoding.UTF8, 1024, leaveOpen: true);
                     writer.WriteLine(JsonSerializer.Serialize(result, jsonOptions));
                     writer.Flush();
@@ -343,8 +326,6 @@ namespace Windower
                     call.TypeName = method.Method.DeclaringType.AssemblyQualifiedName;
                     call.MethodName = method.Method.Name;
                     call.Arguments = args;
-
-                    // .NET 10 Fix: Write exactly one line and instantly flush it through the pipe
                     using (var writer = new StreamWriter(pipe, Encoding.UTF8, 1024, leaveOpen: true))
                     {
                         writer.WriteLine(JsonSerializer.Serialize(call, jsonOptions));
@@ -367,7 +348,6 @@ namespace Windower
                         });
                         var runner = Task.Run(() =>
                         {
-                            // .NET 10 Fix: Read exactly one line to avoid EOF deadlock
                             using var reader = new StreamReader(pipe, Encoding.UTF8, false, 1024, leaveOpen: true);
                             var responseJson = reader.ReadLine();
                             result = JsonSerializer.Deserialize<ResultDescriptor>(responseJson, jsonOptions);
@@ -378,7 +358,6 @@ namespace Windower
                     }
                     else
                     {
-                        // .NET 10 Fix: Read exactly one line to avoid EOF deadlock
                         using var reader = new StreamReader(pipe, Encoding.UTF8, false, 1024, leaveOpen: true);
                         var responseJson = await Task.Run(() => reader.ReadLine());
                         result = JsonSerializer.Deserialize<ResultDescriptor>(responseJson, jsonOptions);
@@ -386,11 +365,8 @@ namespace Windower
 
                     if (result.ErrorMessage != null)
                     {
-                        // Throw a brand new exception using the text string we sent over the pipe
                         throw new Exception("Elevated Process Error:\n" + result.ErrorMessage);
                     }
-
-                    // .NET 10 Fix: Unpack the JsonElement back into the original primitive type (like bool)
                     if (result.Result is JsonElement elem && method.Method.ReturnType != typeof(void))
                     {
                         return elem.Deserialize(method.Method.ReturnType, jsonOptions);

@@ -1,8 +1,3 @@
-----------------------------------------------------------------------------
--- LuaJIT compiler dump module.
---
-
--- Cache some library functions and objects.
 local jit = require("jit")
 local jutil = require("jit.util")
 local vmdef = require("jit.vmdef")
@@ -16,20 +11,12 @@ local sub, gsub, format = string.sub, string.gsub, string.format
 local byte, rep = string.byte, string.rep
 local type, tostring = type, tostring
 local stdout, stderr = io.stdout, io.stderr
-
--- Load other modules on-demand.
 local bcline, disass
-
--- Active flag, output file handle and dump mode.
 local active, out, dumpmode
-
-------------------------------------------------------------------------------
 
 local symtabmt = { __index = false }
 local symtab = {}
 local nexitsym = 0
-
--- Fill nested symbol table with per-trace exit stub addresses.
 local function fillsymtab_tr(tr, nexit)
   local t = {}
   symtabmt.__index = t
@@ -45,8 +32,6 @@ local function fillsymtab_tr(tr, nexit)
   local addr = traceexitstub(tr, nexit)
   if addr then t[addr] = "stack_check" end
 end
-
--- Fill symbol table with trace exit stub addresses.
 local function fillsymtab(tr, nexit)
   local t = symtab
   if nexitsym == 0 then
@@ -83,8 +68,6 @@ end
 local function dumpwrite(s)
   out:write(s)
 end
-
--- Disassemble machine code.
 local function dump_mcode(tr)
   local info = traceinfo(tr)
   if not info then return end
@@ -106,8 +89,6 @@ local function dump_mcode(tr)
     ctx:disass(0, #mcode)
   end
 end
-
-------------------------------------------------------------------------------
 
 local irtype_text = {
   [0] = "nil",
@@ -212,8 +193,6 @@ span.irt_extra { font-style: italic; }
 ]]
 
 local colorize, irtype
-
--- Lookup tables to convert some literals into names.
 local litname = {
   ["SLOAD "] = setmetatable({}, { __index = function(t, mode)
     local s = ""
@@ -332,8 +311,6 @@ local function printsnap(tr, snap)
   end
   out:write("]\n")
 end
-
--- Dump snapshots (not interleaved with IR).
 local function dump_snap(tr)
   out:write("---- TRACE ", tr, " snapshots\n")
   for i=0,1000000000 do
@@ -343,8 +320,6 @@ local function dump_snap(tr)
     printsnap(tr, snap)
   end
 end
-
--- Return a register name or stack slot for a rid/sp location.
 local function ridsp_name(ridsp, ins)
   if not disass then disass = require("jit.dis_"..jit.arch) end
   local rid, slot = band(ridsp, 0xff), shr(ridsp, 8)
@@ -355,8 +330,6 @@ local function ridsp_name(ridsp, ins)
   if rid < 128 then return disass.regname(rid) end
   return ""
 end
-
--- Dump CALL* function ref and return optional ctype.
 local function dumpcallfunc(tr, ins)
   local ctype
   if ins > 0 then
@@ -373,8 +346,6 @@ local function dumpcallfunc(tr, ins)
   end
   return ctype
 end
-
--- Recursively gather CALL* args and dump them.
 local function dumpcallargs(tr, ins)
   if ins < 0 then
     out:write(formatk(tr, ins))
@@ -394,8 +365,6 @@ local function dumpcallargs(tr, ins)
     end
   end
 end
-
--- Dump IR and interleaved snapshots.
 local function dump_ir(tr, dumpsnap, dumpreg)
   local info = traceinfo(tr)
   if not info then return end
@@ -492,12 +461,8 @@ local function dump_ir(tr, dumpsnap, dumpreg)
   end
 end
 
-------------------------------------------------------------------------------
-
 local recprefix = ""
 local recdepth = 0
-
--- Format trace error message.
 local function fmterr(err, info)
   if type(err) == "number" then
     if type(info) == "function" then info = fmtfunc(info) end
@@ -510,8 +475,6 @@ local function fmterr(err, info)
   end
   return err
 end
-
--- Dump trace states.
 local function dump_trace(what, tr, func, pc, otr, oex)
   if what == "stop" or (what == "abort" and dumpmode.a) then
     if dumpmode.i then dump_ir(tr, dumpmode.s, dumpmode.r and what == "stop")
@@ -545,8 +508,6 @@ local function dump_trace(what, tr, func, pc, otr, oex)
   end
   out:flush()
 end
-
--- Dump recorded bytecode.
 local function dump_record(tr, func, pc, depth)
   if depth ~= recdepth then
     recdepth = depth
@@ -569,12 +530,8 @@ local function dump_record(tr, func, pc, depth)
   end
 end
 
-------------------------------------------------------------------------------
-
 local gpr64 = jit.arch:match("64")
 local fprmips32 = jit.arch == "mips" or jit.arch == "mipsel"
-
--- Dump taken trace exits.
 local function dump_texit(tr, ex, ngpr, nfpr, ...)
   out:write("---- TRACE ", tr, " exit ", ex, "\n")
   if dumpmode.X then
@@ -603,10 +560,6 @@ local function dump_texit(tr, ex, ngpr, nfpr, ...)
     end
   end
 end
-
-------------------------------------------------------------------------------
-
--- Detach dump handlers.
 local function dumpoff()
   if active then
     active = false
@@ -617,8 +570,6 @@ local function dumpoff()
     out = nil
   end
 end
-
--- Open the output file and attach dump handlers.
 local function dumpon(opt, outfile)
   if active then dumpoff() end
 
@@ -669,8 +620,6 @@ local function dumpon(opt, outfile)
 
   active = true
 end
-
--- Public module functions.
 return {
   on = dumpon,
   off = dumpoff,

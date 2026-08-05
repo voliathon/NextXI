@@ -1,19 +1,12 @@
-----------------------------------------------------------------------------
--- LuaJIT module to save/list bytecode.
---
 
 local jit = require("jit")
 assert(jit.version_num == 20199, "LuaJIT core/library version mismatch")
 local bit = require("bit")
-
--- Symbol name prefix for LuaJIT bytecode.
 local LJBC_PREFIX = "luaJIT_BC_"
 
 local type, assert = type, assert
 local format = string.format
 local tremove, tconcat = table.remove, table.concat
-
-------------------------------------------------------------------------------
 
 local function usage()
   io.stderr:write[[
@@ -30,7 +23,6 @@ Save LuaJIT bytecode: luajit -b[options] input output
   -o os     Override OS for object files (default: native).
   -F name   Override filename (default: input filename).
   -e chunk  Use chunk string as input.
-  --        Stop handling options.
   -         Use stdin as input and/or stdout as output.
 
 File types: c cc h obj o raw (default)
@@ -73,8 +65,6 @@ local function set_stdout_binary(ffi)
   ffi.cdef[[int _setmode(int fd, int mode);]]
   ffi.C._setmode(1, 0x8000)
 end
-
-------------------------------------------------------------------------------
 
 local map_type = {
   raw = "raw", c = "c", cc = "c", h = "h", o = "obj", obj = "obj",
@@ -129,8 +119,6 @@ local function detectmodname(str)
   check(str, "cannot derive module name, use -n name")
   return str:gsub("[%.%-]", "_")
 end
-
-------------------------------------------------------------------------------
 
 local function bcsave_tail(fp, output, s)
   local ok, err = fp:write(s)
@@ -236,8 +224,6 @@ typedef struct {
   local symname = LJBC_PREFIX..ctx.modname
   local ai = assert(map_arch[ctx.arch])
   local is64, isbe = ai.b == 64, ai.e == "be"
-
-  -- Handle different host/target endianess.
   local function f32(x) return x end
   local f16, fofs = f32, f32
   if ffi.abi("be") ~= isbe then
@@ -250,8 +236,6 @@ typedef struct {
       fofs = f32
     end
   end
-
-  -- Create ELF object and fill in header.
   local o = ffi.new(is64 and "ELF64obj" or "ELF32obj")
   local hdr = o.hdr
   if ctx.os == "bsd" or ctx.os == "other" then -- Determine native hdr.eosabi.
@@ -276,8 +260,6 @@ typedef struct {
   hdr.shentsize = f16(ffi.sizeof(o.sect[0]))
   hdr.shnum = f16(6)
   hdr.shstridx = f16(2)
-
-  -- Fill in sections and symbols.
   local sofs, ofs = ffi.offsetof(o, "space"), 1
   for i,name in ipairs{
       ".symtab", ".shstrtab", ".strtab", ".rodata", ".note.GNU-stack",
@@ -313,8 +295,6 @@ typedef struct {
   o.sect[4].size = fofs(#s)
   o.sect[5].type = f32(1) -- .note.GNU-stack
   o.sect[5].ofs = fofs(sofs + ofs + #s)
-
-  -- Write ELF object file.
   local fp = savefile(output, "wb")
   fp:write(ffi.string(o, ffi.sizeof(o)-4096+ofs))
   bcsave_tail(fp, output, s)
@@ -353,7 +333,6 @@ typedef struct __attribute((packed)) {
 typedef struct {
   PEheader hdr;
   PEsection sect[2];
-  // Must be an even number of symbol structs.
   PEsym sym0;
   PEsymaux sym0aux;
   PEsym sym1;
@@ -368,24 +347,18 @@ typedef struct {
   local ai = assert(map_arch[ctx.arch])
   local is64 = ai.b == 64
   local symexport = "   /EXPORT:"..symname..",DATA "
-
-  -- The file format is always little-endian. Swap if the host is big-endian.
   local function f32(x) return x end
   local f16 = f32
   if ffi.abi("be") then
     f32 = bit.bswap
     function f16(x) return bit.rshift(bit.bswap(x), 16) end
   end
-
-  -- Create PE object and fill in header.
   local o = ffi.new("PEobj")
   local hdr = o.hdr
   hdr.arch = f16(assert(ai.p))
   hdr.nsects = f16(2)
   hdr.symtabofs = f32(ffi.offsetof(o, "sym0"))
   hdr.nsyms = f32(6)
-
-  -- Fill in sections and symbols.
   o.sect[0].name = ".drectve"
   o.sect[0].size = f32(#symexport)
   o.sect[0].flags = f32(0x00100a00)
@@ -416,8 +389,6 @@ typedef struct {
   ffi.copy(o.space + ofs, symexport)
   ofs = ofs + #symexport
   o.sect[1].ofs = f32(ffi.offsetof(o, "space") + ofs)
-
-  -- Write PE object file.
   local fp = savefile(output, "wb")
   fp:write(ffi.string(o, ffi.sizeof(o)-4096+ofs))
   bcsave_tail(fp, output, s)
@@ -472,15 +443,11 @@ typedef struct {
     cputype, cpusubtype = 0x0100000c, 0
   end
   local function aligned(v, a) return bit.band(v+a-1, -a) end
-
-  -- Create Mach-O object and fill in header.
   local o = ffi.new("mach_obj_64")
   local t = ffi.new("mach_obj_64_tail")
   local ofs_bc = ffi.sizeof(o)
   local sz_bc = aligned(#s, 8)
   local ofs_sym = ofs_bc + sz_bc
-
-  -- Fill in sections and symbols.
   o.hdr.magic = 0xfeedfacf
   o.hdr.cputype = cputype
   o.hdr.cpusubtype = cpusubtype
@@ -509,8 +476,6 @@ typedef struct {
   t.sym_entry.sect = 1
   t.sym_entry.strx = 1
   ffi.copy(t.space+1, symname)
-
-  -- Write Mach-O object file.
   local fp = savefile(output, "wb")
   fp:write(ffi.string(o, ofs_bc))
   fp:write(s, ("\0"):rep(sz_bc - #s))
@@ -531,8 +496,6 @@ local function bcsave_obj(ctx, output, s)
     return bcsave_elfobj(ctx, output, s, ffi)
   end
 end
-
-------------------------------------------------------------------------------
 
 local function bclist(ctx, input, output)
   local f = readfile(ctx, input)
@@ -619,10 +582,6 @@ local function docmd(...)
     bcsave(ctx, arg[1], arg[2])
   end
 end
-
-------------------------------------------------------------------------------
-
--- Public module functions.
 return {
   start = docmd -- Process -b command line option.
 }

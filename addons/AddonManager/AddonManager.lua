@@ -17,12 +17,7 @@ local addon = {
     author = 'Voliathon of Bahamut',
     version = '2.1'
 }
-
--- ============================================================================
--- 1. NATIVE SETTINGS & PERSISTENCE
--- ============================================================================
 local defaults = {
-    -- We now store settings per-character. 'Global' is the fallback.
     Global = { addons = {} }
 }
 
@@ -43,16 +38,14 @@ local state = {
 }
 
 local version_cache = {}
-
--- Elite UI Colors
-local COLOR_ACCENT = ui.color.rgb(100, 200, 255)
-local COLOR_ON = ui.color.rgb(40, 200, 100)
-local COLOR_OFF = ui.color.rgb(220, 80, 80)
-local COLOR_TEXT = ui.color.rgb(230, 230, 230)
-local COLOR_MUTED = ui.color.rgb(140, 140, 140)
-local COLOR_WARN = ui.color.rgb(255, 180, 50)
-local COLOR_BG = ui.color.fade(ui.color.system_black, 230)
-local COLOR_BORDER = ui.color.rgb(80, 120, 160)
+local COLOR_ACCENT = ui.color.rgb(0, 255, 255)
+local COLOR_ON = ui.color.rgb(50, 255, 120)
+local COLOR_OFF = ui.color.rgb(255, 70, 70)
+local COLOR_TEXT = ui.color.rgb(240, 240, 245)
+local COLOR_MUTED = ui.color.rgb(100, 120, 140)
+local COLOR_WARN = ui.color.rgb(255, 160, 0)
+local COLOR_BG = ui.color.fade(ui.color.rgb(15, 20, 30), 245)
+local COLOR_BORDER = ui.color.fade(ui.color.rgb(0, 180, 255), 180)
 
 local ELITE_STYLE = {
     text_color = COLOR_TEXT,
@@ -60,17 +53,11 @@ local ELITE_STYLE = {
     border_color = COLOR_BORDER,
     opacity = 0.95
 }
-
--- Helper to get the active character's addons table
 local function get_char_addons()
     local c = state.current_character
     if not profile_settings[c] then profile_settings[c] = { addons = {} } end
     return profile_settings[c].addons
 end
-
--- ============================================================================
--- 2. NETWORK LISTENER (Autoloads on Login)
--- ============================================================================
 coroutine.schedule(function()
     coroutine.sleep_frame()
     
@@ -85,8 +72,6 @@ coroutine.schedule(function()
                     
                     coroutine.schedule(function()
                         coroutine.sleep(1)
-                        
-                        -- Print Banner on Zone In
                         chat.success("====================================================")
                         chat.success(" [ NextXI AddonManager 2.1 ] System Online")
                         chat.success(" Profile Loaded: " .. name)
@@ -132,10 +117,6 @@ coroutine.schedule(function()
         end
     })
 end)
-
--- ============================================================================
--- 3. README MARKDOWN PARSER
--- ============================================================================
 local function parse_markdown_to_windower(md_text)
     if not md_text or md_text == "" then return "No documentation available." end
     local parsed = md_text:gsub("\r\n", "\n")
@@ -160,10 +141,6 @@ local function calculate_readme_height(text)
     end
     return math.max(610, total_height + 50)
 end
-
--- ============================================================================
--- 4. MANIFEST SCANNER
--- ============================================================================
 local function scan_packages()
     state.packages = {}
     
@@ -274,12 +251,8 @@ local function scan_packages()
     end)
     state.scanned = true
 end
-
--- ============================================================================
--- 5. ELITE UI RENDERING
--- ============================================================================
 local market_window = ui.window_state()
-market_window.title = " NEXTXI ADDON MANAGER"
+market_window.title = "  >> NEXTXI ADDON HUD v2.1"
 market_window.size = {width = 760, height = 750}
 market_window.visible = false
 
@@ -326,48 +299,37 @@ local function update_scroll_canvas()
         scroll_view = ui.scroll_panel_state(730, scroll_view_content_height)
     end
 end
-
--- Draw a single addon row
 local function draw_package(canvas, pkg)
     canvas:space(8)
 
     local c_state = pkg.lifecycle or "off"
     local is_on = (c_state == "login" or c_state == "boot" or c_state == "delayed")
-
-    -- ROW 1: Name colored green if ENABLED, muted gray if DISABLED
     local name_color = is_on and COLOR_ON or COLOR_MUTED
-    canvas:label("  " .. pkg.name .. "  (v" .. pkg.version .. ")", name_color)
+    
+    canvas:width(350):label("  " .. pkg.name .. "  (v" .. pkg.version .. ")", name_color)
     canvas:same_line()
 
     if pkg.group == "core" or pkg.group == "dependency" then
-        -- System packages: badge only, no toggle
         if pkg.group == "core" then
             canvas:width(160):label("[ CORE SYSTEM ]", COLOR_WARN)
         else
             canvas:width(160):label("[ DEPENDENCY  ]", COLOR_MUTED)
         end
     else
-        -- Status badge: green ENABLED / red DISABLED
         if is_on then
-            canvas:width(110):label("  [● AUTO: ON ]", COLOR_ON)
+            canvas:width(110):label("[● AUTO: ON]", COLOR_ON)
         else
-            canvas:width(110):label("  [○ AUTO: OFF]", COLOR_OFF)
+            canvas:width(110):label("[○ AUTO: OFF]", COLOR_OFF)
         end
 
         canvas:same_line()
-
-        -- Auto-Load Toggle
-        local auto_label = is_on and "  Disable  " or "  Enable  "
-        local auto_clicked = canvas:width(80):button("auto_" .. pkg.id, auto_label, false)
+        local auto_label = is_on and "Disable" or "Enable"
+        local auto_clicked = canvas:width(60):button("auto_" .. pkg.id, auto_label, false)
 
         canvas:same_line()
-        
-        -- Start/Stop buttons
-        local start_clicked = canvas:width(60):button("start_" .. pkg.id, " Start ", false)
+        local start_clicked = canvas:width(50):button("start_" .. pkg.id, "Start", false)
         canvas:same_line()
-        local stop_clicked = canvas:width(60):button("stop_" .. pkg.id, " Stop ", false)
-
-        -- Readme button
+        local stop_clicked = canvas:width(50):button("stop_" .. pkg.id, "Stop", false)
         if pkg.has_readme then
             canvas:same_line()
             if canvas:width(80):button("btn_rm_" .. pkg.id, " Readme ", false) then
@@ -381,12 +343,9 @@ local function draw_package(canvas, pkg)
         end
 
         if auto_clicked then
-            -- Toggle state immediately in the data model
             local new_state = is_on and "off" or "login"
             pkg.lifecycle = new_state
             pkg.loaded = (new_state ~= "off")
-
-            -- Persist to profile
             local char_addons = get_char_addons()
             char_addons[pkg.id] = new_state
             settings.save('profiles')
@@ -410,15 +369,12 @@ local function draw_package(canvas, pkg)
             end
         end
     end
-
-    -- ROW 2: Author + description
     canvas:space(2)
-    canvas:label("     Author: " .. (pkg.author or "Unknown") .. "  |  " .. pkg.group:upper(), COLOR_MUTED)
-    canvas:space(2)
+    canvas:label("     [ " .. (pkg.author or "Voliathon") .. " ]   |   " .. pkg.group:upper(), COLOR_ACCENT)
+    canvas:space(4)
     canvas:label("     " .. (pkg.description or "No description provided."), COLOR_TEXT)
 
-    canvas:space(6)
-    canvas:label("-----------------------------------------------------------------------------------------------------------------------------------", COLOR_MUTED)
+    canvas:space(15)
 end
 
 
@@ -426,7 +382,6 @@ end
 local function draw_section_header(canvas, title, var_name)
     local is_open = state[var_name]
     local icon = is_open and " [-] " or " [+] "
-    -- Use a wide fixed button so the full title text always fits
     if canvas:width(710):button("hdr_" .. var_name, icon .. title, false) then
         state[var_name] = not is_open
         update_scroll_canvas()
@@ -445,10 +400,10 @@ ui.display(function()
             
             local window_still_open = ui.window(market_window, function(layout)
                 
-                layout:space(10)
-                layout:label("    Profile Management", COLOR_MUTED)
+                layout:space(15)
+                layout:label("    [ SYSTEM PROFILE ]", COLOR_MUTED)
                 layout:space(5)
-                layout:label("    Active Profile:  " .. state.current_character:upper(), COLOR_ACCENT)
+                layout:label("    ACTIVE CHARACTER:  " .. state.current_character:upper(), COLOR_ACCENT)
                 
                 layout:same_line()
                 layout:space(380)
@@ -457,37 +412,27 @@ ui.display(function()
                     chat.success("AddonManager: Packages rescanned dynamically.")
                 end
                 
-                layout:space(15)
-                layout:label("=============================================================================================================", COLOR_BORDER)
-                layout:space(5)
+                layout:space(25)
 
                 layout:height(610):scroll_panel(scroll_view, function(canvas)
-                    
-                    -- Section 1: Official Addons
                     if draw_section_header(canvas, "NEXTXI OFFICIAL ADDONS", "show_official_addons") then
                         for _, pkg in ipairs(state.packages) do
                             if pkg.group == "official" then draw_package(canvas, pkg) end
                         end
                         canvas:space(20)
                     end
-
-                    -- Section 2: Third-Party Addons
                     if draw_section_header(canvas, "COMMUNITY ADDONS", "show_third_party_addons") then
                         for _, pkg in ipairs(state.packages) do
                             if pkg.group == "third_party" then draw_package(canvas, pkg) end
                         end
                         canvas:space(20)
                     end
-
-                    -- Section 3: Developer Tools
                     if draw_section_header(canvas, "DEVELOPER TOOLS", "show_dev_tools") then
                         for _, pkg in ipairs(state.packages) do
                             if pkg.group == "dev" then draw_package(canvas, pkg) end
                         end
                         canvas:space(20)
                     end
-
-                    -- Section 4: Core Systems & Libraries
                     if draw_section_header(canvas, "CORE SYSTEMS & DEPENDENCIES", "show_dependencies") then
                         for _, pkg in ipairs(state.packages) do
                             if pkg.group == "core" or pkg.group == "dependency" then draw_package(canvas, pkg) end
@@ -526,10 +471,6 @@ ui.display(function()
         chat.error("AddonManager UI Crash: " .. tostring(err))
     end
 end)
-
--- ============================================================================
--- 6. COMMAND ROUTER
--- ============================================================================
 command.register({'addon', 'addons'}, function(args)
     local success, err = pcall(function()
         if args[1] == "rescan" then
@@ -553,10 +494,6 @@ end)
 addon.unload = function()
     chat.warning("AddonManager has been unloaded.")
 end
-
--- ============================================================================
--- 7. BOOT EXECUTION (Core Addons)
--- ============================================================================
 coroutine.schedule(function()
     coroutine.sleep_frame()
     local global_addons = profile_settings["Global"] and profile_settings["Global"].addons or {}

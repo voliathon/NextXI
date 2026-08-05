@@ -24,8 +24,6 @@ local constructors = setmetatable({}, {
             if data == nil then
                 return nil
             end
-
-            -- TODO: proper language detection...
             data.name = data.en
             return data
         end

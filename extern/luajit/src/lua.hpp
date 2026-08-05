@@ -1,4 +1,3 @@
-// C++ wrapper for LuaJIT header files.
 
 extern "C" {
 #include "lua.h"

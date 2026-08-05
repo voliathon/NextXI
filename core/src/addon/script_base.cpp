@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "addon/script_base.hpp"
 
 #include "addon/errors/package_error.hpp"
@@ -58,6 +34,8 @@
 #include <iostream>
 #include <memory>
 #include <sstream>
+
+#include "utilities/debug_helpers.hpp"
 
 namespace
 {
@@ -480,13 +458,9 @@ void initialize(
 
     lua::push(guard, u8"package");
     lua::raw_get(guard, lua::globals);
-
-    // Set up the registry table for loaded binary modules
     lua::push(guard, &binary_module_key);
     lua::create_table(guard);
     lua::raw_set(guard, lua::registry);
-
-    // Remove some stuff we're not using.
     lua::push(guard, u8"module");
     lua::push(guard, lua::nil);
     lua::raw_set(guard, lua::globals);
@@ -503,8 +477,6 @@ void initialize(
     lua::push(guard, u8"seeall");
     lua::push(guard, lua::nil);
     lua::raw_set(guard, -3);
-
-    // Replace loader list.
     lua::push(guard, u8"loaders");
     lua::create_table(guard, 4);
     lua::push(guard, load_preloaded_module);

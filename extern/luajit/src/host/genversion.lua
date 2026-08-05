@@ -1,6 +1,3 @@
-----------------------------------------------------------------------------
--- Lua script to embed the rolling release version in luajit.h.
-----------------------------------------------------------------------------
 
 local arg = {...}
 local FILE_ROLLING_H = arg[1] or "luajit_rolling.h"

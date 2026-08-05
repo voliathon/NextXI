@@ -17,8 +17,6 @@ command.register('libtest', function(args)
     
     if success then
         chat.print("SUCCESS: '" .. target_lib .. "' loaded correctly!", ui.color.green)
-        
-        -- If it's a table, count the keys to prove it's not an empty dummy table
         if type(result) == "table" then
             local count = 0
             for k, v in pairs(result) do count = count + 1 end

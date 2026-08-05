@@ -61,7 +61,6 @@ do
     end
 
     local lookup = function(category, entity, value, data, index)
-        -- print(category, value, data, index)
         if value == nil then
             return lookup_fixed(category, data, index)
         end
@@ -90,7 +89,6 @@ do
             return client.items[value]:log_string(0, client.items.article.none)
         elseif category == 'item plural indefinite' then
             return client.items[value]:log_string(0, client.items.article.none)
-        -- TODO key item modifiers
         elseif category == 'key item singular definite' then
             return resources.key_items[value].name
         elseif category == 'key item singular definite article' then
@@ -109,7 +107,6 @@ do
             return tostring(value)
         elseif category == 'choice' then
             return data[value + 1]
-        -- TODO
         elseif category == 'article' then
             return entity.index < 0x400 and entity.flags.enemy and data[1] or data[2]
         elseif category == 'plurality' then
@@ -187,9 +184,6 @@ do
                 [0x88] = common0105('unknown'), -- ... party chat? wat?
                 [0x8A] = common0105('unknown'), -- conditions?
             },
-            -- Like 0x05 but with two params? Possible generalization from <010101>, which has no params?
-            -- [0x09] = {
-            -- }
         },
         [0x05] = { category = 'skill', parameter = 1 },
         [0x0A] = { category = 'integer', parameter = 1 },
@@ -214,8 +208,6 @@ do
         hex[i] = string_format('<%.2X>', i)
     end
     local bit_and = bit.band
-
-    -- TODO remove debug, optimize, but will probably need a refactoring first to account for multiple params and context-sensitive evaluation
     local evaluate = function(action, ptr, entity_ids, params)
         local tokens = {}
         local token_count = 0

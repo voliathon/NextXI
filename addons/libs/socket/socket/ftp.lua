@@ -1,12 +1,3 @@
------------------------------------------------------------------------------
--- FTP support for the Lua language
--- LuaSocket toolkit.
--- Author: Diego Nehab
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
--- Declare module and import dependencies
------------------------------------------------------------------------------
 local base = _G
 local table = require("table")
 local string = require("string")
@@ -17,27 +8,15 @@ local tp = require("socket.tp")
 local ltn12 = require("ltn12")
 socket.ftp = {}
 local _M = socket.ftp
------------------------------------------------------------------------------
--- Program constants
------------------------------------------------------------------------------
--- timeout in seconds before the program gives up on a connection
 _M.TIMEOUT = 60
--- default port for ftp service
 _M.PORT = 21
--- this is the default anonymous password. used when no password is
--- provided in url. should be changed to your e-mail.
 _M.USER = "ftp"
 _M.PASSWORD = "anonymous@anonymous.org"
-
------------------------------------------------------------------------------
--- Low level FTP API
------------------------------------------------------------------------------
 local metat = { __index = {} }
 
 function _M.open(server, port, create)
     local tp = socket.try(tp.connect(server, port or _M.PORT, _M.TIMEOUT, create))
     local f = base.setmetatable({ tp = tp }, metat)
-    -- make sure everything gets closed in an exception
     f.try = socket.newtry(function() f:close() end)
     return f
 end
@@ -99,36 +78,25 @@ end
 
 function metat.__index:send(sendt)
     self.try(self.pasvt or self.server, "need port or pasv first")
-    -- if there is a pasvt table, we already sent a PASV command
-    -- we just get the data connection into self.data
     if self.pasvt then self:pasvconnect() end
-    -- get the transfer argument and command
     local argument = sendt.argument or
         url.unescape(string.gsub(sendt.path or "", "^[/\\]", ""))
     if argument == "" then argument = nil end
     local command = sendt.command or "stor"
-    -- send the transfer command and check the reply
     self.try(self.tp:command(command, argument))
     local code, reply = self.try(self.tp:check{"2..", "1.."})
-    -- if there is not a a pasvt table, then there is a server
-    -- and we already sent a PORT command
     if not self.pasvt then self:portconnect() end
-    -- get the sink, source and step for the transfer
     local step = sendt.step or ltn12.pump.step
     local readt = {self.tp.c}
     local checkstep = function(src, snk)
-        -- check status in control connection while downloading
         local readyt = socket.select(readt, nil, 0)
         if readyt[tp] then code = self.try(self.tp:check("2..")) end
         return step(src, snk)
     end
     local sink = socket.sink("close-when-done", self.data)
-    -- transfer all data and check error
     self.try(ltn12.pump.all(sendt.source, sink, checkstep))
     if string.find(code, "1..") then self.try(self.tp:check("2..")) end
-    -- done with data connection
     self.data:close()
-    -- find out how many bytes were sent
     local sent = socket.skip(1, self.data:getstats())
     self.data = nil
     return sent
@@ -186,10 +154,6 @@ function metat.__index:close()
     if self.server then self.server:close() end
     return self.tp:close()
 end
-
------------------------------------------------------------------------------
--- High level FTP API
------------------------------------------------------------------------------
 local function override(t)
     if t.url then
         local u = url.parse(t.url)

@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "binding_manager.hpp"
 
 #include "command_manager.hpp"
@@ -51,57 +27,9 @@
 namespace
 {
 
-// =========================================================================
-// ==                  Binding Descriptor Formal Grammar                  ==
-// =========================================================================
-//
-// binding           → opt_whitespace chord predicate
-//
-// chord             → key opt_whitespace chord_tail
-// chord_tail        → '+' opt_whitespace key opt_whitespace chord_tail | ε
-// key               → q_key_name
-//                   | dev_or_key_name opt_q_key_name
-//                   | special_key_name
-// opt_q_key_name    → q_key_name | ε
-// q_key_name        → ':' u_key_name
-// u_key_name        → ':' | special_key_name | dev_or_key_name
-// special_key_name  → '+' | '[' | ']' | '~'
-// dev_or_key_name   → name_char_mu opt_name | 'n' dev_or_key_name_n
-// dev_or_key_name_n → 'u' dev_or_key_name_u | name_char_mn opt_name | ε
-// dev_or_key_name_u → 'm' dev_or_key_name_m | name_char_nu opt_name | ε
-// dev_or_key_name_m → '+' | name
-//
-// predicate         → '[' opt_whitespace flag_list ']' opt_whitespace | ε
-// flag_list         → flag flag_list_tail | ε
-// flag_list_tail    → whitespace flag flag_list_tail | ε
-// flag              → name | '~' name
-//
-// name              → name_char opt_name
-// opt_name          → name_char opt_name | ε
-//
-// name_char         → 'm' | 'n' | 'u' | *
-// name_char_mn      → 'm' | 'n' | *
-// name_char_mu      → 'm' | 'u' | *
-// name_char_nu      → 'n' | 'u' | *
-//
-// whitespace        → W opt_whitespace
-// opt_whitespace    → W opt_whitespace | ε
-//
-// -------------------------------------------------------------------------
-//
-// W = {U+0009, U+000A, U+000B, U+000C, U+000D,
-//      U+0020, U+0085, U+00A0, U+1680, U+2000,
-//      U+2001, U+2002, U+2003, U+2004, U+2005,
-//      U+2006, U+2007, U+2008, U+2009, U+200A,
-//      U+2028, U+2029, U+202F, U+205F, U+3000}
-//
-// * = The complement of {'+', ':', '[', ']', 'm', 'n', 'u', '~'} ⋃ W.
-
 constexpr std::int8_t start_state = 10;
 
 constexpr std::array<std::array<std::int8_t, 11>, 34> parse_table{{
-    // clang-format off
-    // '+' ':' '[' ']' 'm' 'n' 'u' '~'  W   *   $  //
     {   0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1  },
     {  -1,  0, -1, -1, -1, -1, -1, -1, -1, -1, -1  },
     {  -1, -2,  0, -1, -1, -1, -1, -1, -1, -1, -1  },
@@ -136,7 +64,6 @@ constexpr std::array<std::array<std::int8_t, 11>, 34> parse_table{{
     {  -1, -1, -1, -2, -1, 27, 28, -2, -1, 29, -1  },
     {  -2, -2, -2, -2, -1, -1, -1, -1, 30, -1, -2  },
     {   0,  0,  0,  0,  0,  0,  0,  0, 30,  0,  0  },
-    // clang-format on
 }};
 
 constexpr std::array<std::tuple<std::uint8_t, std::array<std::int8_t, 7>>, 31>

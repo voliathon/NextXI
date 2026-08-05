@@ -1,4 +1,3 @@
--- LuaFormatter off
 local -- params
     instance,
     get_context_ptr,
@@ -28,7 +27,6 @@ local -- params
     rectangle_ptr,
     rectangle_patch_ptr,
     rectangle_nine_patch_ptr = ...
--- LuaFormatter on
 
 local bit = require('bit')
 local ffi = require('ffi')
@@ -75,20 +73,11 @@ local nine_patch_t = ffi.typeof([[struct {
     $ slice;
     $ overdraw;
 }]], dimension_t, rectangle_t, thickness_t, thickness_t)
-
----@class layer_t
----@field screen number
----@field world number
 local layer_t = ffi.new([[struct {
     static uint8_t const screen = 1;
     static uint8_t const world  = 2;
 }]])
 local layer_names = {[1] = 'screen', [2] = 'world'}
-
----@class window_style_t
----@field standard number
----@field tooltip number
----@field chromeless number
 local window_style_t = ffi.new([[struct {
     static uint8_t const standard   = 0;
     static uint8_t const tooltip    = 1;
@@ -99,14 +88,6 @@ local window_style_names = {
     [1] = 'tooltip',
     [2] = 'chromeless'
 }
-
----@class window_flags_t
----@field hidden number
----@field movable number
----@field resizable number
----@field closeable number
----@field layout_enabled number
----@field click_through number
 local window_flags_t = ffi.new([[struct {
     static uint8_t const hidden         = 1 << 0;
     static uint8_t const movable        = 1 << 1;
@@ -129,11 +110,6 @@ local window_state_t = ffi.typeof([[struct {
     uint8_t style;
     uint8_t flags;
 }]], rectangle_t, dimension_t, dimension_t)
-
----@class scroll_bar_visibility_t
----@field hidden number
----@field visible number
----@field automatic number
 local scroll_bar_visibility_t = ffi.new([[struct {
     static uint8_t const hidden    = 0;
     static uint8_t const visible   = 1;
@@ -186,26 +162,6 @@ local edit_state_t = ffi.typeof([[struct {
     size_t text_size;
     bool text_changed;
 }]])
-
----@class system_cursor_t
----@field normal number
----@field hot number
----@field north number
----@field north_east number
----@field east number
----@field south_east number
----@field south number
----@field south_west number
----@field west number
----@field north_west number
----@field north_alt number
----@field north_east_alt number
----@field east_alt number
----@field south_east_alt number
----@field south_alt number
----@field south_west_alt number
----@field west_alt number
----@field north_west_alt number
 local system_cursor_t = ffi.new([[struct {
     static uint8_t const normal         = 0;
     static uint8_t const hot            = 1;
@@ -259,8 +215,6 @@ local direction_mames = {
     [2] = 'bottom_to_top',
     [3] = 'top_to_bottom'
 }
-
--- LuaFormatter off
 local get_context_t = ffi.typeof(
     '$*(*)()',
     context_t)
@@ -294,15 +248,12 @@ local end_scope_t = ffi.typeof(
 local set_enabled_t = ffi.typeof(
     'void(*)($&,bool)',
     context_t)
-
--- 
 local push_style_t = ffi.typeof(
     'void(*)($&,bool,int32_t,bool,int32_t,bool,int32_t,bool,float)',
     context_t)
 local pop_style_t = ffi.typeof(
     'void(*)($&)',
     context_t)
--------------------------
 
 local set_bounds_t = ffi.typeof(
     'void(*)($&,float,float,float,float)',
@@ -348,7 +299,6 @@ local rectangle_patch_t = ffi.typeof(
 local rectangle_nine_patch_t = ffi.typeof(
     'float(*)($&,$ const&,void const*,size_t,$ const&,int32_t)',
     context_t, rectangle_t, nine_patch_t)
--- LuaFormatter on
 
 local get_context = get_context_t(get_context_ptr)
 local direct_to_screen = direct_to_screen_t(direct_to_screen_ptr)
@@ -361,11 +311,8 @@ local end_scroll_panel = end_scroll_panel_t(end_scroll_panel_ptr)
 local begin_scope = begin_scope_t(begin_scope_ptr)
 local end_scope = end_scope_t(end_scope_ptr)
 local set_enabled = set_enabled_t(set_enabled_ptr)
-
--- 
 local push_style_native = push_style_t(push_style_ptr)
 local pop_style_native = pop_style_t(pop_style_ptr)
------------------------
 
 local set_bounds = set_bounds_t(set_bounds_ptr)
 
@@ -385,8 +332,6 @@ local rectangle_patch = rectangle_patch_t(rectangle_patch_ptr)
 local rectangle_nine_patch = rectangle_nine_patch_t(rectangle_nine_patch_ptr)
 
 local ui = {}
-
--- --- CASCADING STYLING SYSTEM ---
 ui.push_style = function(style)
     if not current_context then return end
     
@@ -421,18 +366,12 @@ ui.pop_style = function()
     if not current_context then return end
     pop_style_native(current_context)
 end
--- ------------------------------------
 
 ui.system_color = function(index)
     local context = get_context()
     return get_system_color(context, index)
 end
-
--- ui.color
 ui.color = {
-    -- LuaFormatter off
-
-    -- CSS Colors Level 4
     transparent            = 0x00000000,
     aliceblue              = 0xF0F8FF - 0x1000000,
     antiquewhite           = 0xFAEBD7 - 0x1000000,
@@ -586,8 +525,6 @@ ui.color = {
     whitesmoke             = 0xF5F5F5 - 0x1000000,
     yellow                 = 0xFFFF00 - 0x1000000,
     yellowgreen            = 0x9ACD32 - 0x1000000,
-
-    -- System
     system_transparent                         = ui.system_color(0),
     system_white                               = ui.system_color(1),
     system_black                               = ui.system_color(2),
@@ -601,8 +538,6 @@ ui.color = {
     system_layout_inactive_hidden_title        = ui.system_color(10),
     system_layout_inactive_hidden_title_stroke = ui.system_color(11),
     system_color_picker_highlight              = ui.system_color(12),
-
-    -- Skin
     skin_accent                = ui.system_color(128),
     skin_window_title          = ui.system_color(129),
     skin_window_title_inactive = ui.system_color(130),
@@ -612,8 +547,6 @@ ui.color = {
     skin_button_disabled       = ui.system_color(134),
     skin_link                  = ui.system_color(135),
     skin_link_disabled         = ui.system_color(136),
-
-    -- LuaFormatter on
 }
 
 do
@@ -707,8 +640,6 @@ do
 end
 
 local current_context = nil
-
--- ui.display
 do
     local coroutine_schedule = coroutine.schedule
     local coroutine_create = coroutine.create
@@ -777,8 +708,6 @@ end
 local widgets = {}
 local registered_layouts = {}
 local calculate_bounds_key = {}
-
--- ui.register_layout
 local register_layout_internal
 do
     local table_unpack = table.unpack
@@ -812,16 +741,12 @@ do
         end, calculate_bounds)
     end
 end
-
--- ui.layout
 do
     ui.layout = function(name, x, y, width, height, ...)
         local layout = registered_layouts[name]
         layout(x, y, width, height, ...)
     end
 end
-
--- ui.window
 do
     local rawget = rawget
 
@@ -837,11 +762,9 @@ do
         end
 
         set_flag = function(state, flag, value)
-            -- LuaFormatter off
             state.flags = value and
                 bit_bor(state.flags, flag) or
                 bit_band(state.flags, bit_bnot(flag))
-            -- LuaFormatter on
         end
     end
 
@@ -973,8 +896,6 @@ do
         }, window_state_mt)
     end
 end
-
--- ui.screen
 do
     ui.screen = function(draw)
         if direct_to_screen(current_context) then
@@ -984,8 +905,6 @@ do
 end
 
 ui.primitive = {}
-
--- primitive: rectangle
 do
     local ui_color_white = ui.color.white
     local ffi_istype = ffi.istype
@@ -1072,8 +991,6 @@ do
         rectangle_impl(texture, patch, color)
     end
 end
-
--- layout: default
 do
     local math_max = math.max
 
@@ -1126,13 +1043,9 @@ do
 
         local move = function(layout, x, y)
             local state = rawget(layout, state_key)
-
-            -- not affected by padding:
             state.indent = x
             state.space = 0
             state.same_line = false
-
-            -- affected by padding:
             state.line = y + state.padding_t
             state.cursor_x = x + state.padding_l
             state.cursor_y = y + state.padding_t
@@ -1242,8 +1155,6 @@ do
 
     register_layout_internal('default', initialize, calculate_bounds)
 end
-
--- layout: canvas
 do
     local state_key = {}
 
@@ -1272,8 +1183,6 @@ do
 
     register_layout_internal('canvas', initialize, calculate_bounds)
 end
-
--- layout: stack
 do
     local state_key = {}
 
@@ -1387,8 +1296,6 @@ local prepare_widget = function(layout, descriptor, ...)
     local x, y, w, h = calculate_bounds(layout, descriptor, ...)
     set_bounds(current_context, x, y, x + w, y + h)
 end
-
--- widget: layout
 do
     local descriptor = read_only({
         name = 'layout',
@@ -1401,8 +1308,6 @@ do
         ui.layout(type, x, y, w, h, ...)
     end
 end
-
--- widget: scope
 do
     widgets.scope = function(layout, draw)
         begin_scope(current_context)
@@ -1410,15 +1315,11 @@ do
         end_scope(current_context)
     end
 end
-
--- widget: enabled
 do
     widgets.enabled = function(layout, enabled)
         set_enabled(current_context, enabled)
     end
 end
-
--- widget: button
 do
     local descriptor = read_only({
         name = 'button',
@@ -1435,8 +1336,6 @@ do
         return state.clicked and state.button == 0, state
     end
 end
-
--- widget: check
 do
     local descriptor = read_only({
         name = 'check',
@@ -1459,8 +1358,6 @@ do
         return state.clicked and state.button == 0, state
     end
 end
-
--- widget: color_picker
 do
     local descriptor = read_only({
         name = 'color_picker',
@@ -1482,8 +1379,6 @@ do
         return color_picker(current_context, id, value, alpha)
     end
 end
-
--- widget: edit
 do
     local descriptor = read_only({
         name = 'edit',
@@ -1543,8 +1438,6 @@ do
         end
     end
 end
-
--- widget: image
 do
     local descriptor = read_only({
         name = 'image',
@@ -1559,8 +1452,6 @@ do
         rectangle(x, y, w, h, ...)
     end
 end
-
--- widget: image_button
 do
     local rawget = rawget
 
@@ -1730,8 +1621,6 @@ do
         return state.clicked and state.button == 0, state
     end
 end
-
--- widget: label
 do
     local descriptor = read_only({
         name = 'label',
@@ -1743,8 +1632,6 @@ do
         label(current_context, text, #text)
     end
 end
-
--- widget: link
 do
     local descriptor = read_only({
         name = 'link',
@@ -1760,8 +1647,6 @@ do
         return state.clicked and state.button == 0, state
     end
 end
-
--- widget: progress
 do
     local ui_color_skin_accent = ui.color.skin_accent
 
@@ -1877,8 +1762,6 @@ do
         progress(current_context, entries, entries_count, direction)
     end
 end
-
--- widget: radio
 do
     local descriptor = read_only({
         name = 'radio',
@@ -1895,8 +1778,6 @@ do
         return state.clicked and state.button == 0, state
     end
 end
-
--- widget: scroll_panel
 do
     local descriptor = read_only({
         name = 'scroll_panel',
@@ -1972,8 +1853,6 @@ do
         end_scroll_panel(current_context)
     end
 end
-
--- widget: slider
 do
     local ui_color_skin_accent = ui.color.skin_accent
 

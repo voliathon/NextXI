@@ -1,6 +1,3 @@
-----------------------------------------------------------------------------
--- LuaJIT MIPS disassembler module.
---
 
 local type = type
 local byte, format = string.byte, string.format
@@ -9,10 +6,6 @@ local concat = table.concat
 local bit = require("bit")
 local band, bor, tohex = bit.band, bit.bor, bit.tohex
 local lshift, rshift, arshift = bit.lshift, bit.rshift, bit.arshift
-
-------------------------------------------------------------------------------
--- Extended opcode maps common to all MIPS releases
-------------------------------------------------------------------------------
 
 local map_srl = { shift = 21, mask = 1, [0] = "srlDTA", "rotrDTA", }
 local map_srlv = { shift = 6, mask = 1, [0] = "srlvDTS", "rotrvDTS", }
@@ -32,10 +25,6 @@ local map_cop0 = {
     [32] = "wait",
   },
 }
-
-------------------------------------------------------------------------------
--- Primary and extended opcode maps for MIPS R1-R5
-------------------------------------------------------------------------------
 
 local map_movci = { shift = 16, mask = 1, [0] = "movfDSC", "movtDSC", }
 
@@ -229,10 +218,6 @@ local map_pri = {
   "scTSO",	"swc1HSO",	"swc2TSO",	false,
   false,	"sdc1HSO",	"sdc2TSO",	"sdTSO",
 }
-
-------------------------------------------------------------------------------
--- Primary and extended opcode maps for MIPS R6
-------------------------------------------------------------------------------
 
 local map_mul_r6 =   { shift = 6, mask = 3, [2] = "mulDST",   [3] = "muhDST" }
 local map_mulu_r6 =  { shift = 6, mask = 3, [2] = "muluDST",  [3] = "muhuDST" }
@@ -432,18 +417,12 @@ local map_pri_r6 = {
   false,	"sdc1HSO",	map_pop76_r6,	"sdTSO",
 }
 
-------------------------------------------------------------------------------
-
 local map_gpr = {
   [0] = "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
   "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15",
   "r16", "r17", "r18", "r19", "r20", "r21", "r22", "r23",
   "r24", "r25", "r26", "r27", "r28", "sp", "r30", "ra",
 }
-
-------------------------------------------------------------------------------
-
--- Output a nicely formatted line with an opcode and operands.
 local function putop(ctx, text, operands)
   local pos = ctx.pos
   local extra = ""
@@ -460,8 +439,6 @@ local function putop(ctx, text, operands)
   end
   ctx.pos = pos + 4
 end
-
--- Fallback for unknown opcodes.
 local function unknown(ctx)
   return putop(ctx, ".long", { "0x"..tohex(ctx.op) })
 end
@@ -477,8 +454,6 @@ local function get_le(ctx)
   local b0, b1, b2, b3 = byte(ctx.code, pos+1, pos+4)
   return bor(lshift(b3, 24), lshift(b2, 16), lshift(b1, 8), b0)
 end
-
--- Disassemble a single instruction.
 local function disass_ins(ctx)
   local op = ctx:get()
   local operands = {}
@@ -602,10 +577,6 @@ local function disass_ins(ctx)
 
   return putop(ctx, name, operands)
 end
-
-------------------------------------------------------------------------------
-
--- Disassemble a block of code.
 local function disass_block(ctx, ofs, len)
   if not ofs then ofs = 0 end
   local stop = len and ofs+len or #ctx.code
@@ -614,8 +585,6 @@ local function disass_block(ctx, ofs, len)
   ctx.rel = nil
   while ctx.pos < stop do disass_ins(ctx) end
 end
-
--- Extended API: create a disassembler context. Then call ctx:disass(ofs, len).
 local function create(code, addr, out)
   local ctx = {}
   ctx.code = code
@@ -647,8 +616,6 @@ local function create_r6_el(code, addr, out)
   ctx.map_pri = map_pri_r6
   return ctx
 end
-
--- Simple API: disassemble code (a string) at address and output via out.
 local function disass(code, addr, out)
   create(code, addr, out):disass()
 end
@@ -664,14 +631,10 @@ end
 local function disass_r6_el(code, addr, out)
   create_r6_el(code, addr, out):disass()
 end
-
--- Return register name for RID.
 local function regname(r)
   if r < 32 then return map_gpr[r] end
   return "f"..(r-32)
 end
-
--- Public module functions.
 return {
   create = create,
   create_el = create_el,

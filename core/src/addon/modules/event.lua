@@ -1,10 +1,6 @@
--- LuaFormatter off
 local -- params
     save_stack,
     error_addon = ...
--- LuaFormatter on
-
----@type __windower_coroutinelib
 local coroutine = coroutine
 
 local os = require('os')
@@ -165,9 +161,6 @@ local make_metatable = function(index)
     local metatable = {
         __index = index,
         __newindex = write_error,
-        -- __pairs = function(t)
-        --     return next_impl, t, nil
-        -- end,
         __tostring = function(e)
             return 'core.event:' .. rawget(e, package_name_key) .. ':' ..
                        rawget(e, name_key)

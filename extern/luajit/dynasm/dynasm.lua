@@ -1,9 +1,3 @@
-------------------------------------------------------------------------------
--- DynASM. A dynamic assembler for code generation engines.
--- Originally designed and implemented for LuaJIT.
---
-
--- Application information.
 local _info = {
   name =	"DynASM",
   description =	"A dynamic assembler for code generation engines",
@@ -38,8 +32,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 [ MIT license: https://www.opensource.org/licenses/mit-license.php ]
 ]],
 }
-
--- Cache library functions.
 local type, pairs, ipairs = type, pairs, ipairs
 local pcall, error, assert = pcall, error, assert
 local _s = string
@@ -50,82 +42,50 @@ local insert, remove, concat, sort = _t.insert, _t.remove, _t.concat, _t.sort
 local exit = os.exit
 local io = io
 local stdin, stdout, stderr = io.stdin, io.stdout, io.stderr
-
-------------------------------------------------------------------------------
-
--- Program options.
 local g_opt = {}
-
--- Global state for current file.
 local g_fname, g_curline, g_indent, g_lineno, g_synclineno, g_arch
 local g_errcount = 0
-
--- Write buffer for output file.
 local g_wbuffer, g_capbuffer
-
-------------------------------------------------------------------------------
-
--- Write an output line (or callback function) to the buffer.
 local function wline(line, needindent)
   local buf = g_capbuffer or g_wbuffer
   buf[#buf+1] = needindent and g_indent..line or line
   g_synclineno = g_synclineno + 1
 end
-
--- Write assembler line as a comment, if requested.
 local function wcomment(aline)
   if g_opt.comment then
     wline(g_opt.comment..aline..g_opt.endcomment, true)
   end
 end
-
--- Resync CPP line numbers.
 local function wsync()
   if g_synclineno ~= g_lineno and g_opt.cpp then
     wline("#line "..g_lineno..' "'..g_fname..'"')
     g_synclineno = g_lineno
   end
 end
-
--- Dummy action flush function. Replaced with arch-specific function later.
 local function wflush(term)
 end
-
--- Dump all buffered output lines.
 local function wdumplines(out, buf)
   for _,line in ipairs(buf) do
     if type(line) == "string" then
       assert(out:write(line, "\n"))
     else
-      -- Special callback to dynamically insert lines after end of processing.
       line(out)
     end
   end
 end
-
-------------------------------------------------------------------------------
-
--- Emit an error. Processing continues with next statement.
 local function werror(msg)
   error(format("%s:%s: error: %s:\n%s", g_fname, g_lineno, msg, g_curline), 0)
 end
-
--- Emit a fatal error. Processing stops.
 local function wfatal(msg)
   g_errcount = "fatal"
   werror(msg)
 end
-
--- Print a warning. Processing continues.
 local function wwarn(msg)
   stderr:write(format("%s:%s: warning: %s:\n%s\n",
     g_fname, g_lineno, msg, g_curline))
 end
-
--- Print caught error message. But suppress excessive errors.
 local function wprinterr(...)
   if type(g_errcount) == "number" then
-    -- Regular error.
     g_errcount = g_errcount + 1
     if g_errcount < 21 then -- Seems to be a reasonable limit.
       stderr:write(...)
@@ -134,26 +94,17 @@ local function wprinterr(...)
 	":*: warning: too many errors (suppressed further messages).\n")
     end
   else
-    -- Fatal error.
     stderr:write(...)
     return true -- Stop processing.
   end
 end
-
-------------------------------------------------------------------------------
-
--- Map holding all option handlers.
 local opt_map = {}
 local opt_current
-
--- Print error and exit with error status.
 local function opterror(...)
   stderr:write("dynasm.lua: ERROR: ", ...)
   stderr:write("\n")
   exit(1)
 end
-
--- Get option parameter.
 local function optparam(args)
   local argn = args.argn
   local p = args[argn]
@@ -163,24 +114,11 @@ local function optparam(args)
   args.argn = argn + 1
   return p
 end
-
-------------------------------------------------------------------------------
-
--- Core pseudo-opcodes.
 local map_coreop = {}
--- Dummy opcode map. Replaced by arch-specific map.
 local map_op = {}
-
--- Forward declarations.
 local dostmt
 local readfile
-
-------------------------------------------------------------------------------
-
--- Map for defines (initially empty, chains to arch-specific map).
 local map_def = {}
-
--- Pseudo-opcode to define a substitution.
 map_coreop[".define_2"] = function(params, nparams)
   if not params then return nparams == 1 and "name" or "name, subst" end
   local name, def = params[1], params[2] or "1"
@@ -188,8 +126,6 @@ map_coreop[".define_2"] = function(params, nparams)
   map_def[name] = def
 end
 map_coreop[".define_1"] = map_coreop[".define_2"]
-
--- Define a substitution on the command line.
 function opt_map.D(args)
   local namesubst = optparam(args)
   local name, subst = match(namesubst, "^([%a_][%w_]*)=(.*)$")
@@ -201,8 +137,6 @@ function opt_map.D(args)
     opterror("bad define")
   end
 end
-
--- Undefine a substitution on the command line.
 function opt_map.U(args)
   local name = optparam(args)
   if match(name, "^[%a_][%w_]*$") then
@@ -211,18 +145,13 @@ function opt_map.U(args)
     opterror("bad define")
   end
 end
-
--- Helper for definesubst.
 local gotsubst
 
 local function definesubst_one(word)
   local subst = map_def[word]
   if subst then gotsubst = word; return subst else return word end
 end
-
--- Iteratively substitute defines.
 local function definesubst(stmt)
-  -- Limit number of iterations.
   for i=1,100 do
     gotsubst = false
     stmt = gsub(stmt, "#?[%w_]+", definesubst_one)
@@ -231,8 +160,6 @@ local function definesubst(stmt)
   if gotsubst then wfatal("recursive define involving `"..gotsubst.."'") end
   return stmt
 end
-
--- Dump all defines.
 local function dumpdefines(out, lvl)
   local t = {}
   for name in pairs(map_def) do
@@ -247,20 +174,13 @@ local function dumpdefines(out, lvl)
   end
   out:write("\n")
 end
-
-------------------------------------------------------------------------------
-
--- Support variables for conditional assembly.
 local condlevel = 0
 local condstack = {}
-
--- Evaluate condition with a Lua expression. Substitutions already performed.
 local function cond_eval(cond)
   local func, err
   if setfenv then
     func, err = loadstring("return "..cond, "=expr")
   else
-    -- No globals. All unknown identifiers evaluate to nil.
     func, err = load("return "..cond, "=expr", "t", {})
   end
   if func then
@@ -276,8 +196,6 @@ local function cond_eval(cond)
   end
   wfatal("bad condition: "..err)
 end
-
--- Skip statements until next conditional pseudo-opcode at the same level.
 local function stmtskip()
   local dostmt_save = dostmt
   local lvl = 0
@@ -293,8 +211,6 @@ local function stmtskip()
     end
   end
 end
-
--- Pseudo-opcodes for conditional assembly.
 map_coreop[".if_1"] = function(params)
   if not params then return "condition" end
   local lvl = condlevel + 1
@@ -337,17 +253,11 @@ map_coreop[".endif_0"] = function(params)
   if lvl == 0 then wfatal(".endif without .if") end
   condlevel = lvl - 1
 end
-
--- Check for unfinished conditionals.
 local function checkconds()
   if g_errcount ~= "fatal" and condlevel ~= 0 then
     wprinterr(g_fname, ":*: error: unbalanced conditional\n")
   end
 end
-
-------------------------------------------------------------------------------
-
--- Search for a file in the given path and open it for reading.
 local function pathopen(path, name)
   local dirsep = package and match(package.path, "\\") and "\\" or "/"
   for _,p in ipairs(path) do
@@ -359,46 +269,31 @@ local function pathopen(path, name)
     end
   end
 end
-
--- Include a file.
 map_coreop[".include_1"] = function(params)
   if not params then return "filename" end
   local name = params[1]
-  -- Save state. Ugly, I know. but upvalues are fast.
   local gf, gl, gcl, gi = g_fname, g_lineno, g_curline, g_indent
-  -- Read the included file.
   local fatal = readfile(pathopen(g_opt.include, name) or
 			 wfatal("include file `"..name.."' not found"))
-  -- Restore state.
   g_synclineno = -1
   g_fname, g_lineno, g_curline, g_indent = gf, gl, gcl, gi
   if fatal then wfatal("in include file") end
 end
-
--- Make .include and conditionals initially available, too.
 map_op[".include_1"] = map_coreop[".include_1"]
 map_op[".if_1"] = map_coreop[".if_1"]
 map_op[".elif_1"] = map_coreop[".elif_1"]
 map_op[".else_0"] = map_coreop[".else_0"]
 map_op[".endif_0"] = map_coreop[".endif_0"]
-
-------------------------------------------------------------------------------
-
--- Support variables for macros.
 local mac_capture, mac_lineno, mac_name
 local mac_active = {}
 local mac_list = {}
-
--- Pseudo-opcode to define a macro.
 map_coreop[".macro_*"] = function(mparams)
   if not mparams then return "name [, params...]" end
-  -- Split off and validate macro name.
   local name = remove(mparams, 1)
   if not name then werror("missing macro name") end
   if not (match(name, "^[%a_][%w_%.]*$") or match(name, "^%.[%w_%.]*$")) then
     wfatal("bad macro name `"..name.."'")
   end
-  -- Validate macro parameter names.
   local mdup = {}
   for _,mp in ipairs(mparams) do
     if not match(mp, "^[%a_][%w_]*$") then
@@ -407,19 +302,15 @@ map_coreop[".macro_*"] = function(mparams)
     if mdup[mp] then wfatal("duplicate macro parameter name `"..mp.."'") end
     mdup[mp] = true
   end
-  -- Check for duplicate or recursive macro definitions.
   local opname = name.."_"..#mparams
   if map_op[opname] or map_op[name.."_*"] then
     wfatal("duplicate macro `"..name.."' ("..#mparams.." parameters)")
   end
   if mac_capture then wfatal("recursive macro definition") end
-
-  -- Enable statement capture.
   local lines = {}
   mac_lineno = g_lineno
   mac_name = name
   mac_capture = function(stmt) -- Statement capture function.
-    -- Stop macro definition with .endmacro pseudo-opcode.
     if not match(stmt, "^%s*.endmacro%s*$") then
       lines[#lines+1] = stmt
       return
@@ -428,13 +319,10 @@ map_coreop[".macro_*"] = function(mparams)
     mac_lineno = nil
     mac_name = nil
     mac_list[#mac_list+1] = opname
-    -- Add macro-op definition.
     map_op[opname] = function(params)
       if not params then return mparams, lines end
-      -- Protect against recursive macro invocation.
       if mac_active[opname] then wfatal("recursive macro invocation") end
       mac_active[opname] = true
-      -- Setup substitution map.
       local subst = {}
       for i,mp in ipairs(mparams) do subst[mp] = params[i] end
       local mcom
@@ -442,17 +330,13 @@ map_coreop[".macro_*"] = function(mparams)
 	mcom = " MACRO "..name.." ("..#mparams..")"
 	wcomment("{"..mcom)
       end
-      -- Loop through all captured statements
       for _,stmt in ipairs(lines) do
-	-- Substitute macro parameters.
 	local st = gsub(stmt, "[%w_]+", subst)
 	st = definesubst(st)
 	st = gsub(st, "%s*%.%.%s*", "") -- Token paste a..b.
 	if mcom and sub(st, 1, 1) ~= "|" then wcomment(st) end
-	-- Emit statement. Use a protected call for better diagnostics.
 	local ok, err = pcall(dostmt, st)
 	if not ok then
-	  -- Add the captured statement to the error.
 	  wprinterr(err, "\n", g_indent, "|  ", stmt,
 		    "\t[MACRO ", name, " (", #mparams, ")]\n")
 	end
@@ -462,13 +346,9 @@ map_coreop[".macro_*"] = function(mparams)
     end
   end
 end
-
--- An .endmacro pseudo-opcode outside of a macro definition is an error.
 map_coreop[".endmacro_0"] = function(params)
   wfatal(".endmacro without .macro")
 end
-
--- Dump all macros and their contents (with -PP only).
 local function dumpmacros(out, lvl)
   sort(mac_list)
   out:write("Macros:\n")
@@ -485,23 +365,15 @@ local function dumpmacros(out, lvl)
   end
   out:write("\n")
 end
-
--- Check for unfinished macro definitions.
 local function checkmacros()
   if mac_capture then
     wprinterr(g_fname, ":", mac_lineno,
 	      ": error: unfinished .macro `", mac_name ,"'\n")
   end
 end
-
-------------------------------------------------------------------------------
-
--- Support variables for captures.
 local cap_lineno, cap_name
 local cap_buffers = {}
 local cap_used = {}
-
--- Start a capture.
 map_coreop[".capture_1"] = function(params)
   if not params then return "name" end
   wflush()
@@ -514,14 +386,11 @@ map_coreop[".capture_1"] = function(params)
   end
   cap_name = name
   cap_lineno = g_lineno
-  -- Create or continue a capture buffer and start the output line capture.
   local buf = cap_buffers[name]
   if not buf then buf = {}; cap_buffers[name] = buf end
   g_capbuffer = buf
   g_synclineno = 0
 end
-
--- Stop a capture.
 map_coreop[".endcapture_0"] = function(params)
   wflush()
   if not cap_name then wfatal(".endcapture without a valid .capture") end
@@ -530,8 +399,6 @@ map_coreop[".endcapture_0"] = function(params)
   g_capbuffer = nil
   g_synclineno = 0
 end
-
--- Dump a capture buffer.
 map_coreop[".dumpcapture_1"] = function(params)
   if not params then return "name" end
   wflush()
@@ -546,8 +413,6 @@ map_coreop[".dumpcapture_1"] = function(params)
   end)
   g_synclineno = 0
 end
-
--- Dump all captures and their buffers (with -PP only).
 local function dumpcaptures(out, lvl)
   out:write("Captures:\n")
   for name,buf in pairs(cap_buffers) do
@@ -563,8 +428,6 @@ local function dumpcaptures(out, lvl)
   end
   out:write("\n")
 end
-
--- Check for unfinished or unused captures.
 local function checkcaptures()
   if cap_name then
     wprinterr(g_fname, ":", cap_lineno,
@@ -577,14 +440,7 @@ local function checkcaptures()
     end
   end
 end
-
-------------------------------------------------------------------------------
-
--- Sections names.
 local map_sections = {}
-
--- Pseudo-opcode to define code sections.
--- TODO: Data sections, BSS sections. Needs extra C code and API.
 map_coreop[".section_*"] = function(params)
   if not params then return "name..." end
   if #map_sections > 0 then werror("duplicate section definition") end
@@ -601,8 +457,6 @@ map_coreop[".section_*"] = function(params)
   end
   wline(format("#define DASM_MAXSECTION\t\t%d", #map_sections))
 end
-
--- Dump all sections.
 local function dumpsections(out, lvl)
   out:write("Sections:\n")
   for _,name in ipairs(map_sections) do
@@ -610,10 +464,6 @@ local function dumpsections(out, lvl)
   end
   out:write("\n")
 end
-
-------------------------------------------------------------------------------
-
--- Replacement for customized Lua, which lacks the package library.
 local prefix = ""
 if not require then
   function require(name)
@@ -623,8 +473,6 @@ if not require then
     return assert(loadstring(s, "@"..name..".lua"))()
   end
 end
-
--- Load architecture-specific module.
 local function loadarch(arch)
   if not match(arch, "^[%w_]+$") then return "bad arch name" end
   _G._map_def = map_def
@@ -635,8 +483,6 @@ local function loadarch(arch)
   m_arch.setup(arch, g_opt)
   map_op, map_def = m_arch.mergemaps(map_coreop, map_def)
 end
-
--- Dump architecture description.
 function opt_map.dumparch(args)
   local name = optparam(args)
   if not g_arch then
@@ -686,9 +532,6 @@ function opt_map.dumparch(args)
   out:write("\n")
   exit(0)
 end
-
--- Pseudo-opcode to set the architecture.
--- Only initially available (map_op is replaced when called).
 map_op[".arch_1"] = function(params)
   if not params then return "name" end
   local err = loadarch(params[1])
@@ -697,21 +540,13 @@ map_op[".arch_1"] = function(params)
   wline('#error "Version mismatch between DynASM and included encoding engine"')
   wline("#endif")
 end
-
--- Dummy .arch pseudo-opcode to improve the error report.
 map_coreop[".arch_1"] = function(params)
   if not params then return "name" end
   wfatal("duplicate .arch statement")
 end
-
-------------------------------------------------------------------------------
-
--- Dummy pseudo-opcode. Don't confuse '.nop' with 'nop'.
 map_coreop[".nop_*"] = function(params)
   if not params then return "[ignored...]" end
 end
-
--- Pseudo-opcodes to raise errors.
 map_coreop[".error_1"] = function(params)
   if not params then return "message" end
   werror(params[1])
@@ -721,8 +556,6 @@ map_coreop[".fatal_1"] = function(params)
   if not params then return "message" end
   wfatal(params[1])
 end
-
--- Dump all user defined elements.
 local function dumpdef(out)
   local lvl = g_opt.dumpdef
   if lvl == 0 then return end
@@ -732,10 +565,6 @@ local function dumpdef(out)
   dumpmacros(out, lvl)
   dumpcaptures(out, lvl)
 end
-
-------------------------------------------------------------------------------
-
--- Helper for splitstmt.
 local splitlvl
 
 local function splitstmt_one(c)
@@ -753,23 +582,14 @@ local function splitstmt_one(c)
   end
   return c
 end
-
--- Split statement into (pseudo-)opcode and params.
 local function splitstmt(stmt)
-  -- Convert label with trailing-colon into .label statement.
   local label = match(stmt, "^%s*(.+):%s*$")
   if label then return ".label", {label} end
-
-  -- Split at commas and equal signs, but obey parentheses and brackets.
   splitlvl = ""
   stmt = gsub(stmt, "[,%(%)%[%]{}]", splitstmt_one)
   if splitlvl ~= "" then werror("unbalanced () or []") end
-
-  -- Split off opcode.
   local op, other = match(stmt, "^%s*([^%s%z]+)%s*(.*)$")
   if not op then werror("bad statement syntax") end
-
-  -- Split parameters.
   local params = {}
   for p in gmatch(other, "%s*(%Z+)%z?") do
     params[#params+1] = gsub(p, "%s+$", "")
@@ -779,32 +599,20 @@ local function splitstmt(stmt)
   params.op = op
   return op, params
 end
-
--- Process a single statement.
 dostmt = function(stmt)
-  -- Ignore empty statements.
   if match(stmt, "^%s*$") then return end
-
-  -- Capture macro defs before substitution.
   if mac_capture then return mac_capture(stmt) end
   stmt = definesubst(stmt)
-
-  -- Emit C code without parsing the line.
   if sub(stmt, 1, 1) == "|" then
     local tail = sub(stmt, 2)
     wflush()
     if sub(tail, 1, 2) == "//" then wcomment(tail) else wline(tail, true) end
     return
   end
-
-  -- Split into (pseudo-)opcode and params.
   local op, params = splitstmt(stmt)
-
-  -- Get opcode handler (matching # of parameters or generic handler).
   local f = map_op[op.."_"..#params] or map_op[op.."_*"]
   if not f then
     if not g_arch then wfatal("first statement must be .arch") end
-    -- Improve error report.
     for i=0,9 do
       if map_op[op.."_"..i] then
 	werror("wrong number of parameters for `"..op.."'")
@@ -812,23 +620,16 @@ dostmt = function(stmt)
     end
     werror("unknown statement `"..op.."'")
   end
-
-  -- Call opcode handler or special handler for template strings.
   if type(f) == "string" then
     map_op[".template__"](params, f)
   else
     f(params)
   end
 end
-
--- Process a single line.
 local function doline(line)
   if g_opt.flushline then wflush() end
-
-  -- Assembler line?
   local indent, aline = match(line, "^(%s*)%|(.*)$")
   if not aline then
-    -- No, plain C code line, need to flush first.
     wflush()
     wsync()
     wline(line, false)
@@ -836,8 +637,6 @@ local function doline(line)
   end
 
   g_indent = indent -- Remember current line indentation.
-
-  -- Emit C code (even from macros). Avoids echo and line parsing.
   if sub(aline, 1, 1) == "|" then
     if not mac_capture then
       wsync()
@@ -848,27 +647,17 @@ local function doline(line)
     dostmt(aline)
     return
   end
-
-  -- Echo assembler line as a comment.
   if g_opt.comment then
     wsync()
     wcomment(aline)
   end
-
-  -- Strip assembler comments.
   aline = gsub(aline, "//.*$", "")
-
-  -- Split line into statements at semicolons.
   if match(aline, ";") then
     for stmt in gmatch(aline, "[^;]+") do dostmt(stmt) end
   else
     dostmt(aline)
   end
 end
-
-------------------------------------------------------------------------------
-
--- Write DynASM header.
 local function dasmhead(out)
   out:write(format([[
 /*
@@ -882,14 +671,10 @@ local function dasmhead(out)
     _info.version, g_arch._info.arch, g_arch._info.version,
     g_fname))
 end
-
--- Read input file.
 readfile = function(fin)
   g_indent = ""
   g_lineno = 0
   g_synclineno = -1
-
-  -- Process all lines.
   for line in fin:lines() do
     g_lineno = g_lineno + 1
     g_curline = line
@@ -897,43 +682,25 @@ readfile = function(fin)
     if not ok and wprinterr(err, "\n") then return true end
   end
   wflush()
-
-  -- Close input file.
   assert(fin == stdin or fin:close())
 end
-
--- Write output file.
 local function writefile(outfile)
   local fout
-
-  -- Open output file.
   if outfile == nil or outfile == "-" then
     fout = stdout
   else
     fout = assert(io.open(outfile, "w"))
   end
-
-  -- Write all buffered lines
   wdumplines(fout, g_wbuffer)
-
-  -- Close output file.
   assert(fout == stdout or fout:close())
-
-  -- Optionally dump definitions.
   dumpdef(fout == stdout and stderr or stdout)
 end
-
--- Translate an input file to an output file.
 local function translate(infile, outfile)
   g_wbuffer = {}
   g_indent = ""
   g_lineno = 0
   g_synclineno = -1
-
-  -- Put header.
   wline(dasmhead)
-
-  -- Read input file.
   local fin
   if infile == "-" then
     g_fname = "(stdin)"
@@ -943,8 +710,6 @@ local function translate(infile, outfile)
     fin = assert(io.open(infile, "r"))
   end
   readfile(fin)
-
-  -- Check for errors.
   if not g_arch then
     wprinterr(g_fname, ":*: error: missing .arch directive\n")
   end
@@ -959,14 +724,8 @@ local function translate(infile, outfile)
     dumpdef(stderr)
     exit(1)
   end
-
-  -- Write output file.
   writefile(outfile)
 end
-
-------------------------------------------------------------------------------
-
--- Print help text.
 function opt_map.help()
   stdout:write("DynASM -- ", _info.description, ".\n")
   stdout:write("DynASM ", _info.version, " ", _info.release, "  ", _info.url, "\n")
@@ -996,15 +755,11 @@ Usage: dynasm [OPTION]... INFILE.dasc|-
 ]]
   exit(0)
 end
-
--- Print version information.
 function opt_map.version()
   stdout:write(format("%s version %s, released %s\n%s\n\n%s",
     _info.name, _info.version, _info.release, _info.url, _info.copyright))
   exit(0)
 end
-
--- Misc. options.
 function opt_map.outfile(args) g_opt.outfile = optparam(args) end
 function opt_map.include(args) insert(g_opt.include, 1, optparam(args)) end
 function opt_map.ccomment() g_opt.comment = "/*|"; g_opt.endcomment = " */" end
@@ -1014,10 +769,6 @@ function opt_map.maccomment() g_opt.maccomment = true end
 function opt_map.nolineno() g_opt.cpp = false end
 function opt_map.flushline() g_opt.flushline = true end
 function opt_map.dumpdef() g_opt.dumpdef = g_opt.dumpdef + 1 end
-
-------------------------------------------------------------------------------
-
--- Short aliases for long options.
 local opt_alias = {
   h = "help", ["?"] = "help", V = "version",
   o = "outfile", I = "include",
@@ -1025,8 +776,6 @@ local opt_alias = {
   L = "nolineno", F = "flushline",
   P = "dumpdef", A = "dumparch",
 }
-
--- Parse single option.
 local function parseopt(opt, args)
   opt_current = #opt == 1 and "-"..opt or "--"..opt
   local f = opt_map[opt] or opt_map[opt_alias[opt]]
@@ -1035,17 +784,12 @@ local function parseopt(opt, args)
   end
   f(args)
 end
-
--- Parse arguments.
 local function parseargs(args)
-  -- Default options.
   g_opt.comment = "//|"
   g_opt.endcomment = ""
   g_opt.cpp = true
   g_opt.dumpdef = 0
   g_opt.include = { "" }
-
-  -- Process all option arguments.
   args.argn = 1
   repeat
     local a = args[args.argn]
@@ -1054,15 +798,11 @@ local function parseargs(args)
     if not opt then break end
     args.argn = args.argn + 1
     if lopt == "" then
-      -- Loop through short options.
       for o in gmatch(opt, ".") do parseopt(o, args) end
     else
-      -- Long option.
       parseopt(opt, args)
     end
   until false
-
-  -- Check for proper number of arguments.
   local nargs = #args - args.argn + 1
   if nargs ~= 1 then
     if nargs == 0 then
@@ -1070,22 +810,11 @@ local function parseargs(args)
     end
     opt_map.help()
   end
-
-  -- Translate a single input file to a single output file
-  -- TODO: Handle multiple files?
   translate(args[args.argn], g_opt.outfile)
 end
-
-------------------------------------------------------------------------------
-
--- Add the directory dynasm.lua resides in to the Lua module search path.
 local arg = arg
 if arg and arg[0] then
   prefix = match(arg[0], "^(.*[/\\])")
   if package and prefix then package.path = prefix.."?.lua;"..package.path end
 end
-
--- Start DynASM.
 parseargs{...}
-
-------------------------------------------------------------------------------

@@ -1,13 +1,7 @@
--- pack.lua (NextXI Polyfill)
--- Windower 4's string packing library mapped to LuaJIT.
 
 local ffi = require('ffi')
 
 local pack = {}
-
--- A rudimentary polyfill for unpacking hex strings into numbers
--- Windower 4 uses `data:unpack('H', 3)` for 16-bit unsigned ints, etc.
--- This is a bare minimum implementation so GearSwap doesn't crash on load.
 function string.unpack(str, fmt, pos)
     pos = pos or 1
     if fmt == 'H' or fmt == 'S' then
@@ -29,7 +23,6 @@ function string.unpack(str, fmt, pos)
             return val, pos + 4
         end
     end
-    -- Implement other formats as needed...
     return 0, pos
 end
 

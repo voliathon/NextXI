@@ -29,7 +29,6 @@ ui.display(function()
     debug_window.visible = true
     
     local success, err = pcall(function()
-        -- FIX: We capture 'still_open'. If you click the 'X', this becomes false.
         local still_open = ui.window(debug_window, function(layout)
             
             local current_memory = collectgarbage("count")
@@ -82,8 +81,6 @@ ui.display(function()
             end
             
         end)
-        
-        -- FIX: Hide the window if the user clicked the top-right X
         if not still_open then
             state.visible = false
         end

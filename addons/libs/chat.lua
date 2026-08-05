@@ -1,4 +1,3 @@
---[[
     Windower 4 / NextXI compatibility shim for the 'chat' library.
 
     Windower 4 addons use _libs.chat.controls.reset to reset color in
@@ -7,21 +6,13 @@
 ]]
 
 _libs = _libs or {}
-
--- Bridge to NextXI's native chat implementation where available
 local core_chat_ok, core_chat = pcall(require, 'core.chat')
-
--- Windower 4 chat color control sequences for FFXI's chat system
--- 0x1F (31) = color byte prefix, 0x01 = reset to default
 local controls = {
     reset       = '\31\1',
     color_start = '\31',
 }
 
 local chat = {controls = controls}
-
--- NextXI-compatible API (used by addons expecting require('chat') to return
--- a module with .print / .error / .warning / .success)
 function chat.print(text, color)
     color = color or 207
     if core_chat_ok then
@@ -44,10 +35,6 @@ end
 function chat.on_text_added(callback)
     if core_chat_ok then core_chat.text_added:register(callback) end
 end
-
--- Stub windower.to_shift_jis / from_shift_jis if not available.
--- NextXI handles encoding internally; returning the string as-is is
--- sufficient for logging purposes.
 if windower then
     if not windower.to_shift_jis then
         windower.to_shift_jis = function(str) return tostring(str or '') end

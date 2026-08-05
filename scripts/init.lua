@@ -2,15 +2,11 @@ local success, err = pcall(function()
     local command = require('core.command')
     local windower = require('core.windower')
     _G.windower = windower
-
-    -- Give the engine a half-second to finish booting C++ side before loading
     coroutine.schedule(function()
         for i = 1, 30 do coroutine.sleep_frame() end
         command.input('/load AddonManager')
         windower.add_to_chat(207, "NextXI Core: AddonManager Boot Request Sent.")
     end)
-
-    -- Login/Logout Event Poller
     coroutine.schedule(function()
         local was_logged_in = false
         while true do

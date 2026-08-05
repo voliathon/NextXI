@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "settings.hpp"
 
 #include "library.hpp"
@@ -81,12 +57,6 @@ windower::rectangle get_display_bounds(::HMONITOR display)
         result.size.height = info.rcMonitor.bottom - info.rcMonitor.top;
         return result;
     }
-
-    // This should be relatively rare. If, for some reason, we can't
-    // retrieve the monitor's bounds, we need a fallback. The user
-    // can always override this by explicitly setting the resolution
-    // in the launcher. According to Windower 4 analytics, as of
-    // October 2015, 1280x720 will work for at least 74% of our users.
     return {{}, {1280u, 720u}};
 }
 
@@ -127,17 +97,21 @@ extern "C"
     static ::BOOL CALLBACK enum_display_monitors_callback(
         ::HMONITOR monitor, ::HDC, ::LPRECT, ::LPARAM data)
     {
-        auto info   = ::MONITORINFOEXW{};
+        auto info = ::MONITORINFOEXW{};
         info.cbSize = sizeof info;
         if (::GetMonitorInfoW(monitor, &info))
         {
-            auto block = std::bit_cast<enum_display_monitors_block*>(data);
+            // Use reinterpret_cast for Win32 LPARAM-to-pointer conversions
+            auto block = reinterpret_cast<enum_display_monitors_block*>(data);
+
+            // Use std::size instead of awkward gsl::at sizeof math
             if (::CompareStringEx(
-                    LOCALE_NAME_INVARIANT, NORM_IGNORECASE,
-                    static_cast<::LPCWCH>(info.szDevice),
-                    sizeof info.szDevice / sizeof gsl::at(info.szDevice, 0),
-                    block->name.data(), block->name.size(), nullptr, nullptr,
-                    0) == CSTR_EQUAL)
+                LOCALE_NAME_INVARIANT, NORM_IGNORECASE,
+                static_cast<::LPCWCH>(info.szDevice),
+                gsl::narrow_cast<int>(std::size(info.szDevice)),
+                block->name.data(),
+                gsl::narrow_cast<int>(block->name.size()),
+                nullptr, nullptr, 0) == CSTR_EQUAL)
             {
                 block->handle = monitor;
                 return FALSE;

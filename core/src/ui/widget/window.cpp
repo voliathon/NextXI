@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "ui/widget/window.hpp"
 
 #include "ui/color.hpp"
@@ -34,6 +10,7 @@
 #include "ui/text_layout_engine.hpp"
 #include "ui/widget/basic_button.hpp"
 #include "utility.hpp"
+#include "utilities/debug_helpers.hpp"
 
 #include <array>
 #include <iostream>
@@ -634,11 +611,6 @@ bool standard_window(context& ctx, window_state& state) noexcept
          .flags = text_rasterization_flags::clip_to_bounds});
 
     primitive::set_texture(ctx, ctx.skin());
-
-    // ========================================================================
-    // FIX: Inflating the Title Bar Drag bounds and the Close Button bounds
-    // We add 8.f to the bottom bound of the drag box and 4.f to the close box.
-    // ========================================================================
     if (auto const [target, button_state] = mouse_targets(
             ctx, wnd, state, frame,
             {frame.x0, frame.y0, frame.x1, 8.f}, // <--- Expanded Drag area

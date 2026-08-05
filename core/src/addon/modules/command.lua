@@ -1,4 +1,3 @@
--- LuaFormatter off
 local -- params
     registry,
     call_command_handler_key,
@@ -6,7 +5,6 @@ local -- params
     native_unregister_handler,
     native_parse_args,
     native_input_ptr = ...
--- LuaFormatter on
 
 local ffi = require('ffi')
 local string = require('string')
@@ -32,8 +30,6 @@ local string_sub = string.sub
 local table_concat = table.concat
 
 local event_trigger = event.trigger
-
--- Core API
 
 local source_map = {
     ['console'] = -1,
@@ -145,14 +141,10 @@ local command_core = {
     unknown_command = unknown_command
 }
 
--- High-level API
-
 local arg_types = {}
 local arg = setmetatable({}, {__index = arg_types})
 
 local stored_arguments = {}
-
--- Helper and validation functions
 
 local type_check = function(value, expected, name, index)
     local got = type(value)
@@ -267,8 +259,6 @@ arg.register = function(name, ...)
 
     stored_arguments[name] = prepare_args(...)
 end
-
--- Command handling
 
 local new
 local delete
@@ -592,8 +582,6 @@ do
     end
 end
 
--- Argument checking functions
-
 do
     arg_types.string = {
         name = 'string',
@@ -665,8 +653,6 @@ do
         end
     }
 end
-
--- Argument parsing from syntax
 
 do
     local deep_copy
@@ -808,7 +794,6 @@ do
                 local ref_count = #ref
                 local arg_index = #arguments
                 if count == '*' then
-                    -- TODO: Implement...
                     assert(ref_count == 1, 'Variable argument count on ' ..
                                'multiple arguments not yet implemented.')
 

@@ -1,4 +1,3 @@
---[[
     This file returns a table of known packet data.
 ]]
 
@@ -7,8 +6,6 @@ local dummy =          {name='Unknown',             description='No data availab
 
 data.incoming = setmetatable({}, {__index = function() return dummy end})
 data.outgoing = setmetatable({}, {__index = function() return dummy end})
-
--- Client packets (outgoing)
 data.outgoing[0x00A] = {name='Client Connect',      description='(unencrypted/uncompressed) First packet sent when connecting to new zone.'}
 data.outgoing[0x00C] = {name='Zone In 1',           description='Likely triggers certain packets to be sent from the server.'}
 data.outgoing[0x00D] = {name='Client Leave',        description='Last packet sent from client before it leaves the zone.'}
@@ -115,8 +112,6 @@ data.outgoing[0x115] = {name='Currency Menu 2',     description='Requests curren
 data.outgoing[0x116] = {name='Unity Menu',          description='Sent when opening the Status/Unity menu.'}
 data.outgoing[0x117] = {name='Unity Ranking Menu',  description='Sent when opening the Status/Unity/Unity Ranking menu.'}
 data.outgoing[0x118] = {name='Unity Chat Status',   description='Sent when changing unity chat status.'}
-
--- Server packets (incoming)
 data.incoming[0x009] = {name='Standard Message',    description='A standardized message send from FFXI.'}
 data.incoming[0x00A] = {name='Zone In',             description='Info about character and zone around it.'}
 data.incoming[0x00B] = {name='Zone Out',            description='Packet contains IP and port of next zone to connect to.'}
@@ -239,8 +234,6 @@ data.incoming[0x118] = {name='Currency 2 Info',     description='Contains all cu
 data.incoming[0x119] = {name='Ability Recasts',     description='Contains the currently available job abilities and their remaining recast times.'}
 
 return data
-
---[[
 Copyright © 2013-2015, Windower
 All rights reserved.
 

@@ -18,11 +18,9 @@ namespace Windower.Core
             string targetD3d8 = Path.Combine(polDirectory, "d3d8.dll");
             string targetD3d9 = Path.Combine(polDirectory, "d3d9.dll");
             string targetConf = Path.Combine(polDirectory, "dgVoodoo.conf");
-
-            // Cleanup previous
-            if (File.Exists(targetD3d8)) File.Delete(targetD3d8);
-            if (File.Exists(targetD3d9)) File.Delete(targetD3d9);
-            if (File.Exists(targetConf)) File.Delete(targetConf);
+            SafeDelete(targetD3d8);
+            SafeDelete(targetD3d9);
+            SafeDelete(targetConf);
 
             if (engine == Profile.GraphicsEngine.dgVoodoo2)
             {
@@ -33,6 +31,18 @@ namespace Windower.Core
                     File.Copy(Path.Combine(sourceDir, "dgVoodoo.conf"), targetConf, true);
                 }
             }
+        }
+
+        private static void SafeDelete(string path)
+        {
+            if (!File.Exists(path)) return;
+            try
+            {
+                File.SetAttributes(path, FileAttributes.Normal);
+                File.Delete(path);
+            }
+            catch (UnauthorizedAccessException) { /* file locked by game process, skip */ }
+            catch (IOException) { /* file in use, skip */ }
         }
     }
 }

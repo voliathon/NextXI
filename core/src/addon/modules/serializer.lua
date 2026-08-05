@@ -1,23 +1,3 @@
---[[
-This serialization library is based on the bitser library by Robin
-Wellner. It has been modified to suit the needs of the Windower project.
-===========================================================================
-Copyright © 2016 Robin Wellner
-Copyright © 2019 Windower Dev Team
-
-Permission to use, copy, modify, and/or distribute this software for any
-purpose with or without fee is hereby granted, provided that the above
-copyright notice and this permission notice appear in all copies.
-
-THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-]]
-
 local bit = require('bit')
 local debug = require('debug')
 local ffi = require('ffi')
@@ -27,21 +7,8 @@ local os = require('os')
 local string = require('string')
 
 local class = require('core.class')
-
----@class __windower_coroutinelib : coroutinelib
----@field schedule fun(function: fun())
----@field sleep fun(delay: number)
----@field sleep_frame fun(delay?: number)
 local coroutine = coroutine
-
----@class __windower_jitlib_opt
----@field start fun(...)
----@class __windower_jitlib : jitlib
----@field opt __windower_jitlib_opt
 local jit = require('jit')
-
----@class __windower_tablelib : tablelib
----@field move fun(...)
 local table = require('table')
 
 local getmetatable = getmetatable
@@ -179,19 +146,15 @@ local function write_number(value, seen)
     if (value + 2 ^ 52) - 2 ^ 52 == value and value >= -2147483648 and value <=
         2147483647 then
         if value >= -27 and value <= 100 then
-            -- small int
             buffer_write_byte(value + 27)
         elseif value >= -32768 and value <= 32767 then
-            -- int16_t
             buffer_write_byte(250)
             buffer_write_data(int16_t_ref, 2, value)
         else
-            -- int13_t
             buffer_write_byte(245)
             buffer_write_data(int32_t_ref, 4, value)
         end
     else
-        -- double
         buffer_write_byte(246)
         buffer_write_data(double_ref, 8, value)
     end
@@ -200,10 +163,8 @@ end
 local function write_string(value, seen)
     local size = #value
     if size <= 31 then
-        -- small string
         buffer_write_byte(size + 192)
     else
-        -- large string
         buffer_write_byte(244)
         write_number(size - 58)
     end
@@ -270,10 +231,8 @@ serialize_value = function(value, seen)
     if seen[value] then
         local ref = seen[value]
         if ref <= 63 then
-            -- small reference
             buffer_write_byte(ref + 127)
         else
-            -- large reference
             buffer_write_byte(243)
             write_number(ref - 91, seen)
         end
@@ -289,11 +248,9 @@ serialize_value = function(value, seen)
         local name = resource_name_registry[value]
         local size = #name
         if size < 16 then
-            -- small resource
             buffer_write_byte(size + 224)
             buffer_write_string(name)
         else
-            -- large resource
             buffer_write_byte(241)
             write_string(name, seen)
         end
@@ -321,19 +278,14 @@ end
 local function deserialize_value(seen)
     local t = buffer_read_byte()
     if t < 128 then
-        -- small int
         return t - 27
     elseif t < 192 then
-        -- small reference
         return seen[t - 127]
     elseif t < 224 then
-        -- small string
         return add_to_seen(buffer_read_string(t - 192), seen)
     elseif t < 240 then
-        -- small resource
         return add_to_seen(resource_registry[buffer_read_string(t - 224)], seen)
     elseif t == 240 then
-        -- table
         local v = add_to_seen({}, seen)
         local len = deserialize_value(seen)
         for i = 1, len do v[i] = deserialize_value(seen) end
@@ -344,13 +296,11 @@ local function deserialize_value(seen)
         end
         return v
     elseif t == 241 then
-        -- large resource
         local idx = reserve_seen(seen)
         local value = resource_registry[deserialize_value(seen)]
         seen[idx] = value
         return value
     elseif t == 242 then
-        -- instance
         local instance = add_to_seen({}, seen)
         local class_name = deserialize_value(seen)
         local deserializer = class_deserializer_registry[class_name]
@@ -363,36 +313,26 @@ local function deserialize_value(seen)
         end
         return deserializer(instance, class)
     elseif t == 243 then
-        -- large reference
         return seen[deserialize_value(seen) + 91]
     elseif t == 244 then
-        -- large string
         local size = deserialize_value(seen) + 58
         local value = buffer_read_string(size)
         return add_to_seen(value, seen)
     elseif t == 245 then
-        -- int32_t
         return buffer_read_data(int32_t_ref, 4)[0]
     elseif t == 246 then
-        -- double
         return buffer_read_data(double_ref, 8)[0]
     elseif t == 247 then
-        -- nil
         return nil
     elseif t == 248 then
-        -- false
         return false
     elseif t == 249 then
-        -- true
         return true
     elseif t == 250 then
-        -- int16_t
         return buffer_read_data(int16_t_ref, 2)[0]
     elseif t == 251 then
-        -- function
         return add_to_seen(loadstring(deserialize_value({})), seen)
     elseif t == 252 then
-        -- function + upvalues
         local idx = reserve_seen(seen)
         local value = loadstring(deserialize_value({}))
         local upvalue_count = deserialize_value({})
@@ -440,8 +380,6 @@ local register = function(name, resource, safe)
     elseif type(safe) ~= 'boolean' then
         error()
     end
-
-    -- NEW: If the Lua function doesn't exist (e.g. a 5.2 function in a 5.1 environment), silently skip it.
     if resource == nil then return nil end
 
     if resource_registry[name] ~= nil then
@@ -500,8 +438,6 @@ local serializer = {
     reserve_buffer = buffer_prereserve,
     clear_buffer = buffer_clear
 }
-
--- built-ins
 serializer.register('___G', _G, false)
 serializer.register('__assert', assert)
 serializer.register('__collectgarbage', collectgarbage, false)
@@ -530,8 +466,6 @@ serializer.register('__tostring', tostring)
 serializer.register('__type', type)
 serializer.register('__unpack', unpack)
 serializer.register('__xpcall', xpcall)
-
--- bit
 serializer.register('__bit', bit, false)
 serializer.register('__bit.arshift', bit.arshift)
 serializer.register('__bit.band', bit.band)
@@ -545,8 +479,6 @@ serializer.register('__bit.ror', bit.ror)
 serializer.register('__bit.rshift', bit.rshift)
 serializer.register('__bit.tobit', bit.tobit)
 serializer.register('__bit.tohex', bit.tohex)
-
--- coroutine
 serializer.register('__coroutine', coroutine, false)
 serializer.register('__coroutine.create', coroutine.create, false)
 serializer.register('__coroutine.isyieldable', coroutine.isyieldable)
@@ -557,8 +489,6 @@ serializer.register('__coroutine.yield', coroutine.yield, false)
 serializer.register('__coroutine.sleep', coroutine.sleep, false)
 serializer.register('__coroutine.sleep_frame', coroutine.sleep_frame, false)
 serializer.register('__coroutine.schedule', coroutine.schedule, false)
-
--- debug
 serializer.register('__debug', debug, false)
 serializer.register('__debug.debug', debug.debug, false)
 serializer.register('__debug.getfenv', debug.getfenv, false)
@@ -577,8 +507,6 @@ serializer.register('__debug.setuservalue', debug.setuservalue, false)
 serializer.register('__debug.traceback', debug.traceback)
 serializer.register('__debug.upvalueid', debug.upvalueid, false)
 serializer.register('__debug.upvaluejoin', debug.upvaluejoin, false)
-
--- ffi
 serializer.register('__ffi', ffi, false)
 serializer.register('__ffi.abi', ffi.abi)
 serializer.register('__ffi.alignof', ffi.alignof, false)
@@ -596,8 +524,6 @@ serializer.register('__ffi.offsetof', ffi.offsetof, false)
 serializer.register('__ffi.sizeof', ffi.sizeof, false)
 serializer.register('__ffi.string', ffi.string)
 serializer.register('__ffi.typeof', ffi.typeof, false)
-
--- io
 serializer.register('__io', io, false)
 serializer.register('__io.close', io.close, false)
 serializer.register('__io.flush', io.flush, false)
@@ -610,8 +536,6 @@ serializer.register('__io.read', io.read, false)
 serializer.register('__io.tmpfile', io.tmpfile, false)
 serializer.register('__io.type', io.type, false)
 serializer.register('__io.write', io.write, false)
-
--- jit
 serializer.register('__jit', jit, false)
 serializer.register('__jit.flush', jit.flush, false)
 serializer.register('__jit.off', jit.off, false)
@@ -619,9 +543,6 @@ serializer.register('__jit.on', jit.on, false)
 serializer.register('__jit.opt', jit.opt, false)
 serializer.register('__jit.opt.start', jit.opt.start, false)
 serializer.register('__jit.status', jit.status, false)
--- serializer.register('__jit.util', jit.util, false)
-
--- math
 serializer.register('__math', math, false)
 serializer.register('__math.abs', math.abs)
 serializer.register('__math.acos', math.acos)
@@ -651,8 +572,6 @@ serializer.register('__math.sinh', math.sinh)
 serializer.register('__math.sqrt', math.sqrt)
 serializer.register('__math.tan', math.tan)
 serializer.register('__math.tanh', math.tanh)
-
--- os
 serializer.register('__os', os, false)
 serializer.register('__os.clock', os.clock)
 serializer.register('__os.date', os.date)
@@ -665,16 +584,12 @@ serializer.register('__os.rename', os.rename, false)
 serializer.register('__os.setlocale', os.setlocale, false)
 serializer.register('__os.time', os.time)
 serializer.register('__os.tmpname', os.tmpname)
-
--- package
 serializer.register('__package', package, false)
 serializer.register('__package.loaded', package.loaded, false)
 serializer.register('__package.loaders', package.loaders, false)
 serializer.register('__package.loadlib', package.loadlib, false)
 serializer.register('__package.searchers', package.searchers)
 serializer.register('__package.searchpath', package.searchpath)
-
--- string
 serializer.register('__string', string, false)
 serializer.register('__string.byte', string.byte)
 serializer.register('__string.char', string.char)
@@ -690,24 +605,15 @@ serializer.register('__string.rep', string.rep)
 serializer.register('__string.reverse', string.reverse)
 serializer.register('__string.sub', string.sub)
 serializer.register('__string.upper', string.upper)
-
--- table
 serializer.register('__table', table, false)
--- serializer.register('__table.clear', table.clear)
 serializer.register('__table.concat', table.concat)
 serializer.register('__table.insert', table.insert)
 serializer.register('__table.maxn', table.maxn)
 serializer.register('__table.move', table.move)
--- serializer.register('__table.new', table.new)
 serializer.register('__table.remove', table.remove)
 serializer.register('__table.pack', table.pack)
 serializer.register('__table.sort', table.sort)
--- serializer.register('__table.unpack', table.unpack) -- alias of global unpack
-
--- core.class
 serializer.register('__class', class)
-
--- core.serializer
 serializer.register('__serializer', serializer, false)
 serializer.register('__serializer.clear_buffer', clear_buffer)
 serializer.register('__serializer.deserialize_buffer', deserialize_buffer)

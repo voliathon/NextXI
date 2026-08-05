@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "addon/script_environment.hpp"
 
 #include "addon/error.hpp"
@@ -34,6 +10,7 @@
 
 #include "core.hpp"
 #include "utility.hpp"
+#include "utilities/paths.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -57,15 +34,12 @@ int load_script_module(windower::lua::state s)
 
     if (stream.is_open())
     {
-        // JANITOR FIX: Catch compilation errors so they aren't silently
-        // swallowed
         try
         {
             lua::load(guard, stream, u8'@' + path.u8string());
         }
         catch (windower::lua::error const& e)
         {
-            // Propagate the actual error message to the Lua stack
             lua::push(
                 guard, u8"\n    error loading module '" + name + u8"':\n\t" +
                            to_u8string(e.what()));
@@ -114,9 +88,6 @@ void windower::script_environment::initialize() const
 
     lua::push(guard, load_script_module);
     lua::raw_set(guard, -2, 2);
-
-    // INJECT THE WINDOWER COMMAND API
-    // This allows init.lua to successfully call require('core.command')
     lua::preload(m_interpreter, u8"core.command", &load_command_module);
 }
 

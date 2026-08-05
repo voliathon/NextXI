@@ -1,27 +1,3 @@
-/*
- * Copyright © Windower Dev Team
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files
- * (the "Software"),to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include "hooks/advapi32.hpp"
 
 #include "core.hpp"
@@ -143,116 +119,78 @@ bool get_ffxi_setting(
     {
         if (check(value, "0000"))
         {
-            // General > Enable MIP mapping
-
-            // Can only set to 0 or 1 in the official config tool,
-            // values greater than 1 increase the number of mip levels
-            // used.
             return set_value(
                 type, data, size,
                 windower::core::instance().settings.mipmapping);
         }
         else if (check(value, "0001"))
         {
-            // Screen Size > Overlay Graphics Resolution
             return set_value(
                 type, data, size,
                 windower::core::instance().settings.window_bounds.size.width);
         }
         else if (check(value, "0002"))
         {
-            // Screen Size > Overlay Graphics Resolution
             return set_value(
                 type, data, size,
                 windower::core::instance().settings.window_bounds.size.height);
         }
         else if (check(value, "0003"))
         {
-            // Screen Size > Background Resolution
             return set_value(
                 type, data, size,
                 windower::core::instance().settings.render_size.width);
         }
         else if (check(value, "0004"))
         {
-            // Screen Size > Background Resolution
             return set_value(
                 type, data, size,
                 windower::core::instance().settings.render_size.height);
         }
         else if (check(value, "0007"))
         {
-            // Sound > Enable Sound
             return set_value(
                 type, data, size,
                 windower::core::instance().settings.max_sounds > 0);
         }
         else if (check(value, "0011"))
         {
-            // Effects > Environmental Animation
             return set_value(
                 type, data, size,
                 windower::core::instance().settings.environment_animation);
         }
         else if (check(value, "0017"))
         {
-            // Effects > Enable bump mapping
             return set_value(
                 type, data, size,
                 windower::core::instance().settings.bump_mapping);
         }
         else if (check(value, "0018"))
         {
-            // Textures > Texture Compression
             return set_value(
                 type, data, size,
                 windower::core::instance().settings.texture_compression);
         }
         else if (check(value, "0019"))
         {
-            // Textures > On-Screen Maps
             return set_value(
                 type, data, size,
                 windower::core::instance().settings.map_compression);
         }
-        // else if (check(value, "0020"))
-        //{
-        //     // unknown function
-        // }
         else if (check(value, "0021"))
         {
-            // Misc. > Enable hardware mouse cursor
             return set_value(
                 type, data, size,
                 windower::core::instance().settings.hardware_mouse);
         }
         else if (check(value, "0022"))
         {
-            // Misc. > Show opening movie
             return set_value(
                 type, data, size,
                 windower::core::instance().settings.play_intro);
         }
-        // else if (check(value, "0023"))
-        //{
-        //     // Misc. > Simplified character creation visuals
-        // }
-        // else if (check(value, "0024"))
-        //{
-        //     // unknown function
-        // }
         else if (check(value, "0028"))
         {
-            // General > Gamma Base
-
-            // This value is an offset from an unspecified base gamma.
-            // Because of limitations in DirectX 8, gamma correction
-            // can only be correctly applied in full screen mode. In
-            // window, and borderless window modes this is emulated by
-            // adjusting the color of every vertex. The base gamma used
-            // is also different in different modes, in full screen
-            // 1.5 is used, and otherwise the system's display gamma
-            // setting is used (we assume a system gamma of 2.2 here).
             auto gamma_correction = windower::core::instance().settings.gamma;
             if (windower::core::instance().settings.window_type ==
                 windower::window_type::full_screen)
@@ -267,35 +205,12 @@ bool get_ffxi_setting(
         }
         else if (check(value, "0029"))
         {
-            // Sound > SoundEffectNum
             return set_value(
                 type, data, size,
                 windower::core::instance().settings.max_sounds);
         }
-        // else if (check(value, "0030"))
-        //{
-        //     // unknown function
-        // }
-        // else if (check(value, "0031"))
-        //{
-        //     // unknown function
-        //     // default value: 0.006f
-        // }
-        // else if (check(value, "0032"))
-        //{
-        //     // unknown function
-        // }
-        // else if (check(value, "0033"))
-        //{
-        //     // unknown function
-        // }
         else if (check(value, "0034"))
         {
-            // General > Unlabled mode combo box
-
-            // 0 = Full Screen
-            // 1 = Window
-            // 3 = Borderless Window
             switch (windower::core::instance().settings.window_type)
             {
             case windower::window_type::full_screen:
@@ -311,56 +226,34 @@ bool get_ffxi_setting(
         }
         else if (check(value, "0035"))
         {
-            // Sound > Always On
             return set_value(
                 type, data, size,
                 windower::core::instance().settings.play_sound_when_unfocused);
         }
         else if (check(value, "0036"))
         {
-            // Textures > Fonts
             return set_value(
                 type, data, size,
                 windower::core::instance().settings.font_type);
         }
         else if (check(value, "0037"))
         {
-            // Screen Size > Menu Resolution
             return set_value(
                 type, data, size,
                 windower::core::instance().settings.ui_size.width);
         }
         else if (check(value, "0038"))
         {
-            // Screen Size > Menu Resolution
             return set_value(
                 type, data, size,
                 windower::core::instance().settings.ui_size.height);
         }
-        // else if (check(value, "0039"))
-        //{
-        //     // unknown function
-        //     // default value: 1
-        // }
         else if (check(value, "0040"))
         {
-            // Misc. > Graphics Stabilization
             return set_value(
                 type, data, size,
                 windower::core::instance().settings.driver_stability);
         }
-        // else if (check(value, "0041"))
-        //{
-        //     // Misc. > New UI
-        // }
-        // else if (check(value, "0042"))
-        //{
-        //     // Misc. 2 > Directory
-        // }
-        // else if (check(value, "0043"))
-        //{
-        //     // Misc. 2 > Take a screenshot in your screen's resolution.
-        // }
     }
     return false;
 }

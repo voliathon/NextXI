@@ -6,10 +6,6 @@ namespace Windower.UI.Views
     using System.Windows;
     using System.Windows.Interop;
     using System.Windows.Media;
-
-    /// <summary>
-    /// Interaction logic for RootView.xaml
-    /// </summary>
     public partial class RootView : Window
     {
         public RootView() => InitializeComponent();
