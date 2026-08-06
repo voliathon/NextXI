@@ -4,6 +4,7 @@
 #include "addon/lua.hpp"
 #include "addon/lua_internal.hpp"
 #include "addon/package_manager.hpp"
+#include "addon/modules/imgui.hpp"
 #include "core.hpp"
 #include "errors/windower_error.hpp"
 
@@ -109,6 +110,9 @@ windower::addon::addon(
     m_package{package}
 {
     lua::stack_guard guard{m_interpreter};
+
+    // Preload ImGui into the addon's private sandbox!
+    lua::preload(m_interpreter, u8"imgui", &load_imgui_module);
 
     lua::push(guard, &addon_key);
     lua::push(guard, this);

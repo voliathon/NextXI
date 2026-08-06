@@ -162,7 +162,24 @@ void windower::command_manager::handle_command(
     std::u8string_view command_string, command_source const source)
 {
     std::u8string expanded;
+
+    // CAVEMAN FIX: Intercept Windower 4 muscle memory before parsing!
+    std::u8string legacy_fix;
+    if (command_string.starts_with(u8"//lua "))
+    {
+        legacy_fix.append(u8"/");
+        legacy_fix.append(command_string.substr(6));
+        command_string = legacy_fix;
+    }
+    else if (command_string.starts_with(u8"//"))
+    {
+        legacy_fix.append(u8"/");
+        legacy_fix.append(command_string.substr(2));
+        command_string = legacy_fix;
+    }
+
     auto [component, command] = command_parser::parse_command(command_string);
+
     if (!component)
     {
         if (auto alias = resolve_alias(command_parser::substring(command_string, command)))

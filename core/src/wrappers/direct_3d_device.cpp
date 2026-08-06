@@ -2,6 +2,7 @@
 
 #include "addon/addon_manager.hpp"
 #include "addon/script_environment.hpp"
+#include "addon/modules/event.hpp"
 #include "command_manager.hpp"
 #include "core.hpp"
 #include "hooks/ffximain.hpp"
@@ -22,10 +23,13 @@
 
 static bool g_imgui_initialized = false;
 
+extern IMGUI_IMPL_API void ImGui_ImplDX8_Shutdown();
+extern IMGUI_IMPL_API void ImGui_ImplWin32_Shutdown();
+
 windower::direct_3d_device::direct_3d_device(
     ::IDirect3DDevice8* impl, ::HWND hwnd, direct_3d* parent) :
-    m_impl{impl},
-    m_parent{parent}
+    m_impl{ impl },
+    m_parent{ parent }
 {
     m_parent->AddRef();
 
@@ -96,14 +100,14 @@ windower::direct_3d_device::~direct_3d_device()
     {
         AddRef();
         ::IUnknown* const ptr = this;
-        *ppvObj               = ptr;
+        *ppvObj = ptr;
         return S_OK;
     }
     else if (::IsEqualGUID(riid, ::IID_IDirect3DDevice8))
     {
         AddRef();
         ::IDirect3DDevice8* const ptr = this;
-        *ppvObj                       = ptr;
+        *ppvObj = ptr;
         return S_OK;
     }
     return E_NOINTERFACE;
@@ -203,6 +207,19 @@ windower::direct_3d_device::CreateAdditionalSwapChain(
 ::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::Reset(
     ::D3DPRESENT_PARAMETERS* pPresentationParameters) noexcept
 {
+    // Nuke ImGui before DirectX destroys the video memory! Alt-Tab Crash fix.
+    //When you change resolutions or Alt-Tab in fullscreen, DirectX kills the
+    // video memory. If ImGui is still holding its font texture, the game crashes.
+    // We will brutally murder ImGui right before the reset, and let our
+    // Present function naturally rebuild it on the next frame.
+    if (g_imgui_initialized)
+    {
+        ImGui_ImplDX8_Shutdown();
+        ImGui_ImplWin32_Shutdown();
+        ImGui::DestroyContext();
+        g_imgui_initialized = false;
+    }
+
     return m_impl->Reset(pPresentationParameters);
 }
 
@@ -212,11 +229,7 @@ windower::direct_3d_device::CreateAdditionalSwapChain(
 {
     auto& core = core::instance();
 
-    m_impl->BeginScene();
-    core.update();
-    core.end_frame();
-
-    // IMGUI BOOT UP & NEW FRAME
+    // IMGUI BOOT UP
     if (!g_imgui_initialized)
     {
         HWND target_hwnd = hDestWindowOverride ? hDestWindowOverride : static_cast<HWND>(core.client_hwnd);
@@ -224,6 +237,10 @@ windower::direct_3d_device::CreateAdditionalSwapChain(
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO(); (void)io;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+        // This enables grabbing the window edges to resize!
+        io.ConfigWindowsResizeFromEdges = true;
+
         ImGui::StyleColorsDark();
 
         ImGui_ImplWin32_Init(target_hwnd);
@@ -231,14 +248,33 @@ windower::direct_3d_device::CreateAdditionalSwapChain(
         g_imgui_initialized = true;
     }
 
+    // START IMGUI FRAME
     if (g_imgui_initialized)
     {
         ImGui_ImplDX8_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
+
+        // Directly call imgui_render() in every Lua addon!
+        windower::run_on_all_interpreters([](windower::lua::state s) {
+            windower::lua::stack_guard guard{ s };
+            windower::lua::push(guard, u8"imgui_render");
+            windower::lua::raw_get(guard, windower::lua::globals);
+
+            if (windower::lua::typeof(guard, -1) == windower::lua::type::function)
+            {
+                windower::lua::call(guard, 0, 0);
+            }
+            });
     }
 
-    // RENDER NORMAL UI (This triggers m_console->render() -> ImGui::Begin!)
+    m_impl->BeginScene();
+
+    // RUN THE ENGINE & NATIVE ADDONS
+    core.update();
+    core.end_frame();
+
+    // RENDER C++ CONSOLE
     core.ui.render(windower::ui::layer::screen);
     core.ui.render(windower::ui::layer::layout);
 
@@ -246,7 +282,34 @@ windower::direct_3d_device::CreateAdditionalSwapChain(
     if (g_imgui_initialized)
     {
         ImGui::Render();
+
+        // -------------------------------------------------------------
+        // CAVEMAN FIX: THE VIEWPORT PRISON BREAK (Stable Version)
+        // -------------------------------------------------------------
+        D3DVIEWPORT8 ffxi_viewport;
+        m_impl->GetViewport(&ffxi_viewport);
+
+        IDirect3DSurface8* backbuffer = nullptr;
+        if (SUCCEEDED(m_impl->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &backbuffer)) && backbuffer)
+        {
+            D3DSURFACE_DESC desc;
+            backbuffer->GetDesc(&desc);
+            backbuffer->Release();
+
+            D3DVIEWPORT8 imgui_viewport;
+            imgui_viewport.X = 0;
+            imgui_viewport.Y = 0;
+            imgui_viewport.Width = desc.Width;
+            imgui_viewport.Height = desc.Height;
+            imgui_viewport.MinZ = 0.0f;
+            imgui_viewport.MaxZ = 1.0f;
+
+            m_impl->SetViewport(&imgui_viewport);
+        }
+
         ImGui_ImplDX8_RenderDrawData(ImGui::GetDrawData());
+        m_impl->SetViewport(&ffxi_viewport);
+        // -------------------------------------------------------------
     }
 
     m_impl->EndScene();

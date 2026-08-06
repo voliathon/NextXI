@@ -7,6 +7,7 @@
 #include "addon/scheduler.hpp"
 
 #include "addon/modules/command.hpp"
+#include "addon/modules/imgui.hpp"
 
 #include "core.hpp"
 #include "utility.hpp"
@@ -89,6 +90,9 @@ void windower::script_environment::initialize() const
     lua::push(guard, load_script_module);
     lua::raw_set(guard, -2, 2);
     lua::preload(m_interpreter, u8"core.command", &load_command_module);
+
+    // Expose ImGui to global scripts!
+    lua::preload(m_interpreter, u8"imgui", &load_imgui_module);
 }
 
 void windower::script_environment::run_until_idle()
