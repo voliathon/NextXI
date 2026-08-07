@@ -83,6 +83,18 @@ void windower::ui::system_diagnostics::render_about_tab()
         ImGui::Spacing();
         ImGui::Text("GitHub Repository      : https://github.com/voliathon/NextXI");
 
+        ImGui::Spacing();
+
+        // The slick, unobtrusive copyright drop-down
+        if (ImGui::CollapsingHeader("Third-Party Acknowledgments"))
+        {
+            ImGui::Text("NextXI is made possible by open-source contributions:");
+            ImGui::BulletText("Windower Dev Team (Resources & Legacy Lua Libraries)");
+            ImGui::BulletText("dgVoodoo2 (DirectX Wrapper)");
+            ImGui::BulletText("LuaJIT (Just-In-Time Compiler)");
+            ImGui::BulletText("ImGui (Graphical Interface)");
+        }
+
         ImGui::EndTabItem();
     }
 }

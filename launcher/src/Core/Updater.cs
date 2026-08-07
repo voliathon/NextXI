@@ -189,7 +189,7 @@ namespace Windower.Core
                 }
                 catch (UnauthorizedAccessException)
                 {
-                    if (Launcher.IsAdministrator())
+                    if (SecurityService.IsAdministrator())
                     {
                         throw;
                     }

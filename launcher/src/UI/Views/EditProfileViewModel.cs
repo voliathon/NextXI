@@ -54,10 +54,10 @@ namespace Windower.UI.Views
 
         public bool EditCancellable { get; }
 
-        public bool IsAdministrator { get; } = Launcher.IsAdministrator();
+        public bool IsAdministrator { get; } = SecurityService.IsAdministrator();
 
-        public bool IsElevationRequired => Launcher.Resolve(profile).Region?.IsInstalled() == true
-            && Launcher.IsElevationRequired(profile) && !profile.RunAsAdmin;
+        public bool IsElevationRequired => GamePathResolver.Resolve(profile).Region?.IsInstalled() == true
+            && SecurityService.IsElevationRequired(profile) && !profile.RunAsAdmin;
 
         public string Name
         {
@@ -576,7 +576,7 @@ namespace Windower.UI.Views
             }
         }
 
-        private void ExecuteFixAccessControl(object obj) => Launcher.FixAccessControl(profile);
+        private void ExecuteFixAccessControl(object obj) => SecurityService.FixAccessControl(profile);
 
         private static string GetString(string name) => System.Windows.Application.Current.TryFindResource(name) as string;
     }

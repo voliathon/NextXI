@@ -18,7 +18,7 @@ namespace Windower.UI.Views
 
         public ICommand Close { get; }
 
-        public bool IsAdministrator { get; } = Launcher.IsAdministrator();
+        public bool IsAdministrator { get; } = SecurityService.IsAdministrator();
 
         public bool DoNotAskAgain
         {

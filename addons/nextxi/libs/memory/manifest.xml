@@ -1,0 +1,9 @@
+<package>
+  <name>memory</name>
+  <version>2.5.0.0</version>
+  <type>library</type>
+  <dependencies>
+    <dependency>struct</dependency>
+    <dependency>win32</dependency>
+  </dependencies>
+</package>

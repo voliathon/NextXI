@@ -84,7 +84,7 @@ namespace Windower.UI.Views
 
             while (true)
             {
-                var selected = Launcher.Resolve(await SelectProfileAsync());
+                var selected = GamePathResolver.Resolve(await SelectProfileAsync());
                 if (selected.Region == null)
                 {
                     await navigation.Open(this, "ClientNotFound");
@@ -93,13 +93,13 @@ namespace Windower.UI.Views
                 }
 
                 if (selected.Region?.IsInstalled() == true && selected.AccessControlPrompt &&
-                    Launcher.IsElevationRequired(selected) && !selected.RunAsAdmin)
+                    SecurityService.IsElevationRequired(selected) && !selected.RunAsAdmin)
                 {
                     await Task.Delay(250);
                     var (ok, dontAskAgain) = await navigation.Open<(bool ok, bool dontAskAgain)>(this, "FixAccessControlPrompt");
                     if (ok)
                     {
-                        await Launcher.FixAccessControlAsync(selected);
+                        await SecurityService.FixAccessControlAsync(selected);
                     }
 
                     if (!dontAskAgain)
@@ -113,13 +113,13 @@ namespace Windower.UI.Views
                 }
 
                 Status = LaunchStatus.CheckingDirectPlay;
-                var directPlayInstalled = await Launcher.CheckDirectPlayAsync();
+                var directPlayInstalled = await DirectPlayService.CheckDirectPlayAsync();
                 while (!directPlayInstalled)
                 {
                     if ((bool)await navigation.Open(this, "DirectPlayPrompt"))
                     {
                         Status = LaunchStatus.InstallingDirectPlay;
-                        directPlayInstalled = await Launcher.InstallDirectPlayAsync();
+                        directPlayInstalled = await DirectPlayService.InstallDirectPlayAsync();
                     }
                     else
                     {

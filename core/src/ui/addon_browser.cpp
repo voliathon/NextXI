@@ -64,17 +64,39 @@ namespace windower::ui
     void addon_browser::check_directory_changes()
     {
         std::error_code ec;
-        auto dir = core::instance().settings.user_path.parent_path() / u8"addons";
-        if (!std::filesystem::exists(dir, ec)) dir = std::filesystem::current_path() / u8"addons";
+        auto base_dir = core::instance().settings.user_path.parent_path() / u8"addons";
+        if (!std::filesystem::exists(base_dir, ec)) base_dir = std::filesystem::current_path() / u8"addons";
 
-        auto const current_time = std::filesystem::last_write_time(dir, ec);
-        if (!ec && current_time != m_last_dir_time)
+        auto dir_nx = base_dir / u8"nextxi";
+        auto dir_w4 = base_dir / u8"windower";
+
+        auto time_nx = std::filesystem::exists(dir_nx, ec) ? std::filesystem::last_write_time(dir_nx, ec) : std::filesystem::file_time_type{};
+        auto time_w4 = std::filesystem::exists(dir_w4, ec) ? std::filesystem::last_write_time(dir_w4, ec) : std::filesystem::file_time_type{};
+
+        if (!ec && (time_nx != m_last_dir_time_nx || time_w4 != m_last_dir_time_w4))
         {
-            m_last_dir_time = current_time;
-            m_scanned = false;
+            m_last_dir_time_nx = time_nx;
+            m_last_dir_time_w4 = time_w4;
+            m_scanned = false; // Forces UI to rescan
+
+            if (core::instance().package_manager)
+            {
+                core::instance().package_manager->reset();
+            }
         }
 
-        if (!m_scanned) scan_addons();
+        if (!m_scanned)
+        {
+            scan_addons();
+
+            // Pull the trigger on the global autoloads exactly once!
+            static bool initial_autoload_run = false;
+            if (!initial_autoload_run)
+            {
+                run_autoload("global");
+                initial_autoload_run = true;
+            }
+        }
     }
 
     void addon_browser::reset_scan() noexcept { m_scanned = false; }
@@ -85,36 +107,44 @@ namespace windower::ui
     {
         m_cached_addons.clear();
         std::error_code ec;
-        auto dir = core::instance().settings.user_path.parent_path() / u8"addons";
-        if (!std::filesystem::exists(dir, ec)) dir = std::filesystem::current_path() / u8"addons";
+        auto base_dir = core::instance().settings.user_path.parent_path() / u8"addons";
+        if (!std::filesystem::exists(base_dir, ec)) base_dir = std::filesystem::current_path() / u8"addons";
 
-        if (std::filesystem::exists(dir, ec))
-        {
-            for (auto const& entry : std::filesystem::directory_iterator{ dir, ec })
+        // Helper lambda to scan a specific subdirectory
+        auto scan_dir = [&](std::filesystem::path const& dir) {
+            if (std::filesystem::exists(dir, ec))
             {
-                if (entry.is_directory(ec))
+                for (auto const& entry : std::filesystem::directory_iterator{ dir, ec })
                 {
-                    addon_list_item item;
-                    item.name = entry.path().filename().u8string();
-                    auto const path = entry.path();
-
-                    item.is_modern = std::filesystem::exists(path / u8"manifest.xml", ec);
-
-                    std::filesystem::path const r_md = path / u8"README.md";
-                    std::filesystem::path const r_low = path / u8"readme.md";
-                    std::filesystem::path const r_txt = path / u8"readme.txt";
-
-                    if (std::filesystem::exists(r_md, ec)) { item.has_readme = true; item.readme_path = r_md; }
-                    else if (std::filesystem::exists(r_low, ec)) { item.has_readme = true; item.readme_path = r_low; }
-                    else if (std::filesystem::exists(r_txt, ec)) { item.has_readme = true; item.readme_path = r_txt; }
-
-                    if (item.is_modern || std::filesystem::exists(path / (item.name + u8".lua"), ec))
+                    if (entry.is_directory(ec))
                     {
-                        m_cached_addons.push_back(std::move(item));
+                        addon_list_item item;
+                        item.name = entry.path().filename().u8string();
+                        auto const path = entry.path();
+
+                        item.is_modern = std::filesystem::exists(path / u8"manifest.xml", ec);
+
+                        std::filesystem::path const r_md = path / u8"README.md";
+                        std::filesystem::path const r_low = path / u8"readme.md";
+                        std::filesystem::path const r_txt = path / u8"readme.txt";
+
+                        if (std::filesystem::exists(r_md, ec)) { item.has_readme = true; item.readme_path = r_md; }
+                        else if (std::filesystem::exists(r_low, ec)) { item.has_readme = true; item.readme_path = r_low; }
+                        else if (std::filesystem::exists(r_txt, ec)) { item.has_readme = true; item.readme_path = r_txt; }
+
+                        if (item.is_modern || std::filesystem::exists(path / (item.name + u8".lua"), ec))
+                        {
+                            m_cached_addons.push_back(std::move(item));
+                        }
                     }
                 }
             }
-        }
+            };
+
+        // ONLY scan these two folders. We completely ignore addons/libs!
+        scan_dir(base_dir / u8"nextxi");
+        scan_dir(base_dir / u8"windower");
+
         m_scanned = true;
     }
 

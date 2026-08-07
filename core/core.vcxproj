@@ -52,6 +52,7 @@
     <ClInclude Include="src\addon\modules\imgui.hpp" />
     <ClInclude Include="src\addon\modules\os.hpp" />
     <ClInclude Include="src\addon\modules\pin.hpp" />
+    <ClInclude Include="src\addon\package.hpp" />
     <ClInclude Include="src\addon\unsafe.hpp" />
     <ClInclude Include="src\command_parser.hpp" />
     <ClInclude Include="src\errors\command_error.hpp" />
@@ -192,11 +193,18 @@
     <ClCompile Include="lib\imgui\imgui_widgets.cpp" />
     <ClCompile Include="lib\imgui\misc\cpp\imgui_stdlib.cpp" />
     <ClCompile Include="src\addon\errors\package_error.cpp" />
+    <ClCompile Include="src\addon\lua_execution.cpp" />
+    <ClCompile Include="src\addon\lua_stack.cpp" />
+    <ClCompile Include="src\addon\lua_state.cpp" />
+    <ClCompile Include="src\addon\lua_utils.cpp" />
     <ClCompile Include="src\addon\modules\class.cpp" />
     <ClCompile Include="src\addon\modules\hash.cpp" />
     <ClCompile Include="src\addon\modules\imgui.cpp" />
     <ClCompile Include="src\addon\modules\os.cpp" />
     <ClCompile Include="src\addon\modules\pin.cpp" />
+    <ClCompile Include="src\addon\package.cpp" />
+    <ClCompile Include="src\addon\package_manager_graph.cpp" />
+    <ClCompile Include="src\addon\package_manager_network.cpp" />
     <ClCompile Include="src\addon\unsafe.cpp" />
     <ClCompile Include="src\command_parser.cpp" />
     <ClCompile Include="src\errors\command_error.cpp" />
@@ -204,7 +212,6 @@
     <ClCompile Include="src\addon\addon.cpp" />
     <ClCompile Include="src\addon\addon_manager.cpp" />
     <ClCompile Include="src\addon\error.cpp" />
-    <ClCompile Include="src\addon\lua.cpp" />
     <ClCompile Include="src\addon\modules\chat.cpp" />
     <ClCompile Include="src\addon\modules\command.cpp" />
     <ClCompile Include="src\addon\modules\event.cpp" />
@@ -233,7 +240,6 @@
     <ClCompile Include="src\hooks\ffximain.cpp" />
     <ClCompile Include="src\hooks\imm32.cpp" />
     <ClCompile Include="src\hooks\advapi32.cpp" />
-    <ClCompile Include="src\addon\lua_internal.cpp" />
     <ClCompile Include="src\library.cpp" />
     <ClCompile Include="src\lua_imgui.cpp" />
     <ClCompile Include="src\package_command_handlers.cpp" />
@@ -469,6 +475,19 @@ copy /Y "$(SolutionDir)extern\luajit\src\lua51.dll" "$(SolutionDir)build\lib\lua
 copy /Y "$(SolutionDir)extern\luajit\src\lua51.dll" "$(SolutionDir)build\bin\$(Configuration)\lua51.dll"
 xcopy /E /I /Y "$(SolutionDir)extern\luajit\src\jit\*" "$(SolutionDir)build\lib\luajit\$(Configuration)\lua\jit\"</Command>
     </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>:: 1. Create the base folders
+mkdir "$(OutDir)addons\shared_libs" 2&gt;nul
+mkdir "$(OutDir)addons\windower\libs" 2&gt;nul
+
+:: 2. Download and extract Windower Resources (resources_data) into shared_libs
+powershell -NonInteractive -NoProfile -Command "Write-Host 'Downloading resources_data...'; Invoke-WebRequest -Uri 'https://github.com/Windower/Resources/archive/refs/heads/master.zip' -OutFile '$(OutDir)addons\shared_libs\res.zip'; Expand-Archive -Path '$(OutDir)addons\shared_libs\res.zip' -DestinationPath '$(OutDir)addons\shared_libs\temp_res' -Force; if (Test-Path '$(OutDir)addons\shared_libs\resources_data') { Remove-Item '$(OutDir)addons\shared_libs\resources_data' -Recurse -Force }; Move-Item -Path '$(OutDir)addons\shared_libs\temp_res\Resources-master\resources_data' -Destination '$(OutDir)addons\shared_libs\' -Force; Remove-Item '$(OutDir)addons\shared_libs\res.zip' -Force; Remove-Item '$(OutDir)addons\shared_libs\temp_res' -Recurse -Force"
+
+:: 3. Download and extract Windower Lua Libs into windower/libs
+powershell -NonInteractive -NoProfile -Command "Write-Host 'Downloading windower libs...'; Invoke-WebRequest -Uri 'https://github.com/Windower/Lua/archive/refs/heads/dev.zip' -OutFile '$(OutDir)addons\windower\lua.zip'; Expand-Archive -Path '$(OutDir)addons\windower\lua.zip' -DestinationPath '$(OutDir)addons\windower\temp_lua' -Force; if (Test-Path '$(OutDir)addons\windower\libs') { Remove-Item '$(OutDir)addons\windower\libs' -Recurse -Force }; Move-Item -Path '$(OutDir)addons\windower\temp_lua\Lua-dev\addons\libs' -Destination '$(OutDir)addons\windower\' -Force; Remove-Item '$(OutDir)addons\windower\lua.zip' -Force; Remove-Item '$(OutDir)addons\windower\temp_lua' -Recurse -Force"
+
+exit 0</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='release|Win32'">
     <ClCompile>
@@ -521,6 +540,19 @@ copy /Y "$(SolutionDir)extern\luajit\src\lua51.dll" "$(SolutionDir)build\lib\lua
 copy /Y "$(SolutionDir)extern\luajit\src\lua51.dll" "$(SolutionDir)build\bin\$(Configuration)\lua51.dll"
 xcopy /E /I /Y "$(SolutionDir)extern\luajit\src\jit\*" "$(SolutionDir)build\lib\luajit\$(Configuration)\lua\jit\"</Command>
     </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>:: 1. Create the base folders
+mkdir "$(OutDir)addons\shared_libs" 2&gt;nul
+mkdir "$(OutDir)addons\windower\libs" 2&gt;nul
+
+:: 2. Download and extract Windower Resources (resources_data) into shared_libs
+powershell -NonInteractive -NoProfile -Command "Write-Host 'Downloading resources_data...'; Invoke-WebRequest -Uri 'https://github.com/Windower/Resources/archive/refs/heads/master.zip' -OutFile '$(OutDir)addons\shared_libs\res.zip'; Expand-Archive -Path '$(OutDir)addons\shared_libs\res.zip' -DestinationPath '$(OutDir)addons\shared_libs\temp_res' -Force; if (Test-Path '$(OutDir)addons\shared_libs\resources_data') { Remove-Item '$(OutDir)addons\shared_libs\resources_data' -Recurse -Force }; Move-Item -Path '$(OutDir)addons\shared_libs\temp_res\Resources-master\resources_data' -Destination '$(OutDir)addons\shared_libs\' -Force; Remove-Item '$(OutDir)addons\shared_libs\res.zip' -Force; Remove-Item '$(OutDir)addons\shared_libs\temp_res' -Recurse -Force"
+
+:: 3. Download and extract Windower Lua Libs into windower/libs
+powershell -NonInteractive -NoProfile -Command "Write-Host 'Downloading windower libs...'; Invoke-WebRequest -Uri 'https://github.com/Windower/Lua/archive/refs/heads/dev.zip' -OutFile '$(OutDir)addons\windower\lua.zip'; Expand-Archive -Path '$(OutDir)addons\windower\lua.zip' -DestinationPath '$(OutDir)addons\windower\temp_lua' -Force; if (Test-Path '$(OutDir)addons\windower\libs') { Remove-Item '$(OutDir)addons\windower\libs' -Recurse -Force }; Move-Item -Path '$(OutDir)addons\windower\temp_lua\Lua-dev\addons\libs' -Destination '$(OutDir)addons\windower\' -Force; Remove-Item '$(OutDir)addons\windower\lua.zip' -Force; Remove-Item '$(OutDir)addons\windower\temp_lua' -Recurse -Force"
+
+exit 0</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -15,7 +15,8 @@ namespace windower::lua
     }
 
     // windower.imgui.end_window()
-    static int lua_imgui_end(lua_State* L)
+    // Silencing C4100 by explicitly telling the compiler we know L isn't used here.
+    static int lua_imgui_end([[maybe_unused]] lua_State* L)
     {
         ImGui::End();
         return 0;
@@ -33,7 +34,10 @@ namespace windower::lua
     static int lua_imgui_button(lua_State* L)
     {
         const char* label = luaL_checkstring(L, 1);
-        bool clicked = ImGui::Button(label);
+
+        // Silencing C26496 by marking the variable as const.
+        bool const clicked = ImGui::Button(label);
+
         lua_pushboolean(L, clicked);
         return 1; // Returns true if the button was clicked this frame
     }
@@ -53,7 +57,10 @@ namespace windower::lua
         if (lua_istable(L, -1))
         {
             lua_newtable(L);
-            luaL_setfuncs(L, imgui_funcs, 0);
+
+            // Silencing C26485 (bounds.3) by explicitly passing the pointer to the first element.
+            luaL_setfuncs(L, &imgui_funcs[0], 0);
+
             lua_setfield(L, -2, "imgui");
         }
         lua_pop(L, 1);

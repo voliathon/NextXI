@@ -29,7 +29,11 @@ namespace windower::ui
 
     private:
         bool m_scanned = false;
-        std::filesystem::file_time_type m_last_dir_time;
+
+        // Monitor both folders independently!
+        std::filesystem::file_time_type m_last_dir_time_nx;
+        std::filesystem::file_time_type m_last_dir_time_w4;
+
         std::vector<addon_list_item> m_cached_addons;
 
         bool m_show_readme = false;
