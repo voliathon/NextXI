@@ -75,6 +75,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Resource Include="F:\Downloads\NextXI_Logo.png" Link="res\NextXI_Logo.png" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Resource Include="FodyWeavers.xml" />
   </ItemGroup>
 

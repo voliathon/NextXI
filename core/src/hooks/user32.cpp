@@ -56,6 +56,7 @@ windower::hooklib::hook<decltype(::SetWindowTextW)> SetWindowTextW;
 windower::hooklib::hook<decltype(::SetWindowsHookExA)> SetWindowsHookExA;
 windower::hooklib::hook<decltype(::SetWindowsHookExW)> SetWindowsHookExW;
 windower::hooklib::hook<decltype(::UnhookWindowsHookEx)> UnhookWindowsHookEx;
+windower::hooklib::hook<decltype(::SetWindowPos)> SetWindowPos;
 
 }
 
@@ -187,17 +188,32 @@ extern "C" ::LRESULT CALLBACK ffxi_wnd_proc(
         }
     }
 
-switch (uMsg)
+    switch (uMsg)
     {
     default: break;
     case WM_ACTIVATE:
         set_process_muted(LOWORD(wParam) == WA_INACTIVE);
         break;
     case WM_ACTIVATEAPP: set_process_muted(wParam == FALSE); break;
+
+        // Blindfold FFXI! 
+        // Intercept window sizing and moving commands and route them straight to the OS.
     case WM_SYSCOMMAND:
-        if ((wParam & 0xFFF0) == SC_MINIMIZE)
+    {
+        auto const cmd = wParam & 0xFFF0;
+        if (cmd == SC_MINIMIZE)
+        {
             set_process_muted(true);
+        }
+        // If the user clicks Maximize, Restore, or tries to Drag/Resize...
+        else if (cmd == SC_MAXIMIZE || cmd == SC_RESTORE || cmd == SC_SIZE || cmd == SC_MOVE)
+        {
+            // Hand it directly to Windows OS. Do NOT pass to FFXI!
+            return ::DefWindowProcW(hwnd, uMsg, wParam, lParam);
+        }
         break;
+    }
+
     case WM_SIZE:
         if (wParam == SIZE_MINIMIZED)
             set_process_muted(true);
@@ -344,7 +360,7 @@ namespace callbacks
                       std::bit_cast<::ULONG_PTR>(lpIconName) >= 0x7F00))
     {
         hInstance  = static_cast<::HINSTANCE>(windower::windower_module());
-        lpIconName = MAKEINTRESOURCEA(ICON_MANDY);
+        lpIconName = MAKEINTRESOURCEA(ICON_NEXTXI);
     }
 
     return hooks::LoadIconA(hInstance, lpIconName);
@@ -356,7 +372,7 @@ namespace callbacks
                       std::bit_cast<::ULONG_PTR>(lpIconName) >= 0x7F00))
     {
         hInstance  = static_cast<::HINSTANCE>(windower::windower_module());
-        lpIconName = MAKEINTRESOURCEW(ICON_MANDY);
+        lpIconName = MAKEINTRESOURCEW(ICON_NEXTXI);
     }
 
     return hooks::LoadIconW(hInstance, lpIconName);
@@ -458,6 +474,12 @@ namespace callbacks
 {
     if (check_class(hWnd, ffxi_class_atom))
     {
+        // Stop FFXI from stripping the title bar and resize grips!
+        if (nIndex == GWL_STYLE && windower::is_game_module(WINDOWER_RETURN_ADDRESS))
+        {
+            return hooks::GetWindowLongA(hWnd, GWL_STYLE);
+        }
+
         if (nIndex >= 0)
         {
             nIndex += window_data_size;
@@ -469,8 +491,7 @@ namespace callbacks
             {
                 auto wnd_proc = std::bit_cast<::LONG>(data->wnd_proc);
                 hooks::SetWindowLongW(hWnd, GWL_WNDPROC, wnd_proc);
-                auto result =
-                    hooks::SetWindowLongA(hWnd, GWL_WNDPROC, dwNewLong);
+                auto result = hooks::SetWindowLongA(hWnd, GWL_WNDPROC, dwNewLong);
                 wnd_proc = hooks::SetWindowLongW(hWnd, GWL_WNDPROC, wnd_proc);
                 data->wnd_proc = std::bit_cast<::WNDPROC>(wnd_proc);
                 return result;
@@ -484,6 +505,12 @@ namespace callbacks
 {
     if (check_class(hWnd, ffxi_class_atom))
     {
+        // Stop FFXI from stripping the title bar and resize grips!
+        if (nIndex == GWL_STYLE && windower::is_game_module(WINDOWER_RETURN_ADDRESS))
+        {
+            return hooks::GetWindowLongW(hWnd, GWL_STYLE);
+        }
+
         if (nIndex >= 0)
         {
             nIndex += window_data_size;
@@ -495,8 +522,7 @@ namespace callbacks
             {
                 auto wnd_proc = std::bit_cast<::LONG>(data->wnd_proc);
                 hooks::SetWindowLongW(hWnd, GWL_WNDPROC, wnd_proc);
-                auto result =
-                    hooks::SetWindowLongW(hWnd, GWL_WNDPROC, dwNewLong);
+                auto result = hooks::SetWindowLongW(hWnd, GWL_WNDPROC, dwNewLong);
                 wnd_proc = hooks::SetWindowLongW(hWnd, GWL_WNDPROC, wnd_proc);
                 data->wnd_proc = std::bit_cast<::WNDPROC>(wnd_proc);
                 return result;
@@ -572,8 +598,18 @@ namespace callbacks
             CP_ACP, 0, lpWindowName, title_size, data->title.data(),
             data->title.size());
 
-        ::SetWindowTextW(hwnd, L"Final Fantasy XI");
+        ::SetWindowTextW(hwnd, L"Next XI");
         set_window_properties(hwnd);
+
+        // Aggressively force the Icon into the Window Class so Windows Taskbar respects it!
+        auto const hIcon = hooks::LoadIconW(static_cast<::HINSTANCE>(windower::windower_module()), MAKEINTRESOURCEW(ICON_NEXTXI));
+
+        ::SendMessageW(hwnd, WM_SETICON, ICON_BIG, std::bit_cast<::LPARAM>(hIcon));
+        ::SendMessageW(hwnd, WM_SETICON, ICON_SMALL, std::bit_cast<::LPARAM>(hIcon));
+
+        // This is the kill-shot. It overwrites the pol.exe class icon!
+        ::SetClassLongPtrW(hwnd, GCLP_HICON, std::bit_cast<::LONG_PTR>(hIcon));
+        ::SetClassLongPtrW(hwnd, GCLP_HICONSM, std::bit_cast<::LONG_PTR>(hIcon));
 
         windower::core::instance().client_hwnd = hwnd;
     }
@@ -604,20 +640,27 @@ namespace callbacks
 {
     if (windower::is_game_module(WINDOWER_RETURN_ADDRESS))
     {
-        auto const& core = windower::core::instance();
-
-        auto const display = core.settings.display_bounds;
-
-        auto const x = display.location.x;
-        auto const y = display.location.y;
-        auto const w = display.size.width;
-        auto const h = display.size.height;
-
-        X = x + std::max(0, (w - nWidth) / 2);
-        Y = y + std::max(0, (h - nHeight) / 2);
+        // FFXI tries to forcefully resize the window back to its internal 
+        // registry resolution during gameplay, causing a violent tug-of-war when dragging.
+        // Tell the game it succeeded, but let Windows keep the user's custom dragged size!
+        return TRUE;
     }
 
     return hooks::MoveWindow(hWnd, X, Y, nWidth, nHeight, bRepaint);
+}
+
+::BOOL WINAPI SetWindowPos(
+    ::HWND hWnd, ::HWND hWndInsertAfter, int X, int Y, int cx, int cy,
+    ::UINT uFlags) noexcept
+{
+    if (windower::is_game_module(WINDOWER_RETURN_ADDRESS))
+    {
+        // FFXI uses SetWindowPos to violently strip the border (SWP_FRAMECHANGED) 
+        // and fight the OS when moved to a different monitor. We lie and say it succeeded!
+        return TRUE;
+    }
+
+    return hooks::SetWindowPos(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
 }
 
 ::BOOL WINAPI SetWindowTextA(::HWND hWnd, ::LPCSTR lpString) noexcept
@@ -734,9 +777,6 @@ void windower::user32::install()
     hooks::CreateWindowExA = hooklib::make_hook(
         u8"user32.dll", u8"CreateWindowExA", callbacks::CreateWindowExA);
 
-    hooks::MoveWindow = hooklib::make_hook(
-        u8"user32.dll", u8"MoveWindow", callbacks::MoveWindow);
-
     hooks::SetWindowTextA = hooklib::make_hook(
         u8"user32.dll", u8"SetWindowTextA", callbacks::SetWindowTextA);
     hooks::SetWindowTextW = hooklib::make_hook(
@@ -773,6 +813,7 @@ void windower::user32::uninstall() noexcept
     hooks::CreateWindowExA     = {};
     hooks::CreateWindowExW     = {};
     hooks::MoveWindow          = {};
+    hooks::SetWindowPos        = {};
     hooks::SetWindowTextA      = {};
     hooks::SetWindowTextW      = {};
     hooks::SetWindowsHookExA   = {};

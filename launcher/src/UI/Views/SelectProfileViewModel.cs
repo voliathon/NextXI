@@ -186,7 +186,12 @@ namespace Windower.UI.Views
         {
             if (arg is string url)
             {
-                Process.Start(url);
+                // Force Windows to use the default web browser instead of crashing!
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = url,
+                    UseShellExecute = true
+                });
             }
         }
 

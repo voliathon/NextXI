@@ -61,7 +61,12 @@ namespace Windower.UI.Views
         {
             if (arg is string url)
             {
-                Process.Start(url);
+                // You MUST use ProcessStartInfo with UseShellExecute = true!
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = url,
+                    UseShellExecute = true
+                });
             }
         }
     }

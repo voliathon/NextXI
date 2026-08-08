@@ -242,6 +242,7 @@
     <ClCompile Include="src\hooks\advapi32.cpp" />
     <ClCompile Include="src\library.cpp" />
     <ClCompile Include="src\lua_imgui.cpp" />
+    <ClCompile Include="src\lua_window.cpp" />
     <ClCompile Include="src\package_command_handlers.cpp" />
     <ClCompile Include="src\packet_queue.cpp" />
     <ClCompile Include="src\scanner.cpp" />

@@ -23,6 +23,7 @@
 
 static bool g_imgui_initialized = false;
 
+// Use Invalidate/Create instead of Shutdown to survive Alt-Tab and dragging!
 extern IMGUI_IMPL_API void ImGui_ImplDX8_Shutdown();
 extern IMGUI_IMPL_API void ImGui_ImplWin32_Shutdown();
 
@@ -207,20 +208,23 @@ windower::direct_3d_device::CreateAdditionalSwapChain(
 ::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::Reset(
     ::D3DPRESENT_PARAMETERS* pPresentationParameters) noexcept
 {
-    // Nuke ImGui before DirectX destroys the video memory! Alt-Tab Crash fix.
-    //When you change resolutions or Alt-Tab in fullscreen, DirectX kills the
-    // video memory. If ImGui is still holding its font texture, the game crashes.
-    // We will brutally murder ImGui right before the reset, and let our
-    // Present function naturally rebuild it on the next frame.
+    // Do NOT destroy the ImGui Context! 
+    // Safely shut down ONLY the DX8 renderer layer to drop the textures.
+    // The Win32 input and core ImGui state stay perfectly alive in memory!
     if (g_imgui_initialized)
     {
         ImGui_ImplDX8_Shutdown();
-        ImGui_ImplWin32_Shutdown();
-        ImGui::DestroyContext();
-        g_imgui_initialized = false;
     }
 
-    return m_impl->Reset(pPresentationParameters);
+    HRESULT hr = m_impl->Reset(pPresentationParameters);
+
+    // Once the reset is successful, immediately rebuild the DX8 render layer.
+    if (g_imgui_initialized && SUCCEEDED(hr))
+    {
+        ImGui_ImplDX8_Init(m_impl);
+    }
+
+    return hr;
 }
 
 ::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::Present(
