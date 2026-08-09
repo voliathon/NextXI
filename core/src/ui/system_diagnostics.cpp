@@ -57,12 +57,10 @@ void windower::ui::system_diagnostics::render_about_tab()
         ImGui::Separator();
         ImGui::Spacing();
 
-        std::string graphics_engine = "Direct3D 8 Proxy";
+        // Default to Vanilla DX8. If dgVoodoo is loaded, it is 100% DX12!
+        std::string graphics_engine = "Vanilla (DirectX 8)";
         if (::GetModuleHandleA("dgVoodooDirectX.dll") != nullptr || ::GetModuleHandleA("dgVoodoo.dll") != nullptr) {
-            graphics_engine = "NextXI (dgVoodoo2 / DX11)" + get_dgvoodoo_version();
-        }
-        else if (::GetModuleHandleA("d3d11.dll") != nullptr) {
-            graphics_engine = "Direct3D 11 Proxy";
+            graphics_engine = "NextXI (dgVoodoo2 / DX12)" + get_dgvoodoo_version();
         }
 
         std::string lua_version_str = "LuaJIT (Sandbox)";

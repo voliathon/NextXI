@@ -208,19 +208,13 @@ windower::direct_3d_device::CreateAdditionalSwapChain(
 ::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::Reset(
     ::D3DPRESENT_PARAMETERS* pPresentationParameters) noexcept
 {
-    // Do NOT destroy the ImGui Context! 
-    // Safely shut down ONLY the DX8 renderer layer to drop the textures.
-    // The Win32 input and core ImGui state stay perfectly alive in memory!
-    if (g_imgui_initialized)
-    {
-        ImGui_ImplDX8_Shutdown();
-    }
-
+    // Only shutdown ImGui if the device reset actually succeeds.
+    // This prevents continuous swapchain teardown during active dragging!
     HRESULT hr = m_impl->Reset(pPresentationParameters);
 
-    // Once the reset is successful, immediately rebuild the DX8 render layer.
-    if (g_imgui_initialized && SUCCEEDED(hr))
+    if (SUCCEEDED(hr) && g_imgui_initialized)
     {
+        ImGui_ImplDX8_Shutdown();
         ImGui_ImplDX8_Init(m_impl);
     }
 

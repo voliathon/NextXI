@@ -73,7 +73,7 @@ namespace Windower.Core
 
         public string Name => name ?? string.Empty;
 
-        public GraphicsEngine SelectedEngine => selectedEngine ?? GraphicsEngine.Legacy;
+        public GraphicsEngine SelectedEngine => selectedEngine ?? GraphicsEngine.Vanilla;
 
         public Region? Region { get; }
 
@@ -141,8 +141,8 @@ namespace Windower.Core
 
         public enum GraphicsEngine
         {
-            Legacy = 0,
-            dgVoodoo2 = 1
+            Vanilla,
+            Direct3D12
         }
 
         [SuppressMessage("Microsoft.Design", "CA1006")]

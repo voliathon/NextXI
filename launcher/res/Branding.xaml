@@ -38,7 +38,7 @@ SOFTWARE.
             <Setter.Value>
                 <ControlTemplate>
                     <ContentControl Width="{TemplateBinding Width}" Height="{TemplateBinding Height}">
-                        <Image Source="pack://application:,,,/res/NextXI_Logo.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
+                        <Image Source="/res/NextXI_Logo.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
                     </ContentControl>
                 </ControlTemplate>
             </Setter.Value>

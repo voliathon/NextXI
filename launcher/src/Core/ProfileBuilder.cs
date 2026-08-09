@@ -230,7 +230,7 @@ namespace Windower.Core
 
         public Profile.GraphicsEngine SelectedEngine
         {
-            get => selectedEngine.Default(Profile.GraphicsEngine.Legacy);
+            get => selectedEngine.Default(Profile.GraphicsEngine.Vanilla);
             set => selectedEngine = value;
         }
 

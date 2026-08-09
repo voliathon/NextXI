@@ -75,7 +75,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="F:\Downloads\NextXI_Logo.png" Link="res\NextXI_Logo.png" />
+    <!-- Strip the default SDK flag before applying the Resource flag! -->
+    <None Remove="res\NextXI_Logo.png" />
+    <Resource Include="res\NextXI_Logo.png" />
   </ItemGroup>
 
   <ItemGroup>

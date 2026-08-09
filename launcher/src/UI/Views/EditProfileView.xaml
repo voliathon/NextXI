@@ -304,9 +304,9 @@ SOFTWARE.
                     </Grid.RowDefinitions>
 
                     <Label Content="Graphics Engine" Margin="12,12,12,0" Grid.Row="0" Grid.ColumnSpan="5"/>
-                    <ComboBox Margin="12,4,12,0" SelectedIndex="{Binding SelectedEngine}" Grid.Row="1" Grid.ColumnSpan="5" ToolTip="Select the underlying graphics rendering API. NextXI (DX11) is recommended for modern features.">
+                    <ComboBox Margin="12,4,12,0" SelectedIndex="{Binding SelectedEngine}" Grid.Row="1" Grid.ColumnSpan="5" ToolTip="Select the underlying graphics rendering API. NextXI (DX12) is recommended for modern features.">
                         <ComboBoxItem Content="Vanilla (DirectX 8) - Legacy" ToolTip="The original, unmodified FFXI rendering pipeline." />
-                        <ComboBoxItem Content="NextXI (dgVoodoo2 / DX11)" ToolTip="Translates DX8 to DX11. Required for ImGui and CEF web addons." />
+                        <ComboBoxItem Content="NextXI (dgVoodoo2 / DX12)" ToolTip="Translates DX8 to DX12. Required for ImGui and CEF web addons." />
                     </ComboBox>
 
                     <Label ToolTip="Renders the game at a massive internal resolution and scales it down to smooth out jagged pixel edges. Extremely high visual quality, but requires a powerful graphics card." Content="{StaticResource Strings.SupersampleAntiAliasing}" Margin="12,12,12,0" d:LayoutOverrides="Height" Grid.ColumnSpan="5" Grid.Row="2"/>

@@ -208,7 +208,7 @@ namespace Windower.Core
                 ExecutableArgs = ConvertString(e.Element("executable-args")),
                 RunAsAdmin = Convert(e.Element("run-as-admin"), false),
                 WindowType = Convert(e.Element("window-type"), WindowType.Borderless),
-                SelectedEngine = Convert(e.Element("graphics-engine"), Profile.GraphicsEngine.Legacy),
+                SelectedEngine = Convert(e.Element("graphics-engine"), Profile.GraphicsEngine.Vanilla),
                 Display = ConvertString(e.Element("display")),
                 Resolution = DeserializeDimension(e.Element("resolution")),
                 Position = DeserializePoint(e.Element("position")),

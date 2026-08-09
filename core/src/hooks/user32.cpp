@@ -191,13 +191,41 @@ extern "C" ::LRESULT CALLBACK ffxi_wnd_proc(
     switch (uMsg)
     {
     default: break;
+
+    case WM_WINDOWPOSCHANGING:
+    {
+        auto const pWindowPos = std::bit_cast<LPWINDOWPOS>(lParam);
+        if (pWindowPos && !(pWindowPos->flags & SWP_NOMOVE))
+        {
+            // Allow smooth dragging across monitors without dgVoodoo/DXGI forcing a style reset
+            pWindowPos->flags &= ~SWP_NOCOPYBITS;
+        }
+        break;
+    }
+
+    case WM_STYLECHANGING:
+    {
+        if (wParam == GWL_STYLE)
+        {
+            auto const pStyle = std::bit_cast<LPSTYLESTRUCT>(lParam);
+            if (pStyle)
+            {
+                // Force title bar, sizing frame, and system menus to remain active
+                pStyle->styleNew |= (WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU);
+                pStyle->styleNew &= ~WS_POPUP;
+            }
+            return 0;
+        }
+        break;
+    }
+
     case WM_ACTIVATE:
         set_process_muted(LOWORD(wParam) == WA_INACTIVE);
         break;
     case WM_ACTIVATEAPP: set_process_muted(wParam == FALSE); break;
 
-        // Blindfold FFXI! 
-        // Intercept window sizing and moving commands and route them straight to the OS.
+    // Blindfold FFXI! 
+    // Intercept window sizing and moving commands and route them straight to the OS.
     case WM_SYSCOMMAND:
     {
         auto const cmd = wParam & 0xFFF0;
@@ -474,8 +502,9 @@ namespace callbacks
 {
     if (check_class(hWnd, ffxi_class_atom))
     {
-        // Stop FFXI from stripping the title bar and resize grips!
-        if (nIndex == GWL_STYLE && windower::is_game_module(WINDOWER_RETURN_ADDRESS))
+        // dgVoodoo2 (d3d8.dll) tries to strip borders on monitor drag!
+        // Universally block ALL internal attempts to change the window style.
+        if (nIndex == GWL_STYLE)
         {
             return hooks::GetWindowLongA(hWnd, GWL_STYLE);
         }
@@ -505,8 +534,8 @@ namespace callbacks
 {
     if (check_class(hWnd, ffxi_class_atom))
     {
-        // Stop FFXI from stripping the title bar and resize grips!
-        if (nIndex == GWL_STYLE && windower::is_game_module(WINDOWER_RETURN_ADDRESS))
+        // Block dgVoodoo2 from touching the window borders!
+        if (nIndex == GWL_STYLE)
         {
             return hooks::GetWindowLongW(hWnd, GWL_STYLE);
         }
@@ -640,9 +669,8 @@ namespace callbacks
 {
     if (windower::is_game_module(WINDOWER_RETURN_ADDRESS))
     {
-        // FFXI tries to forcefully resize the window back to its internal 
-        // registry resolution during gameplay, causing a violent tug-of-war when dragging.
-        // Tell the game it succeeded, but let Windows keep the user's custom dragged size!
+        // Windower tries to lock X and Y to the primary display bounds.
+        // We stop it from fighting the user's mouse drag by doing nothing and returning TRUE!
         return TRUE;
     }
 
@@ -655,8 +683,7 @@ namespace callbacks
 {
     if (windower::is_game_module(WINDOWER_RETURN_ADDRESS))
     {
-        // FFXI uses SetWindowPos to violently strip the border (SWP_FRAMECHANGED) 
-        // and fight the OS when moved to a different monitor. We lie and say it succeeded!
+        // Same as above. Prevent FFXI from forcing coordinate resets.
         return TRUE;
     }
 
@@ -789,6 +816,12 @@ void windower::user32::install()
     hooks::UnhookWindowsHookEx = hooklib::make_hook(
         u8"user32.dll", u8"UnhookWindowsHookEx",
         callbacks::UnhookWindowsHookEx);
+
+    hooks::MoveWindow = hooklib::make_hook(
+        u8"user32.dll", u8"MoveWindow", callbacks::MoveWindow);
+
+    hooks::SetWindowPos = hooklib::make_hook(
+        u8"user32.dll", u8"SetWindowPos", callbacks::SetWindowPos);
 }
 
 void windower::user32::uninstall() noexcept
@@ -812,9 +845,9 @@ void windower::user32::uninstall() noexcept
     hooks::DispatchMessageA    = {};
     hooks::CreateWindowExA     = {};
     hooks::CreateWindowExW     = {};
-    hooks::MoveWindow          = {};
-    hooks::SetWindowPos        = {};
-    hooks::SetWindowTextA      = {};
+    hooks::MoveWindow = {};
+    hooks::SetWindowPos = {};
+    hooks::SetWindowTextA = {};
     hooks::SetWindowTextW      = {};
     hooks::SetWindowsHookExA   = {};
     hooks::SetWindowsHookExW   = {};
