@@ -44,7 +44,9 @@ namespace Windower.Core
 
                     var region = (Region)profile.Region;
                     GraphicsUpdater.ApplyGraphicsEngine(profile.SelectedEngine, region.GetPOLInstallDirectory());
-                    await ResourceManager.CheckAndDownloadResourcesAsync(Path.GetDirectoryName(Path.GetDirectoryName(CorePath)));
+
+                    // Removed the double GetDirectoryName so the files land in the right spot!
+                    await ResourceManager.CheckAndDownloadResourcesAsync(Path.GetDirectoryName(CorePath), progress);
 
                     using (var injector = await CreateInjectorAsync(profile, token))
                     {

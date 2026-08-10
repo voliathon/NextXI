@@ -54,6 +54,9 @@ SOFTWARE.
     <sys:String x:Key="Strings.LaunchStatusCheckingDirectPlay">Checking DirectPlay</sys:String>
     <sys:String x:Key="Strings.LaunchStatusInstallingDirectPlay">Installing DirectPlay</sys:String>
     <sys:String x:Key="Strings.LaunchStatusLaunching">Starting PlayOnline Viewer</sys:String>
+    <sys:String x:Key="Strings.LaunchStatusUpdatingSharedLibs">Updating shared libraries...</sys:String>
+    <sys:String x:Key="Strings.LaunchStatusUpdatingWindowerLibs">Updating Windower libraries...</sys:String>
+    <sys:String x:Key="Strings.LaunchStatusUpdatingNextXILibs">Updating NextXI libraries...</sys:String>
     <sys:String x:Key="Strings.Minimize">Minimize</sys:String>
     <sys:String x:Key="Strings.NewProfileNameFormat">Profile {0}</sys:String>
     <sys:String x:Key="Strings.No">No</sys:String>

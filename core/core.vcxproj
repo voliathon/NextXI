@@ -483,17 +483,8 @@ copy /Y "$(SolutionDir)extern\luajit\src\lua51.dll" "$(SolutionDir)build\bin\$(C
 xcopy /E /I /Y "$(SolutionDir)extern\luajit\src\jit\*" "$(SolutionDir)build\lib\luajit\$(Configuration)\lua\jit\"</Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>:: 1. Create the base folders
-mkdir "$(OutDir)addons\shared_libs" 2&gt;nul
-mkdir "$(OutDir)addons\windower\libs" 2&gt;nul
-
-:: 2. Download and extract Windower Resources (resources_data) into shared_libs
-powershell -NonInteractive -NoProfile -Command "Write-Host 'Downloading resources_data...'; Invoke-WebRequest -Uri 'https://github.com/Windower/Resources/archive/refs/heads/master.zip' -OutFile '$(OutDir)addons\shared_libs\res.zip'; Expand-Archive -Path '$(OutDir)addons\shared_libs\res.zip' -DestinationPath '$(OutDir)addons\shared_libs\temp_res' -Force; if (Test-Path '$(OutDir)addons\shared_libs\resources_data') { Remove-Item '$(OutDir)addons\shared_libs\resources_data' -Recurse -Force }; Move-Item -Path '$(OutDir)addons\shared_libs\temp_res\Resources-master\resources_data' -Destination '$(OutDir)addons\shared_libs\' -Force; Remove-Item '$(OutDir)addons\shared_libs\res.zip' -Force; Remove-Item '$(OutDir)addons\shared_libs\temp_res' -Recurse -Force"
-
-:: 3. Download and extract Windower Lua Libs into windower/libs
-powershell -NonInteractive -NoProfile -Command "Write-Host 'Downloading windower libs...'; Invoke-WebRequest -Uri 'https://github.com/Windower/Lua/archive/refs/heads/dev.zip' -OutFile '$(OutDir)addons\windower\lua.zip'; Expand-Archive -Path '$(OutDir)addons\windower\lua.zip' -DestinationPath '$(OutDir)addons\windower\temp_lua' -Force; if (Test-Path '$(OutDir)addons\windower\libs') { Remove-Item '$(OutDir)addons\windower\libs' -Recurse -Force }; Move-Item -Path '$(OutDir)addons\windower\temp_lua\Lua-dev\addons\libs' -Destination '$(OutDir)addons\windower\' -Force; Remove-Item '$(OutDir)addons\windower\lua.zip' -Force; Remove-Item '$(OutDir)addons\windower\temp_lua' -Recurse -Force"
-
-exit 0</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='release|Win32'">
@@ -548,17 +539,8 @@ copy /Y "$(SolutionDir)extern\luajit\src\lua51.dll" "$(SolutionDir)build\bin\$(C
 xcopy /E /I /Y "$(SolutionDir)extern\luajit\src\jit\*" "$(SolutionDir)build\lib\luajit\$(Configuration)\lua\jit\"</Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>:: 1. Create the base folders
-mkdir "$(OutDir)addons\shared_libs" 2&gt;nul
-mkdir "$(OutDir)addons\windower\libs" 2&gt;nul
-
-:: 2. Download and extract Windower Resources (resources_data) into shared_libs
-powershell -NonInteractive -NoProfile -Command "Write-Host 'Downloading resources_data...'; Invoke-WebRequest -Uri 'https://github.com/Windower/Resources/archive/refs/heads/master.zip' -OutFile '$(OutDir)addons\shared_libs\res.zip'; Expand-Archive -Path '$(OutDir)addons\shared_libs\res.zip' -DestinationPath '$(OutDir)addons\shared_libs\temp_res' -Force; if (Test-Path '$(OutDir)addons\shared_libs\resources_data') { Remove-Item '$(OutDir)addons\shared_libs\resources_data' -Recurse -Force }; Move-Item -Path '$(OutDir)addons\shared_libs\temp_res\Resources-master\resources_data' -Destination '$(OutDir)addons\shared_libs\' -Force; Remove-Item '$(OutDir)addons\shared_libs\res.zip' -Force; Remove-Item '$(OutDir)addons\shared_libs\temp_res' -Recurse -Force"
-
-:: 3. Download and extract Windower Lua Libs into windower/libs
-powershell -NonInteractive -NoProfile -Command "Write-Host 'Downloading windower libs...'; Invoke-WebRequest -Uri 'https://github.com/Windower/Lua/archive/refs/heads/dev.zip' -OutFile '$(OutDir)addons\windower\lua.zip'; Expand-Archive -Path '$(OutDir)addons\windower\lua.zip' -DestinationPath '$(OutDir)addons\windower\temp_lua' -Force; if (Test-Path '$(OutDir)addons\windower\libs') { Remove-Item '$(OutDir)addons\windower\libs' -Recurse -Force }; Move-Item -Path '$(OutDir)addons\windower\temp_lua\Lua-dev\addons\libs' -Destination '$(OutDir)addons\windower\' -Force; Remove-Item '$(OutDir)addons\windower\lua.zip' -Force; Remove-Item '$(OutDir)addons\windower\temp_lua' -Recurse -Force"
-
-exit 0</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
