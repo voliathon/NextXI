@@ -18,14 +18,15 @@
 #include <memory>
 #include <string>
 #include <stdio.h> // Required for our macro!
+#include <array>   // Added for std::array to satisfy bounds checking!
 
 // --- NEXTXI LOGGING MACRO ---
 #ifdef _DEBUG
 #define NEXTXI_LOG(format, ...) \
     { \
-        char buffer[512]; \
-        sprintf_s(buffer, "[NextXI-Telemetry] " format "\n", __VA_ARGS__); \
-        ::OutputDebugStringA(buffer); \
+        std::array<char, 512> buffer{}; \
+        sprintf_s(buffer.data(), buffer.size(), "[NextXI-Telemetry] " format "\n", __VA_ARGS__); \
+        ::OutputDebugStringA(buffer.data()); \
     }
 #else
 #define NEXTXI_LOG(format, ...) do {} while(0)
@@ -148,7 +149,8 @@ windower::direct_3d_device::~direct_3d_device()
         pPresentationParameters ? (int)pPresentationParameters->BackBufferHeight : -1,
         pPresentationParameters ? (int)pPresentationParameters->FullScreen_RefreshRateInHz : -1);
 
-    HRESULT hr = m_impl->Reset(pPresentationParameters);
+    // Marked as const per Core Guidelines
+    const HRESULT hr = m_impl->Reset(pPresentationParameters);
 
     NEXTXI_LOG("Reset() Result HRESULT: 0x%08X", hr);
 
@@ -178,7 +180,8 @@ windower::direct_3d_device::~direct_3d_device()
     if (target_hwnd)
     {
         static LONG last_style = 0;
-        LONG current_style = ::GetWindowLongW(target_hwnd, GWL_STYLE);
+        // Marked as const
+        const LONG current_style = ::GetWindowLongW(target_hwnd, GWL_STYLE);
 
         if (last_style != 0 && current_style != last_style)
         {
@@ -190,8 +193,9 @@ windower::direct_3d_device::~direct_3d_device()
         RECT r;
         if (::GetWindowRect(target_hwnd, &r))
         {
-            int w = r.right - r.left;
-            int h = r.bottom - r.top;
+            // Marked as const
+            const int w = r.right - r.left;
+            const int h = r.bottom - r.top;
             if (last_w != 0 && (w != last_w || h != last_h))
             {
                 NEXTXI_LOG("THIEF CAUGHT: Window Rect mutated from %dx%d to %dx%d!", last_w, last_h, w, h);
@@ -203,7 +207,6 @@ windower::direct_3d_device::~direct_3d_device()
 
     if (!g_imgui_initialized)
     {
-        // CAVEMAN FIX: Deleted the duplicate 'HWND target_hwnd =' declaration here!
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO(); (void)io;
