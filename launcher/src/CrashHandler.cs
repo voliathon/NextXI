@@ -112,7 +112,7 @@ namespace Windower
                 {
                     var signature = GetSignature(e.ExceptionObject);
                     var stackTrace = PrepareStackTrace(e.ExceptionObject);
-                    var dumpFile = Path.Combine(Path.GetTempPath(), "Windower", Guid.NewGuid() + ".dmp");
+                    var dumpFile = Path.Combine(Path.GetTempPath(), "NextXI", Guid.NewGuid() + ".dmp");
 
                     _ = Directory.CreateDirectory(Path.GetDirectoryName(dumpFile));
                     using (var stream = new FileStream(dumpFile, FileMode.Create))

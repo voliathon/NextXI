@@ -46,7 +46,8 @@ namespace Windower
                 return (null, null);
             }
 
-            var path = Path.Combine(Path.GetTempPath(), "Windower");
+            // Isolate NextXI crash reporter temp files!
+            var path = Path.Combine(Path.GetTempPath(), "NextXI");
             Directory.CreateDirectory(path);
 
             FileStream stream = null;

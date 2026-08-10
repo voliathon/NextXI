@@ -32,10 +32,12 @@ namespace Windower.Core
 
         private static HttpClient HttpClient => LazyHttpClient.Value;
 
+        //Severed the connection to Windower 5 servers. 
+        // Future NextXI core updates will point to our own GitHub releases.
 #if WINDOWER_RELEASE_BUILD
-        private const string updateUrl = "https://files.windower.net/5/core/release/";
+        private const string updateUrl = "https://github.com/voliathon/NextXI/releases/latest/download/";
 #else
-        private const string updateUrl = "https://files.windower.net/5/core/test/";
+        private const string updateUrl = "https://github.com/voliathon/NextXI/releases/download/test/";
 #endif
 
         public static string UserAgent => LazyUserAgent.Value;
