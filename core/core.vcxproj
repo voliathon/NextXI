@@ -85,6 +85,7 @@
     <ClInclude Include="src\addon\lua_internal.hpp" />
     <ClInclude Include="src\geometry.hpp" />
     <ClInclude Include="src\guid.hpp" />
+    <ClInclude Include="src\hooks\user32_internal.hpp" />
     <ClInclude Include="src\hooks\ws2_32.hpp" />
     <ClInclude Include="src\packet_queue.hpp" />
     <ClInclude Include="src\settings_channel.hpp" />
@@ -240,6 +241,9 @@
     <ClCompile Include="src\hooks\ffximain.cpp" />
     <ClCompile Include="src\hooks\imm32.cpp" />
     <ClCompile Include="src\hooks\advapi32.cpp" />
+    <ClCompile Include="src\hooks\user32_audio.cpp" />
+    <ClCompile Include="src\hooks\user32_input.cpp" />
+    <ClCompile Include="src\hooks\user32_window.cpp" />
     <ClCompile Include="src\library.cpp" />
     <ClCompile Include="src\lua_imgui.cpp" />
     <ClCompile Include="src\lua_window.cpp" />
@@ -304,6 +308,8 @@
     <ClCompile Include="src\utilities\xml.cpp" />
     <ClCompile Include="src\wrappers\direct_3d.cpp" />
     <ClCompile Include="src\wrappers\direct_3d_device.cpp" />
+    <ClCompile Include="src\wrappers\direct_3d_device_pipeline.cpp" />
+    <ClCompile Include="src\wrappers\direct_3d_device_resources.cpp" />
     <ClCompile Include="src\wrappers\direct_draw.cpp" />
     <ClCompile Include="src\wrappers\direct_draw_surface.cpp" />
     <ClCompile Include="src\wrappers\direct_input.cpp" />

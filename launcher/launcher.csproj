@@ -34,6 +34,8 @@
 
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'debug|AnyCPU' ">
     <DefineConstants>$(ReleaseConstants);DEBUG;TRACE</DefineConstants>
+    <!-- CAVEMAN FIX: FORCE C++ DEBUGGER TO ATTACH -->
+    <!-- <EnableUnmanagedDebugging>true</EnableUnmanagedDebugging> -->
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <UseVSHostingProcess>true</UseVSHostingProcess>
