@@ -173,7 +173,10 @@ void windower::package_manager::populate_installed_packages(
                 }
                 catch (std::exception const& e)
                 {
-                    core::error(u8"package manager", e);
+                    // Dynamically attach the exact failing directory path to the log component!
+                    std::u8string context = u8"package manager | ";
+                    context += entry.path().u8string();
+                    core::error(context, e);
                 }
             }
         }

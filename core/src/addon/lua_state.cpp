@@ -42,7 +42,25 @@ extern "C"
 
     static int error_handler(::lua_State* s) noexcept(false)
     {
+        // Let the internal engine save its own stack trace object
         windower::lua::unsafe::set_stack_trace(s);
+
+        // Actually format the error string for lua_pcall!
+        // If the error at the top of the stack is not a string, try to convert it.
+        char const* msg = ::lua_tostring(s, 1);
+        if (msg == nullptr) {
+            if (::luaL_callmeta(s, 1, "__tostring") && ::lua_type(s, -1) == LUA_TSTRING) {
+                return 1; // It successfully converted it to a string on top of the stack
+            }
+            else {
+                msg = lua_pushfstring(s, "(error object is a %s value)", ::luaL_typename(s, 1));
+            }
+        }
+
+        // Generate the standard C-API traceback and push it to the top of the stack!
+        ::luaL_traceback(s, s, msg, 1);
+
+        // Return 1 indicates the newly formatted traceback string is at the top of the stack
         return 1;
     }
 

@@ -2,6 +2,8 @@
 
 #include "addon/addon.hpp"
 #include "core.hpp"
+#include "errors/command_error.hpp"
+#include "command_manager.hpp"
 
 #include <algorithm>
 #include <iterator>
@@ -174,7 +176,8 @@ void windower::addon_manager::load(
     }
     catch (std::exception const& e)
     {
-        core::error(u8"addon manager", u8"Error loading addon: " + windower::to_u8string(e.what()));
+        // CAVEMAN FIX: Pass the entire exception object to core::error to trigger God-Tier formatting!
+        core::error(u8"addon manager", e);
 
         bool needs_purge = false;
 
@@ -202,7 +205,8 @@ void windower::addon_manager::load(
             command_manager::instance().purge();
         }
 
-        throw;
+        // CAVEMAN FIX: Chain the exception just like we did in command_manager.cpp!
+        std::throw_with_nested(windower::command_error{ u8"ADDON_LOAD_FAILED", u8"addon_manager::load failed" });
     }
 }
 

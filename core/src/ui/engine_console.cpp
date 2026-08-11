@@ -281,6 +281,10 @@ namespace windower::ui
                             push_log(u8" //unload <addon>    : Unloads an addon.");
                         }
                         else {
+                            // Echo the command to the console BEFORE executing it!
+                            std::u8string const echo_msg = u8"> Executing: " + cmd_str;
+                            push_log(echo_msg);
+
                             core::instance().run_on_next_frame([cmd = cmd_str]() {
                                 command_manager::instance().handle_command(cmd, command_source::console);
                                 });
@@ -330,9 +334,9 @@ namespace windower::ui
                 line.find(u8"aborted") != std::u8string::npos ||
                 line.find(u8"failed") != std::u8string::npos)
             {
-                // Disable auto-popup! 
-                // Let errors log quietly in the background without interrupting the player.
-                // s_force_open = true; 
+                // Force the UI to open and switch immediately to the Console tab on error!
+                s_force_open = true;
+                g_focus_console_tab = true;
             }
 
             s_log_buffer.emplace_back(std::move(line));
