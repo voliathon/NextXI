@@ -96,31 +96,26 @@ function captionlog(msg, msgcolor, ...)
 end
 
 function log(...)
-    -- CAVEMAN FIX: Nil safety check!
+    -- Nil safety check!
     captionlog(nil, logger.settings and logger.settings.logcolor or 207, ...)
 end
 
 _raw.error = error
-function error(...)
-    -- CAVEMAN FIX: Nil safety check!
-    captionlog('Error', logger.settings and logger.settings.errorcolor or 167, ...)
-    _raw.error(arrstring(...), 2)
-end
 
 function warning(...)
-    -- CAVEMAN FIX: Nil safety check!
+    -- Nil safety check!
     captionlog('Warning', logger.settings and logger.settings.warningcolor or 200, ...)
 end
 
 function notice(...)
-    -- CAVEMAN FIX: Nil safety check!
+    -- Nil safety check!
     captionlog('Notice', logger.settings and logger.settings.noticecolor or 160, ...)
 end
 
 -- Prints the arguments provided to a file, analogous to log(...) in functionality.
 -- If the first argument ends with '.log', it will print to that output file, otherwise to 'lua.log' in the addon directory.
 function flog(filename, ...)
-    -- CAVEMAN FIX: Nil safety check!
+    -- Nil safety check!
     filename = filename or (logger.settings and logger.settings.defaultfile or 'lua.log')
 
     local fh, err = io.open(windower.addon_path..filename, 'a')
