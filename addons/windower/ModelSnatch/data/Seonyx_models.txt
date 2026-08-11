@@ -1,0 +1,11 @@
+-- Model Data for Seonyx
+Race: 2
+Face: 3
+Head: 388   -- Flam. Zucchetto +2
+Body: 491   -- Hjarrandi Breast.
+Hands: 491   -- Sakpata's Gauntlets
+Legs: 491   -- Volte Tights
+Feet: 491   -- Sworn Sabatons
+Main: 924   -- Foenaria
+Sub: 0     -- Utu Grip
+Ranged: 0     -- (Unknown/Not Examined)

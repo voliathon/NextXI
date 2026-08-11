@@ -1,0 +1,11 @@
+-- Model Data for Rhoena
+Race: 2
+Face: 3
+Head: 282   -- Boii Mask +3
+Body: 231   -- Boii Lorica +3
+Hands: 234   -- Sakpata's Gauntlets
+Legs: 200   -- Pumm. Cuisses +4
+Feet: 200   -- Pumm. Calligae +4
+Main: 448   -- Chango
+Sub: 0     -- Utu Grip
+Ranged: 0     -- (Unknown/Not Examined)

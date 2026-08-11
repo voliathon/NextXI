@@ -1,0 +1,10 @@
+<package>
+  <name>status_effects_service</name>
+  <version>2.0.0.0</version>
+  <type>service</type>
+  <dependencies>
+    <dependency>packet</dependency>
+    <dependency>shared</dependency>
+    <dependency>struct</dependency>
+  </dependencies>
+</package>

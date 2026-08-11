@@ -1,0 +1,11 @@
+-- Model Data for Vycera
+Race: 2
+Face: 4
+Head: 388   -- Null Masque
+Body: 490   -- Makora Meikogai
+Hands: 490   -- Sakpata's Gauntlets
+Legs: 490   -- Sakpata's Cuisses
+Feet: 490   -- Sakpata's Leggings
+Main: 911   -- Laphria non ag
+Sub: 0     -- Utu Grip
+Ranged: 0     -- (Unknown/Not Examined)

@@ -1,0 +1,11 @@
+-- Model Data for Zedoma
+Race: 8
+Face: 9
+Head: 174   -- Null Masque
+Body: 189   -- Azimuth Coat +3
+Hands: 201   -- Bagua Mitaines +4
+Legs: 201   -- Nyame Flanchard
+Feet: 201   -- Azimuth Gaiters +3
+Main: 775   -- Hedron Dagger
+Sub: 676   -- Genmei Shield
+Ranged: 121   -- Dunna

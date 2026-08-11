@@ -1,0 +1,11 @@
+-- Model Data for Zedoma
+Race: 8
+Face: 9
+Head: 174   -- Null Masque
+Body: 189   -- Sakpata's Plate
+Hands: 201   -- Sakpata's Gauntlets
+Legs: 201   -- Sakpata's Cuisses
+Feet: 201   -- Sakpata's Leggings
+Main: 254   -- Burtgang
+Sub: 676   -- Ochain
+Ranged: 0     -- (Unknown/Not Examined)
