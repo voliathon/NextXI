@@ -1,5 +1,24 @@
 --[[
     Functions that facilitate loading, parsing, manipulating and storing of config files.
+
+	This library provides a set of functions to aid in debugging.
+
+	Copyright © 2026, NextXI Contributors
+	Copyright © 2013-2015, Windower
+	All rights reserved.
+
+	Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+	* Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+	* Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the 
+	  documentation and/or other materials provided with the distribution.
+	* Neither the name of Windower nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, 
+	BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT 
+	SHALL Windower BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES 
+	(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
+	HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+	ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ]]
 
 _libs = _libs or {}
@@ -18,9 +37,20 @@ local config = {}
 
 _libs.config = config
 
-local error = error or print+{'Error:'}
-local warning = warning or print+{'Warning:'}
-local notice = notice or print+{'Notice:'}
+-- Removed illegal `print+{...}` table-addition currying!
+local function make_printer(prefix)
+    return function(...)
+        if _libs.logger and _libs.logger[prefix:lower():sub(1, -2)] then
+            _libs.logger[prefix:lower():sub(1, -2)](...)
+        else
+            print(prefix, ...)
+        end
+    end
+end
+
+local error = error or make_printer('Error:')
+local warning = warning or make_printer('Warning:')
+local notice = notice or make_printer('Notice:')
 local log = log or print
 
 -- Map for different config loads.
@@ -167,7 +197,13 @@ function merge(t, t_merge, path)
             local oldtype = type(oldval)
 
             if oldtype == 'table' and type(val) == 'table' then
-                t[key] = merge(oldval, val, path and path:copy() + key or nil)
+                -- Use explicit table insertion instead of assuming + operator works!
+                local newpath = nil
+                if path then
+                    newpath = path:copy()
+                    table.insert(newpath, key)
+                end
+                t[key] = merge(oldval, val, newpath)
 
             elseif oldtype ~= type(val) then
                 if oldtype == 'table' then
@@ -256,7 +292,8 @@ function merge(t, t_merge, path)
 
             if err then
                 if path then
-                    warning('Could not safely merge values for \'%s/%s\', %s expected (default: %s), got %s (%s).':format(path:concat('/'), key, class(oldval), tostring(oldval), class(val), tostring(val)))
+                    -- Use standard string formatting!
+                    warning(string.format('Could not safely merge values for \'%s/%s\', %s expected (default: %s), got %s (%s).', path:concat('/'), key, class(oldval), tostring(oldval), class(val), tostring(val)))
                 end
                 t[key] = val
             end
@@ -308,7 +345,7 @@ function settings_table(node, settings, key, meta)
 
     for child in node.children:it() do
         if child.type == 'comment' then
-            meta.comments[key] = child.value:trim()
+            meta.comments[key] = string.trim(child.value)
         elseif child.type == 'tag' then
             key = child.name:lower()
             local childdict
@@ -402,17 +439,20 @@ function settings_xml(meta)
     for char in (L{'global'} + chars):it() do
         if char == 'global' and meta.comments.settings then
             lines:append('    <!--')
-            local comment_lines = meta.comments.settings:split('\n')
+            -- Use standard string library split!
+            local comment_lines = string.split(meta.comments.settings, '\n')
             for comment in comment_lines:it() do
-                lines:append('        %s':format(comment:trim()))
+                -- Standard string format!
+                lines:append(string.format('        %s', string.trim(comment)))
             end
 
             lines:append('    -->')
         end
 
-        lines:append('    <%s>':format(char))
+        -- Standard string format!
+        lines:append(string.format('    <%s>', char))
         lines:append(nest_xml(meta.original[char], meta))
-        lines:append('    </%s>':format(char))
+        lines:append(string.format('    </%s>', char))
     end
 
     lines:append('</settings>')
@@ -433,17 +473,18 @@ function nest_xml(t, meta, indentlevel)
     for _, key in ipairs(keys) do
         val = t[key]
         if type(val) == 'table' and not (class(val) == 'List' or class(val) == 'Set') then
-            fragments:append('%s<%s>':format(indent, key))
+            -- Standard string format!
+            fragments:append(string.format('%s<%s>', indent, key))
             if meta.comments[key] then
-                local c = '<!-- %s -->':format(meta.comments[key]:trim()):split('\n')
+                local c = string.split(string.format('<!-- %s -->', string.trim(meta.comments[key])), '\n')
                 local pre = ''
                 for cstr in c:it() do
-                    fragments:append('%s%s%s':format(indent, pre, cstr:trim()))
+                    fragments:append(string.format('%s%s%s', indent, pre, string.trim(cstr)))
                     pre = '\t '
                 end
             end
             fragments:append(nest_xml(val, meta, indentlevel + 1))
-            fragments:append('%s</%s>':format(indent, key))
+            fragments:append(string.format('%s</%s>', indent, key))
 
         else
             if class(val) == 'List' then
@@ -453,17 +494,17 @@ function nest_xml(t, meta, indentlevel)
             elseif type(val) == 'table' then
                 val = table.format(val, 'csv')
             elseif type(val) == 'string' and meta.cdata:contains(tostring(key):lower()) then
-                val = '<![CDATA[%s]]>':format(val)
+                val = string.format('<![CDATA[%s]]>', val)
             else
                 val = tostring(val)
             end
 
             if val == '' then
-                fragments:append('%s<%s />':format(indent, key))
+                fragments:append(string.format('%s<%s />', indent, key))
             else
-                fragments:append('%s<%s>%s</%s>':format(indent, key, meta.cdata:contains(tostring(key):lower()) and val or val:xml_escape(), key))
+                fragments:append(string.format('%s<%s>%s</%s>', indent, key, meta.cdata:contains(tostring(key):lower()) and val or string.xml_escape(val), key))
             end
-            local length = fragments:last():length() - indent:length()
+            local length = string.length(fragments:last()) - string.length(indent)
             if length > maxlength then
                 maxlength = length
             end
@@ -473,7 +514,8 @@ function nest_xml(t, meta, indentlevel)
 
     for frag_key, key in pairs(inlines) do
         if meta.comments[key] then
-            fragments[frag_key] = '%s%s<!-- %s -->':format(fragments[frag_key], ' ':rep(maxlength - fragments[frag_key]:trim():length() + 1), meta.comments[key])
+            -- Standard string format!
+            fragments[frag_key] = string.format('%s%s<!-- %s -->', fragments[frag_key], string.rep(' ', maxlength - string.length(string.trim(fragments[frag_key])) + 1), meta.comments[key])
         end
     end
 
@@ -498,16 +540,3 @@ windower.register_event('load', 'logout', 'login', function()
 end)
 
 return config
-
---[[
-Copyright © 2013-2015, Windower
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
-
-    * Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
-    * Neither the name of Windower nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Windower BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-]]
