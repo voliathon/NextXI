@@ -1,6 +1,24 @@
 --[[
 This library provides a set of functions to aid in debugging.
+
+Copyright © 2026, NextXI Contributors
+Copyright © 2013-2015, Windower
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+* Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+* Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the 
+  documentation and/or other materials provided with the distribution.
+* Neither the name of Windower nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, 
+BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT 
+SHALL Windower BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES 
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ]]
+
 
 _libs = _libs or {}
 
@@ -80,6 +98,8 @@ end
 _raw.error = error
 function error(...)
     captionlog('Error', logger.settings.errorcolor, ...)
+    -- CAVEMAN FIX: Actually throw the error so LuaJIT doesn't panic!
+    _raw.error(arrstring(...), 2)
 end
 
 function warning(...)
@@ -114,12 +134,13 @@ function table.tostring(t)
         return '{}'
     end
 
-    keys = keys or false
+    -- CAVEMAN FIX: Localized variables to prevent global engine pollution!
+    local keys = keys or false
 
     -- Iterate over table.
     local tstr = ''
     local kt = {}
-    k = 0
+    local k = 0
     for key in pairs(t) do
         k = k + 1
         kt[k] = key
@@ -135,7 +156,10 @@ function table.tostring(t)
     end)
 
     for i, key in ipairs(kt) do
-        val = t[key]
+        -- CAVEMAN FIX: Localized val and valstr!
+        local val = t[key]
+        local valstr
+        
         -- Check for nested tables
         if type(val) == 'table' then
             if val.tostring then
@@ -190,13 +214,14 @@ function table.tovstring(t, keys, indentlevel)
         return '{}'
     end
 
-    indentlevel = indentlevel or 0
-    keys = keys or false
+    -- CAVEMAN FIX: Localized variables to prevent global engine pollution!
+    local indentlevel = indentlevel or 0
+    local keys = keys or false
 
     local indent = (' '):rep(indentlevel*4)
     local tstr = '{\n'
     local kt = {}
-    k = 0
+    local k = 0
     for key in pairs(t) do
         k = k + 1
         kt[k] = key
@@ -206,7 +231,8 @@ function table.tovstring(t, keys, indentlevel)
     end)
 
     for i, key in pairs(kt) do
-        val = t[key]
+        -- CAVEMAN FIX: Localized val!
+        local val = t[key]
         
         local function sanitize(val)
             local ret
@@ -217,6 +243,9 @@ function table.tovstring(t, keys, indentlevel)
             end
             return ret
         end
+        
+        -- CAVEMAN FIX: Localized valstr!
+        local valstr
         
         -- Check for nested tables
         if type(val) == 'table' then
@@ -266,16 +295,3 @@ local config = require('config')
 logger.settings = config.load('../libs/logger.xml', logger.defaults)
 
 return logger
-
---[[
-Copyright © 2013-2014, Windower
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
-
-    * Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
-    * Neither the name of Windower nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Windower BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-]]

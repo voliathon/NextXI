@@ -98,28 +98,6 @@ extern "C" char const* get_package_readme_ffi(char const* pkg_name)
     return content.c_str();
 }
 
-extern "C" char const* get_ffxi_player_ffi()
-{
-    static std::string player_json = 
-        "{ \"name\": \"NextXIPlayer\", \"hp\": 1000, \"mp\": 500, \"tp\": 3000, "
-        "\"main_job_id\": 1, \"main_job_level\": 99, \"sub_job_id\": 4, \"sub_job_level\": 49 }";
-    return player_json.c_str();
-}
-
-extern "C" char const* get_ffxi_items_ffi()
-{
-    static std::string items_json = 
-        "{ \"inventory\": [ { \"id\": 4100, \"count\": 1 }, { \"id\": 4101, \"count\": 99 } ], "
-        "\"equipment\": { \"main\": 4100, \"sub\": 0 } }";
-    return items_json.c_str();
-}
-
-extern "C" char const* get_ffxi_spells_ffi()
-{
-    static std::string spells_json = "[ 1, 2, 3, 4, 5 ]";
-    return spells_json.c_str();
-}
-
 struct entity_slot_t
 {
     uint32_t id;
@@ -140,19 +118,19 @@ struct ffxi_entity_memory
 };
 #pragma pack(pop)
 
+// --- CAVEMAN FIX: DYNAMIC MEMORY SCANNER & LOGIN HEURISTIC ---
+static void** g_entity_array_ptr = nullptr;
+static bool g_scanned_entities = false;
+
 // Suppress pointer arithmetic warnings required to read arbitrary offsets
 [[gsl::suppress("bounds.1"), gsl::suppress("type.1")]]
 static void** seh_resolve_entity_ptr(void* const match_addr) noexcept
 {
-    if (!match_addr)
-    {
-        return nullptr;
-    }
+    if (!match_addr) return nullptr;
 
     void** out = nullptr;
     __try
     {
-        // Use memcpy instead of dereferencing a casted pointer
         auto const* const ptr = static_cast<std::byte const*>(match_addr) + 9;
         std::memcpy(&out, ptr, sizeof(void**));
     }
@@ -163,6 +141,7 @@ static void** seh_resolve_entity_ptr(void* const match_addr) noexcept
     return out;
 }
 
+[[gsl::suppress("bounds.3")]]
 static bool seh_read_entity_slot(void** const arr, int const idx, gsl::not_null<entity_slot_t*> const out) noexcept
 {
     if (!arr) return false;
@@ -174,30 +153,25 @@ static bool seh_read_entity_slot(void** const arr, int const idx, gsl::not_null<
         if (!ent) return false;
 
         auto const* const mem = static_cast<ffxi_entity_memory const*>(ent);
-        if (!mem) return false; // Fixes f.23
+        if (!mem) return false;
 
         out->id = mem->id;
         if (out->id == 0) return false;
 
-        std::span<char, 24> out_name_span{ out->name };
+        // Added const, explicitly passed pointers to avoid array decay
+        std::span<char, 24> const out_name_span{ &out->name[0], 24 };
         std::fill(out_name_span.begin(), out_name_span.end(), '\0');
-
-        std::span<char const, 23> const in_name_span{ mem->name, 23 };
+        std::span<char const, 23> const in_name_span{ &mem->name[0], 23 };
 
         for (std::size_t j = 0; j < 23; ++j)
         {
             auto const ch = gsl::at(in_name_span, j);
             if (ch == '\0') break;
 
-            auto const uch = static_cast<unsigned char>(ch);
-            if (uch < 0x20 || uch == '"' || uch == '\\')
-            {
-                gsl::at(out_name_span, j) = '?';
-            }
-            else
-            {
-                gsl::at(out_name_span, j) = ch;
-            }
+            // Single, upgraded declaration
+            auto const uch = gsl::narrow_cast<unsigned char>(ch);
+            if (uch < 0x20 || uch == '"' || uch == '\\') { gsl::at(out_name_span, j) = '?'; }
+            else { gsl::at(out_name_span, j) = ch; }
         }
 
         if (gsl::at(out_name_span, 0) == '\0') return false;
@@ -205,7 +179,6 @@ static bool seh_read_entity_slot(void** const arr, int const idx, gsl::not_null<
         out->x = mem->x;
         out->z = mem->z;
         out->y = mem->y;
-
         if (out->x != out->x || out->y != out->y || out->z != out->z) return false;
 
         return true;
@@ -216,43 +189,100 @@ static bool seh_read_entity_slot(void** const arr, int const idx, gsl::not_null<
     }
 }
 
-extern "C" char const* get_ffxi_entities_ffi()
+static void scan_entities_if_needed()
 {
-    static std::string entities_json;
-    static void** entity_array_ptr = nullptr;
-    static bool scanned = false;
-
-    if (!scanned && ::GetModuleHandleW(L"FFXiMain.dll"))
+    if (!g_scanned_entities && ::GetModuleHandleW(L"FFXiMain.dll"))
     {
-        scanned = true;
+        g_scanned_entities = true;
         windower::signature const sig{ u8"8B560C8B042A8B0485" };
         auto results = windower::scan<1>(u8"FFXiMain.dll", sig);
-
-        // Fix bounds.4 by using gsl::at
         if (results.size() > 0 && gsl::at(results, 0))
         {
-            entity_array_ptr = seh_resolve_entity_ptr(static_cast<void*>(gsl::at(results, 0)));
-            if (!entity_array_ptr) scanned = false;
+            g_entity_array_ptr = seh_resolve_entity_ptr(static_cast<void*>(gsl::at(results, 0)));
+            if (!g_entity_array_ptr) g_scanned_entities = false;
+        }
+    }
+}
+
+extern "C" char const* get_ffxi_player_ffi()
+{
+    scan_entities_if_needed();
+    if (g_entity_array_ptr)
+    {
+        entity_slot_t slot;
+
+        // 1. Try the standard Local Player indices first (1024 and 0)
+        int const primary_indices[] = { 1024, 0 };
+        for (int idx : primary_indices)
+        {
+            if (seh_read_entity_slot(g_entity_array_ptr, idx, &slot))
+            {
+                static std::string player_json;
+                player_json = "{ \"name\": \"";
+                player_json += slot.name;
+                player_json += "\", \"hp\": 1000, \"mp\": 500, \"tp\": 3000, "
+                    "\"main_job_id\": 1, \"main_job_level\": 99, \"sub_job_id\": 4, \"sub_job_level\": 49 }";
+                return player_json.c_str();
+            }
+        }
+
+        // 2. FALLBACK: If 1024 and 0 are empty, scan the entire array!
+        // If we find ANY valid entity, we are officially in-game. Unlock the Control Center!
+        for (int i = 1; i < 2304; ++i)
+        {
+            if (i == 1024) continue;
+            if (seh_read_entity_slot(g_entity_array_ptr, i, &slot))
+            {
+                static std::string player_json;
+                player_json = "{ \"name\": \"";
+                player_json += slot.name;
+                player_json += "\", \"hp\": 1000, \"mp\": 500, \"tp\": 3000, "
+                    "\"main_job_id\": 1, \"main_job_level\": 99, \"sub_job_id\": 4, \"sub_job_level\": 49 }";
+                return player_json.c_str();
+            }
         }
     }
 
+    // 3. If FFXiMain isn't loaded, or the entity array is totally empty,
+    // we are in POL or Character Select. Return nullptr to strictly HIDE the UI!
+    return nullptr;
+}
+
+extern "C" char const* get_ffxi_items_ffi()
+{
+    static std::string items_json =
+        "{ \"inventory\": [ { \"id\": 4100, \"count\": 1 }, { \"id\": 4101, \"count\": 99 } ], "
+        "\"equipment\": { \"main\": 4100, \"sub\": 0 } }";
+    return items_json.c_str();
+}
+
+extern "C" char const* get_ffxi_spells_ffi()
+{
+    static std::string spells_json = "[ 1, 2, 3, 4, 5 ]";
+    return spells_json.c_str();
+}
+
+extern "C" char const* get_ffxi_entities_ffi()
+{
+    scan_entities_if_needed();
+    static std::string entities_json;
     entities_json = "[";
 
-    if (entity_array_ptr)
+    if (g_entity_array_ptr)
     {
         bool first = true;
         entity_slot_t slot;
 
         for (int i = 0; i < 2304; ++i)
         {
-            if (!seh_read_entity_slot(entity_array_ptr, i, &slot)) continue;
+            if (!seh_read_entity_slot(g_entity_array_ptr, i, &slot)) continue;
 
             if (!first) entities_json += ",";
             first = false;
 
-            // Fix bounds.3 (array decay) by using std::array and .data()
             std::array<char, 256> buffer{};
-            std::span<char const> const name_span{ slot.name };
+            // Explicit pointer prevents bounds.3 array-to-pointer decay
+            std::span<char const> const name_span{ &slot.name[0], 24 };
 
             std::snprintf(buffer.data(), buffer.size(),
                 "{\"id\":%u,\"name\":\"%s\",\"x\":%.2f,\"y\":%.2f,\"z\":%.2f,\"target_id\":0}",

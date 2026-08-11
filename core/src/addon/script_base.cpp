@@ -23,6 +23,8 @@
 #include "errors/windower_error.hpp"
 #include "library.hpp"
 
+#include "utilities/paths.hpp"
+
 #include <windows.h>
 
 #include <lua.hpp>
@@ -85,15 +87,15 @@ int load_external_module(windower::lua::state s)
 {
     using namespace windower;
 
-    auto name_buffer         = lua::get<std::u8string>(s, 1);
-    auto name                = std::u8string_view{name_buffer};
+    auto name_buffer = lua::get<std::u8string>(s, 1);
+    auto name = std::u8string_view{ name_buffer };
     auto const delimiter_pos = name.find(u8':');
 
     std::u8string_view package_name;
     if (delimiter_pos != std::string::npos)
     {
         package_name = name.substr(0, delimiter_pos);
-        name         = name.substr(delimiter_pos + 1);
+        name = name.substr(delimiter_pos + 1);
     }
     else
     {
@@ -110,54 +112,63 @@ int load_external_module(windower::lua::state s)
     }
     file_name += u8".lua";
 
-    lua::stack_guard guard{s};
+    lua::stack_guard guard{ s };
 
     auto const* base = script_base::get_script_base(s);
     if (!base)
     {
-        throw windower_error{u8"INT:1"};
+        throw windower_error{ u8"INT:1" };
     }
 
+    // --- GLOBAL LIBRARY FALLBACK ---
+    // First, try standard dependency graph resolution
     try
     {
         auto dependency = base->find_dependency(s, package_name);
-        if (!dependency)
+        if (dependency && dependency->type() == package_type::library)
         {
-            std::u8string error_message;
-            error_message.append(u8"\n    '");
-            error_message.append(package_name);
-            error_message.append(u8"' package not found");
-            lua::push(guard, error_message);
+            auto stream = dependency->resolve(file_name);
+            std::u8string chunk_name;
+            chunk_name.append(1, u8'@');
+            chunk_name.append(package_name);
+            chunk_name.append(1, u8':');
+            chunk_name.append(file_name.u8string());
+            lua::load(guard, stream, chunk_name);
             return guard.release();
         }
-
-        if (dependency->type() != package_type::library)
-        {
-            std::u8string error_message;
-            error_message.append(u8"\n    '");
-            error_message.append(package_name);
-            error_message.append(u8"' is not a library package");
-            lua::push(guard, error_message);
-            return guard.release();
-        }
-
-        auto stream = dependency->resolve(file_name);
-        std::u8string chunk_name;
-        chunk_name.append(1, u8'@');
-        chunk_name.append(package_name);
-        chunk_name.append(1, u8':');
-        chunk_name.append(file_name.u8string());
-        lua::load(guard, stream, chunk_name);
     }
-    catch (package_error const& e)
+    catch (package_error const&)
+    {
+        // Dependency graph failed, fall back to global scan
+    }
+
+    // Scan legacy and global library folders manually for loose .lua files
+    std::filesystem::path const paths[3] = {
+        windower::settings_path() / u8"addons" / u8"shared_libs" / file_name,
+        windower::settings_path() / u8"addons" / u8"windower" / u8"libs" / file_name,
+        windower::settings_path() / u8"addons" / u8"nextxi" / u8"libs" / file_name
+    };
+
+    bool loaded = false;
+    for (auto const& p : paths)
+    {
+        if (auto flat = std::ifstream{ p, std::ios::binary }; flat.is_open())
+        {
+            lua::load(guard, flat, u8"@" + p.u8string());
+            loaded = true;
+            break;
+        }
+    }
+
+    if (!loaded)
     {
         std::u8string error_message;
-        error_message.append(u8"\n    [");
-        error_message.append(e.error_code());
-        error_message.append(u8"] ");
-        error_message.append(e.message());
+        error_message.append(u8"\n    '");
+        error_message.append(package_name);
+        error_message.append(u8"' package or library not found");
         lua::push(guard, error_message);
     }
+
     return guard.release();
 }
 

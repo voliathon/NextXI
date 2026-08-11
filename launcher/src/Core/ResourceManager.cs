@@ -25,6 +25,7 @@ namespace Windower.Core
         private static readonly SyncTarget[] SyncTargets = new[]
         {
             // 1. addons/shared_libs -> Windower/Resources (master)
+            // Untouched. Pulls latest FFXI resource data from the community.
             new SyncTarget
             {
                 TreeUrl = "https://api.github.com/repos/Windower/Resources/git/trees/master?recursive=1",
@@ -33,21 +34,25 @@ namespace Windower.Core
                 LocalRelativeDir = "shared_libs",
                 StatusEnum = LaunchStatus.UpdatingSharedLibs
             },
-            // 2. addons/windower/libs -> Windower/Lua (dev)
+            
+            // 2. addons/windower/libs -> voliathon/NextXI (dev)
+            // Pulls from your personal repository's windower libs folder.
             new SyncTarget
             {
-                TreeUrl = "https://api.github.com/repos/Windower/Lua/git/trees/dev?recursive=1",
-                RawBaseUrl = "https://raw.githubusercontent.com/Windower/Lua/dev/",
-                RepoPathPrefix = "addons/libs/",
+                TreeUrl = "https://api.github.com/repos/voliathon/NextXI/git/trees/dev?recursive=1",
+                RawBaseUrl = "https://raw.githubusercontent.com/voliathon/NextXI/dev/",
+                RepoPathPrefix = "addons/windower/libs/",
                 LocalRelativeDir = @"windower\libs",
                 StatusEnum = LaunchStatus.UpdatingWindowerLibs
             },
-            // 3. addons/nextxi/libs -> Windower/packages (master)
+            
+            // 3. addons/nextxi/libs -> voliathon/NextXI (dev)
+            // Pulls from your personal repository's nextxi libs folder.
             new SyncTarget
             {
-                TreeUrl = "https://api.github.com/repos/Windower/packages/git/trees/master?recursive=1",
-                RawBaseUrl = "https://raw.githubusercontent.com/Windower/packages/master/",
-                RepoPathPrefix = "libraries/",
+                TreeUrl = "https://api.github.com/repos/voliathon/NextXI/git/trees/dev?recursive=1",
+                RawBaseUrl = "https://raw.githubusercontent.com/voliathon/NextXI/dev/",
+                RepoPathPrefix = "addons/nextxi/libs/",
                 LocalRelativeDir = @"nextxi\libs",
                 StatusEnum = LaunchStatus.UpdatingNextXILibs
             }

@@ -10,6 +10,7 @@
 #include <gsl/gsl>
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+extern "C" char const* get_ffxi_player_ffi();
 
 namespace windower::ui
 {
@@ -93,6 +94,33 @@ namespace windower::ui
 
     void engine_console::render(context& /*ctx*/) noexcept
     {
+        // BULLETPROOF LOGIN HEURISTIC ---
+        // Instead of fragile memory scans, we check if FFXiMain.dll is loaded.
+        // Once it loads, we enforce a strict 15-second "breathing room" delay 
+        // to get past the black screens and Character Select before the UI unlocks!
+        static auto ffx_main_load_time = std::chrono::steady_clock::time_point::min();
+        if (::GetModuleHandleW(L"FFXiMain.dll"))
+        {
+            if (ffx_main_load_time == std::chrono::steady_clock::time_point::min()) {
+                ffx_main_load_time = std::chrono::steady_clock::now();
+            }
+            if (std::chrono::steady_clock::now() - ffx_main_load_time < std::chrono::seconds(15)) {
+                m_visible = false;
+                m_was_visible = false;
+                s_force_open = false;
+                return;
+            }
+        }
+        else
+        {
+            // FFXiMain isn't loaded at all. We are in PlayOnline Viewer. Lock it down!
+            m_visible = false;
+            m_was_visible = false;
+            s_force_open = false;
+            return;
+        }
+        // ------------------------------------------------
+
         // 1. DRAIN MSG VAULT
         {
             std::lock_guard<std::mutex> lock(m_msg_mutex);
@@ -185,21 +213,38 @@ namespace windower::ui
                             s_log_buffer.clear();
                         }
                         else if (cmd_str == u8"export") {
-                            // Quick export logic
-                            auto export_path = core::instance().settings.user_path.parent_path() / "console_export.txt";
-                            std::lock_guard<std::mutex> lock{ g_console_mutex };
-                            std::error_code ec;
-                            std::filesystem::create_directories(export_path.parent_path(), ec);
-                            std::ofstream out(export_path, std::ios::binary);
-                            if (out) {
-                                for (auto const& line : s_log_buffer) {
-                                    out.write(reinterpret_cast<char const*>(line.data()), line.size());
-                                    out.write("\r\n", 2);
+                            // CAVEMAN FIX: Safe Console Export without Mutex Deadlocks!
+                            try
+                            {
+                                auto export_dir = core::instance().settings.user_path / "NextXI_Logs";
+                                std::filesystem::create_directories(export_dir);
+                                auto export_path = export_dir / "console_export.txt";
+
+                                bool success = false;
+                                {
+                                    // SCOPE 1: Lock the buffer only while we read from it!
+                                    std::lock_guard<std::mutex> lock{ g_console_mutex };
+                                    std::ofstream out(export_path, std::ios::binary);
+                                    if (out) {
+                                        for (auto const& line : s_log_buffer) {
+                                            out.write(reinterpret_cast<char const*>(line.data()), line.size());
+                                            out.write("\r\n", 2);
+                                        }
+                                        success = true;
+                                    }
+                                } // g_console_mutex UNLOCKS HERE!
+
+                                // SCOPE 2: Now we can safely call push_log without double-locking!
+                                if (success) {
+                                    push_log(u8"--- Exported to: " + export_path.u8string() + u8" ---");
                                 }
-                                push_log(u8"--- Exported to: " + export_path.u8string() + u8" ---");
+                                else {
+                                    push_log(u8"--- ERROR: Failed to write export file ---");
+                                }
                             }
-                            else {
-                                push_log(u8"--- ERROR: Failed to write export file ---");
+                            catch (std::exception const& e)
+                            {
+                                push_log(u8"--- EXCEPTION: Failed to create export directory ---");
                             }
                         }
                         else if (cmd_str == u8"addons") {
@@ -285,7 +330,9 @@ namespace windower::ui
                 line.find(u8"aborted") != std::u8string::npos ||
                 line.find(u8"failed") != std::u8string::npos)
             {
-                s_force_open = true;
+                // Disable auto-popup! 
+                // Let errors log quietly in the background without interrupting the player.
+                // s_force_open = true; 
             }
 
             s_log_buffer.emplace_back(std::move(line));

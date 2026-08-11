@@ -134,7 +134,13 @@ void windower::addon_manager::raise_error(
 {
     auto const& name = package->name();
     core::error(name, exception);
-    unload({name});
+
+    // Prevent Iterator Invalidation Hard Crash!
+    // Defer unloading the addon to the next frame. If we unload it now,
+    // the command_manager will purge the handler list while we are iterating it!
+    core::instance().run_on_next_frame([name]() {
+        core::instance().addon_manager->unload({ name });
+        });
 }
 
 void windower::addon_manager::load(

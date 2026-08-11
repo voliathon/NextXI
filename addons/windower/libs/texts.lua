@@ -1,6 +1,23 @@
 --[[
     A library to facilitate text primitive creation and manipulation.
-]]
+
+	Copyright © 2026, NextXI Contributors
+	Copyright © 2013-2015, Windower
+	All rights reserved.
+
+	Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+	* Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+	* Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the 
+	  documentation and/or other materials provided with the distribution.
+	* Neither the name of Windower nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, 
+	BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT 
+	SHALL Windower BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES 
+	(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
+	HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+	ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+]]	
 
 local table = require('table')
 local math = require('math')
@@ -178,7 +195,8 @@ function texts.new(str, settings, root_settings)
     local t = {}
     local m = {}
     meta[t] = m
-    m.name = (_addon and _addon.name or 'text') .. '_gensym_' .. tostring(t):sub(8) .. ('_%.8X'):format(16^8 * math.random()):sub(3)
+    -- Standard string.format!
+    m.name = (_addon and _addon.name or 'text') .. '_gensym_' .. tostring(t):sub(8) .. string.format('_%.8X', 16^8 * math.random()):sub(3)
     t._name = m.name
     m.settings = settings or {}
     m.status = m.status or {visible = false, text = {}}
@@ -269,7 +287,8 @@ function texts.append(t, str)
     local index = #m.textorder + 1
     while i <= #str do
         local startpos, endpos = str:find('%${.-}', i)
-        local rndname = ('%s_%u'):format(m.name, index)
+        -- Standard string.format!
+        local rndname = string.format('%s_%u', m.name, index)
         if startpos then
             -- Match before the tag
             local match = str:sub(i, startpos - 1)
@@ -667,7 +686,8 @@ end)
 -- Can define functions to execute every time the settings are reloaded
 function texts.register_event(t, key, fn)
     if not events[key] then
-        error(('Event %s not available for text objects.'):format(key))
+        -- Standard string.format!
+        error(string.format('Event %s not available for text objects.', key))
         return
     end
 
@@ -704,16 +724,3 @@ function texts.unregister_event(t, key, fn)
 end
 
 return texts
-
---[[
-Copyright © 2013-2015, Windower
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
-
-    * Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
-    * Neither the name of Windower nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Windower BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-]]

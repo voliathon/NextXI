@@ -1,5 +1,20 @@
 --[[
-    Adds some tools for functional programming. Amends various other namespaces by functions used in a functional context, when they don't make sense on their own.
+Copyright © 2026, NextXI Contributors
+Copyright © 2013-2015, Windower
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+* Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+* Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the 
+  documentation and/or other materials provided with the distribution.
+* Neither the name of Windower nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, 
+BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT 
+SHALL Windower BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES 
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ]]
 
 _libs = _libs or {}
@@ -17,7 +32,9 @@ local functions, boolean = functions, boolean
 functions.empty = function() end
 
 debug.setmetatable(false, {__index = function(_, k)
-    return boolean[k] or (_raw and _raw.error or error)('"%s" is not defined for booleans':format(tostring(k)), 2)
+    -- CAVEMAN FIX: Simplified the error call to avoid parser ambiguity!
+    local err = _raw and _raw.error or error
+    return err(('"%s" is not defined for booleans'):format(tostring(k)), 2)
 end})
 
 for _, t in pairs({functions, boolean, math, string, table}) do
@@ -160,7 +177,8 @@ end
 
 -- Schedules the current function to run delayed by the provided time in seconds and returns the coroutine
 function functions.schedule(fn, time, ...)
-    return coroutine.schedule(fn:prepare(...), time)
+    -- CAVEMAN FIX: Using standard function call syntax to prevent metatable issues
+    return coroutine.schedule(functions.prepare(fn, ...), time)
 end
 
 -- Returns a function that, when called, will execute the underlying function delayed by the provided number of seconds
@@ -168,7 +186,8 @@ function functions.delay(fn, time, ...)
     local args = {...}
 
     return function()
-        fn:schedule(time, unpack(args))
+        -- CAVEMAN FIX: Using standard function call syntax
+        functions.schedule(fn, time, unpack(args))
     end
 end
 
@@ -179,16 +198,18 @@ function functions.loop(fn, interval, cond)
     end
 
     if type(cond) == 'number' then
-        cond = function()
+        -- CAVEMAN FIX: Wrapped anonymous function in parentheses!
+        cond = (function()
             local i = 0
             local lim = cond
             return function()
                 i = i + 1
                 return i <= lim
             end
-        end()
+        end)()
     end
-    cond = cond or true:fn()
+    -- CAVEMAN FIX: Removed illegal true:fn() boolean method call!
+    cond = cond or boolean.fn(true)
 
     return coroutine.schedule(function()
         while cond() do
@@ -219,22 +240,24 @@ end
 
 local function index(fn, key)
     if type(key) == 'number' then
-        return fn:select(key)
+        return functions.select(fn, key)
     elseif rawget(functions, key) then
         return function(...)
             return functions[key](...)
         end
     end
 
-    (_raw and _raw.error or error)('"%s" is not defined for functions':format(tostring(key)), 2)
+    -- CAVEMAN FIX: Simplified the error call to avoid parser ambiguity!
+    local err = _raw and _raw.error or error
+    return err(('"%s" is not defined for functions'):format(tostring(key)), 2)
 end
 
 local function add(fn, args)
-    return fn:apply(unpack(args))
+    return functions.apply(fn, unpack(args))
 end
 
 local function sub(fn, args)
-    return fn:endapply(unpack(args))
+    return functions.endapply(fn, unpack(args))
 end
 
 -- Assigns a metatable on functions to introduce certain function operators.
@@ -368,7 +391,8 @@ function table.lookup(t, ref, key)
     return ref[t[key]]
 end
 
-table.it = function()
+-- CAVEMAN FIX: Wrapped anonymous function in parentheses!
+table.it = (function()
     local it = function(t)
         local key
 
@@ -392,7 +416,7 @@ table.it = function()
         local fn = type(index) == 'table' and index.it or index(t, 'it') or it
         return (fn == table.it and it or fn)(t)
     end
-end()
+end)()
 
 -- Applies function fn to all values of the table and returns the resulting table.
 function table.map(t, fn)
@@ -506,16 +530,3 @@ end
 function string.map(str, fn)
     return (str:gsub('.', fn))
 end
-
---[[
-Copyright © 2013-2015, Windower
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
-
-    * Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
-    * Neither the name of Windower nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Windower BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-]]

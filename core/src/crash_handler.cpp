@@ -316,7 +316,7 @@ if (auto ptr = static_cast<::EXCEPTION_POINTERS*>(exception))
         std::ofstream report(report_path);
         if (report)
         {
-            report << "# Windower 5 Engine Crash Report\n\n";
+            report << "# NextXI Engine Crash Report\n\n";
 
             auto sig = get_signature(*ptr);
             std::string narrow_sig;

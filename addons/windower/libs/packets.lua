@@ -1,6 +1,24 @@
 --[[
 A library to facilitate packet usage
+
+Copyright © 2026, NextXI Contributors
+Copyright © 2013-2015, Windower
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+* Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+* Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the 
+  documentation and/or other materials provided with the distribution.
+* Neither the name of Windower nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, 
+BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT 
+SHALL Windower BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES 
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ]]
+
 
 _libs = _libs or {}
 
@@ -166,13 +184,13 @@ do
                         end
 
                         if parsed_index % 8 ~= 0 and type ~= 'bit' and type ~= 'boolbit' then
-                            -- Adjust to byte boundary, if non-bit type
-                            parsed_index = 8 * (parsed_index / 8):ceil()
+                            -- Standard math.ceil!
+                            parsed_index = 8 * math.ceil(parsed_index / 8)
                         end
 
                         if not bits then
-                            -- Determine length for pointer types (*)
-                            type_count = ((length - parsed_index) / bit_sizes[type]):floor()
+                            -- Standard math.floor!
+                            type_count = math.floor((length - parsed_index) / bit_sizes[type])
                             bits = bit_sizes[type] * type_count
 
                             count = max
@@ -337,7 +355,7 @@ end
 function packets.parse(dir, data)
     local rem = #data % 4
     if rem ~= 0 then
-        data = data .. (0):char():rep(4 - rem)
+        data = data .. string.rep(string.char(0), 4 - rem)
     end
 
     local id, size, sequence = data:unpack('b9b7H')
@@ -445,13 +463,16 @@ function packets.build(packet)
     end
 
     local pack_string = fields:map(make_pack_string):concat()
-    local data = pack_string:pack(fields:map(lookup+{packet}):unpack())
+    -- Replaced lookup+{packet} functional abuse with a standard closure!
+    local data = pack_string:pack(fields:map(function(f) return lookup(packet, f) end):unpack())
     local rem = #data % 4
     if rem ~= 0 then
-        data = data .. (0):char():rep(4 - rem)
+        data = data .. string.rep(string.char(0), 4 - rem)
     end
 
-    return ('b9b7H'):pack(packet._id, 1 + #data / 4, packet._sequence) .. data
+    -- Removed direct method call on literal string ('b9b7H')!
+    local pack_hdr = 'b9b7H'
+    return pack_hdr:pack(packet._id, 1 + #data / 4, packet._sequence) .. data
 end
 
 -- Injects a packet built with packets.new
@@ -480,16 +501,3 @@ function packets.inject(dir, id, values, ...)
 end
 
 return packets
-
---[[
-Copyright © 2013-2015, Windower
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
-
-    * Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
-    * Neither the name of Windower nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Windower BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-]]
