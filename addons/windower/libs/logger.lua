@@ -71,11 +71,13 @@ function captionlog(msg, msgcolor, ...)
     local caption = table.concat({_addon and _addon.name, msg}, ' ')
 
     if #caption > 0 then
-        if logger.settings.logtofile then
+        if logger.settings and logger.settings.logtofile then
             flog(nil, caption .. ':', ...)
             return
         end
-        caption = (caption .. ':'):color(msgcolor) .. ' '
+        -- Completely removed the unsafe :color() string method!
+        -- If chat.lua isn't loaded, :color() is nil and will crash the error handler!
+        caption = caption .. ': '
     end
 
     local str = ''
@@ -85,34 +87,41 @@ function captionlog(msg, msgcolor, ...)
         str = arrstring(...):gsub('\t', (' '):rep(4))
     end
 
+    local logcolor = logger.settings and logger.settings.logcolor or 207
+    local reset_code = (_libs.chat and _libs.chat.controls) and _libs.chat.controls.reset or ''
+
     for _, line in ipairs(str:split('\n')) do
-        windower.add_to_chat(logger.settings.logcolor, caption .. windower.to_shift_jis(line) .. _libs.chat.controls.reset)
+        windower.add_to_chat(logcolor, caption .. windower.to_shift_jis(line) .. reset_code)
     end
 end
 
 function log(...)
-    captionlog(nil, logger.settings.logcolor, ...)
+    -- CAVEMAN FIX: Nil safety check!
+    captionlog(nil, logger.settings and logger.settings.logcolor or 207, ...)
 end
 
 _raw.error = error
 function error(...)
-    captionlog('Error', logger.settings.errorcolor, ...)
-    -- CAVEMAN FIX: Actually throw the error so LuaJIT doesn't panic!
+    -- CAVEMAN FIX: Nil safety check!
+    captionlog('Error', logger.settings and logger.settings.errorcolor or 167, ...)
     _raw.error(arrstring(...), 2)
 end
 
 function warning(...)
-    captionlog('Warning', logger.settings.warningcolor, ...)
+    -- CAVEMAN FIX: Nil safety check!
+    captionlog('Warning', logger.settings and logger.settings.warningcolor or 200, ...)
 end
 
 function notice(...)
-    captionlog('Notice', logger.settings.noticecolor, ...)
+    -- CAVEMAN FIX: Nil safety check!
+    captionlog('Notice', logger.settings and logger.settings.noticecolor or 160, ...)
 end
 
 -- Prints the arguments provided to a file, analogous to log(...) in functionality.
 -- If the first argument ends with '.log', it will print to that output file, otherwise to 'lua.log' in the addon directory.
 function flog(filename, ...)
-    filename = filename or logger.settings.defaultfile
+    -- CAVEMAN FIX: Nil safety check!
+    filename = filename or (logger.settings and logger.settings.defaultfile or 'lua.log')
 
     local fh, err = io.open(windower.addon_path..filename, 'a')
     if fh == nil then
@@ -133,7 +142,6 @@ function table.tostring(t)
         return '{}'
     end
 
-    -- CAVEMAN FIX: Localized variables to prevent global engine pollution!
     local keys = keys or false
 
     -- Iterate over table.
@@ -155,7 +163,6 @@ function table.tostring(t)
     end)
 
     for i, key in ipairs(kt) do
-        -- CAVEMAN FIX: Localized val and valstr!
         local val = t[key]
         local valstr
         
@@ -213,7 +220,6 @@ function table.tovstring(t, keys, indentlevel)
         return '{}'
     end
 
-    -- CAVEMAN FIX: Localized variables to prevent global engine pollution!
     local indentlevel = indentlevel or 0
     local keys = keys or false
 
@@ -230,7 +236,6 @@ function table.tovstring(t, keys, indentlevel)
     end)
 
     for i, key in pairs(kt) do
-        -- CAVEMAN FIX: Localized val!
         local val = t[key]
         
         local function sanitize(val)
@@ -243,7 +248,6 @@ function table.tovstring(t, keys, indentlevel)
             return ret
         end
         
-        -- CAVEMAN FIX: Localized valstr!
         local valstr
         
         -- Check for nested tables

@@ -2,6 +2,7 @@
 #include "addon/errors/package_error.hpp"
 #include "addon/lua.hpp"
 #include "addon/lua_internal.hpp"
+#include "addon/unsafe.hpp"
 #include "addon/package_manager.hpp"
 #include "addon/modules/imgui.hpp"
 #include "core.hpp"

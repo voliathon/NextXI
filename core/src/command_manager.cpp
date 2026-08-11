@@ -225,9 +225,10 @@ void windower::command_manager::handle_command(
         {
             throw;
         }
-        catch (std::exception const&)
+        catch (std::exception const& e) // Name the exception!
         {
-            throw command_error{u8"CMD:X1", command_string};
+            // Do not throw away the inner Lua error! Chain them together!
+            std::throw_with_nested(command_error{ u8"CMD:X1", command_string });
         }
     }
 

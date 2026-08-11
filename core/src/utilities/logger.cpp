@@ -183,28 +183,38 @@ namespace
 
     void unwrap_exception(std::u8string& result, std::size_t level, std::exception const& ex)
     {
-        std::string_view const type_name = typeid(ex).name();
-        for (auto const c : type_name)
-        {
-            result.push_back(gsl::narrow_cast<char8_t>(c));
+        if (level == 0) {
+            result.append(u8"\n==================================================");
+            result.append(u8"\n [SYSTEM FATAL] Exception Caught at Level 0");
+            result.append(u8"\n==================================================");
+        }
+        else {
+            result.append(u8"\n--------------------------------------------------");
+            result.append(u8"\n [NESTED ERROR] Exception Caught at Level ");
+            result.append(windower::to_u8string(level));
+            result.append(u8"\n--------------------------------------------------");
         }
 
-        result.append(u8"\n  What: ");
+        result.append(u8"\n > Type:  ");
+        std::string_view const type_name = typeid(ex).name();
+        result.append(type_name.begin(), type_name.end());
+
+        result.append(u8"\n > Error: ");
         auto const* const what_str = ex.what();
-        if (what_str && *what_str != '\0') { // Dereference instead of [0]
+        if (what_str && *what_str != '\0') {
             result.append(windower::to_u8string(what_str));
         }
         else {
-            result.append(u8"<empty>");
+            result.append(u8"<Unknown internal failure>");
         }
 
         if (auto windower_err = dynamic_cast<windower::windower_error const*>(&ex)) {
-            result.append(u8"\n  Message: ");
+            result.append(u8"\n > Details: ");
             result.append(windower_err->message());
         }
 
         if (auto pkg_err = dynamic_cast<windower::package_error const*>(&ex)) {
-            result.append(u8"\n  Packages: ");
+            result.append(u8"\n > Packages Involved: ");
             for (auto const& p : pkg_err->packages()) {
                 result.append(p);
                 result.append(1, u8' ');
@@ -217,19 +227,20 @@ namespace
 
         if (auto nested = dynamic_cast<std::nested_exception const*>(&ex)) {
             if (auto nested_ptr = nested->nested_ptr()) {
-                result.append(u8"\n  --- Nested Exception [");
-                result.append(windower::to_u8string(level + 1));
-                result.append(u8"] ---\n  ");
-
                 try {
                     std::rethrow_exception(nested_ptr);
                 }
-                catch (windower::lua::error const& e) { unwrap_exception(result, level + 1, e); }
-                catch (windower::package_error const& e) { unwrap_exception(result, level + 1, e); }
-                catch (windower::windower_error const& e) { unwrap_exception(result, level + 1, e); }
-                catch (std::exception const& e) { unwrap_exception(result, level + 1, e); }
-                catch (...) { result.append(u8"<Unknown Exception Type>"); }
+                catch (std::exception const& e) {
+                    unwrap_exception(result, level + 1, e);
+                }
+                catch (...) {
+                    result.append(u8"\n > Nested: <Unknown Exception Type>");
+                }
             }
+        }
+
+        if (level == 0) {
+            result.append(u8"\n==================================================\n");
         }
     }
 } // namespace
