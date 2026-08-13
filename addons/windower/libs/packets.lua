@@ -35,7 +35,10 @@ local packets = {}
 _libs.packets = packets
 
 if not warning then
-    warning = print+{_addon.name and ('%s warning:'):format(_addon.name) or 'Warning:'}
+    warning = function(...)
+        local prefix = _addon and _addon.name and ('%s warning:'):format(_addon.name) or 'Warning:'
+        print(prefix, ...)
+    end
 end
 
 __meta = __meta or {}

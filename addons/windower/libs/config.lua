@@ -1,8 +1,6 @@
 --[[
     Functions that facilitate loading, parsing, manipulating and storing of config files.
 
-	This library provides a set of functions to aid in debugging.
-
 	Copyright © 2026, NextXI Contributors
 	Copyright © 2013-2015, Windower
 	All rights reserved.
@@ -119,10 +117,11 @@ function parse(settings)
     local err
     local meta = settings_map[settings]
 
-    if meta.file.path:endswith('.json') then
+    -- Rip out string:endswith() and replace with string.sub() for LuaJIT string safety
+    if string.sub(meta.file.path, -5) == '.json' then
         parsed = json.read(meta.file)
 
-    elseif meta.file.path:endswith('.xml') then
+    elseif string.sub(meta.file.path, -4) == '.xml' then
         parsed, err = xml.read(meta.file)
 
         if not parsed then
@@ -175,7 +174,8 @@ function merge(t, t_merge, path)
 
     local keys = {}
     for key in pairs(t) do
-        keys[tostring(key):lower()] = key
+        -- Standard string function
+        keys[string.lower(tostring(key))] = key
     end
 
     if not t_merge then
@@ -183,7 +183,8 @@ function merge(t, t_merge, path)
     end
     
     for lkey, val in pairs(t_merge) do
-        local key = keys[lkey:lower()]
+        -- Standard string function
+        local key = keys[string.lower(lkey)]
         if not key then
             if type(val) == 'table' then
                 t[lkey] = setmetatable(table.copy(val), getmetatable(val) or _meta.T)
@@ -325,13 +326,15 @@ function settings_table(node, settings, key, meta)
     if #node.children == 1 and node.children[1].type == 'text' then
         local val = node.children[1].value
         if node.children[1].cdata then
-            meta.cdata:add(key)
+            -- Use standard tostring/lower
+            meta.cdata:add(string.lower(tostring(key)))
             return val
         end
 
-        if val:lower() == 'false' then
+        local lower_val = string.lower(val)
+        if lower_val == 'false' then
             return false
-        elseif val:lower() == 'true' then
+        elseif lower_val == 'true' then
             return true
         end
 
@@ -347,14 +350,14 @@ function settings_table(node, settings, key, meta)
         if child.type == 'comment' then
             meta.comments[key] = string.trim(child.value)
         elseif child.type == 'tag' then
-            key = child.name:lower()
+            key = string.lower(child.name)
             local childdict
             if table.containskey(settings, key) then
                 childdict = table.copy(settings)
             else
                 childdict = settings
             end
-            t[child.name:lower()] = settings_table(child, childdict, key, meta)
+            t[key] = settings_table(child, childdict, key, meta)
         end
     end
 
@@ -368,7 +371,7 @@ function config.save(t, char)
         return
     end
 
-    char = (char or windower.ffxi.get_player().name):lower()
+    char = string.lower(char or windower.ffxi.get_player().name)
     local meta = settings_map[t]
 
     if char == 'all' then

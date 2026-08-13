@@ -26,6 +26,8 @@ require('tables')
 require('functions')
 
 local table, functions = _libs.tables, _libs.functions
+-- Localize string module to prevent global scope resolution errors
+local string = _libs.strings or require('string')
 
 set = {}
 

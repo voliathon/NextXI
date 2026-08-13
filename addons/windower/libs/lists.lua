@@ -24,6 +24,8 @@ _libs = _libs or {}
 require('tables')
 
 local table = _libs.tables
+-- Localize string module to prevent global scope resolution errors
+local string = _libs.strings or require('string')
 
 list = {}
 

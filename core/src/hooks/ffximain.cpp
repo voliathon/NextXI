@@ -592,3 +592,8 @@ void const* windower::ffximain::menu(
     }
     return nullptr;
 }
+
+bool windower::ffximain::is_logged_in() noexcept
+{
+    return hooks::chat_log_ptr && *hooks::chat_log_ptr != nullptr;
+}

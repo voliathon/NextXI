@@ -37,11 +37,12 @@ _meta = _meta or {}
 
 debug.setmetatable('', {
     __index = function(str, k)
-        -- CAVEMAN FIX: Wrapped the string literal in parentheses!
+        -- Wrapped the string literal in parentheses!
         return string[k] or type(k) == 'number' and string.sub(str, k, k) or _raw.error((('"%s" is not defined for strings'):format(tostring(k))), 2)
     end,
-    __unm = functions.negate .. functions.equals,
-    __unp = functions.equals,
+    -- Replaced functional currying (..) with explicit closures!
+    __unm = function(str) return function(cmp) return str ~= cmp end end,
+    __unp = function(str) return function(cmp) return str == cmp end end,
 })
 
 local enum = function(...)
@@ -988,20 +989,20 @@ function string.empty(str)
 end
 
 (function()
-    -- Returns a monowidth hex representation of each character of a string, optionally with a separator between chars.
-    local hex = string.zfill-{2} .. math.hex .. string.byte
+    -- Replaced functional currying pipeline with explicit LuaJIT closures!
+    local hex = function(c) return string.zfill(math.hex(string.byte(c)), 2) end
     function string.hex(str, sep, from, to)
         return str:slice(from, to):split():map(hex):concat(sep or '')
     end
 
-    -- Returns a monowidth binary representation of every char of the string, optionally with a separator between chars.
-    local binary = string.zfill-{8} .. math.binary .. string.byte
+    -- Replaced functional currying pipeline with explicit LuaJIT closures!
+    local binary = function(c) return string.zfill(math.binary(string.byte(c)), 8) end
     function string.binary(str, sep, from, to)
         return str:slice(from, to):split():map(binary):concat(sep or '')
     end
 
-    -- Returns a string parsed from a hex-represented string.
-    local hex_r = string.char .. tonumber-{16}
+    -- Replaced functional currying pipeline with explicit LuaJIT closures!
+    local hex_r = function(byte_str) return string.char(tonumber(byte_str, 16)) end
     function string.parse_hex(str)
         local interpreted_string = str:gsub('0x', ''):gsub('[^%w]', '')
         if #interpreted_string % 2 ~= 0  then
@@ -1011,8 +1012,8 @@ end
         return (interpreted_string:gsub('%w%w', hex_r))
     end
 
-    -- Returns a string parsed from a binary-represented string.
-    local binary_r = string.char .. tonumber-{2}
+    -- Replaced functional currying pipeline with explicit LuaJIT closures!
+    local binary_r = function(byte_str) return string.char(tonumber(byte_str, 2)) end
     local binary_pattern = '[01]':rep(8)
     function string.parse_binary(str)
         local interpreted_string = str:gsub('0b', ''):gsub('[^01]', '')
@@ -1202,18 +1203,19 @@ function string.chunks(str, size)
     end
 end
 
--- Returns a string decoded given the appropriate encoding.
+-- Replaced functional currying with direct closures
 string.decode = function(str, encoding)
-    return (str:binary():chunks(encoding.bits):map(table.get+{encoding.charset} .. tonumber-{2}):concat():gsub('%z.*$', ''))
+    local chunks = str:binary():chunks(encoding.bits)
+    local mapped = chunks:map(function(c) return encoding.charset[tonumber(c, 2)] or '' end)
+    return (mapped:concat():gsub('%z.*$', ''))
 end
 
--- Returns a string encoded given the appropriate encoding.
+-- Replaced functional currying with direct closures
 string.encode = function(str, encoding)
-    local binary = str:map(string.zfill-{encoding.bits} .. math.binary .. table.find+{encoding.charset})
+    local binary = str:map(function(c) return string.zfill(math.binary(table.find(encoding.charset, c) or 0), encoding.bits) end)
     if encoding.terminator then
         binary = binary .. encoding.terminator(str)
     end
-    -- CAVEMAN FIX: Replaced (#binary / 8):ceil() with standard math.ceil
     return binary:rpad('0', math.ceil(#binary / 8) * 8):parse_binary()
 end
 

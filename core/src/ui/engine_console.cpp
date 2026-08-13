@@ -299,19 +299,26 @@ namespace windower::ui
                 ImGui::EndTabItem();
             }
 
-            // --- DELEGATE TABS 2, 3 & 4 ---
-            m_browser.render_tabs();
             system_diagnostics::render_about_tab();
+
+            // CAVEMAN FIX: Lock the Addon Browser until the character is fully logged in!
+            if (windower::ffximain::is_logged_in())
+            {
+                m_browser.render_tabs();
+            }
+            else
+            {
+                if (ImGui::BeginTabItem("Addons (LOCKED)", nullptr, ImGuiTabItemFlags_NoReorder))
+                {
+                    ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Addon Manager is locked.");
+                    ImGui::Text("You must log in to a character to load addons.");
+                    ImGui::EndTabItem();
+                }
+            }
 
             ImGui::EndTabBar();
         }
 
-        ImGui::End();
-
-        style.WindowBorderSize = old_window_border;
-        style.WindowPadding = old_window_padding;
-
-        m_browser.render_readme_window();
     }
 
     void engine_console::push_log(std::u8string_view text) noexcept
