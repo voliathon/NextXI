@@ -1,5 +1,5 @@
 _addon.name = 'ModelSnatch'
-_addon.author = 'Antigravity'
+_addon.author = 'Voliathon'
 _addon.version = '1.0'
 _addon.commands = {'modelsnatch', 'snatch'}
 
