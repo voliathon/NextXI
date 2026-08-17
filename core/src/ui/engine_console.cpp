@@ -3,11 +3,14 @@
 #include "command_manager.hpp"
 #include "core.hpp"
 #include "addon/addon_manager.hpp"
+#include "hooks/user32_internal.hpp"
 
 #include <imgui.h>
 #include <fstream>
 #include <filesystem>
 #include <gsl/gsl>
+
+#include "scanner.hpp"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 extern "C" char const* get_ffxi_player_ffi();
@@ -92,36 +95,187 @@ namespace windower::ui
         return 0;
     }
 
-    void engine_console::render(context& /*ctx*/) noexcept
-    {
-        // BULLETPROOF LOGIN HEURISTIC ---
-        // Instead of fragile memory scans, we check if FFXiMain.dll is loaded.
-        // Once it loads, we enforce a strict 15-second "breathing room" delay 
-        // to get past the black screens and Character Select before the UI unlocks!
-        static auto ffx_main_load_time = std::chrono::steady_clock::time_point::min();
-        if (::GetModuleHandleW(L"FFXiMain.dll"))
-        {
-            if (ffx_main_load_time == std::chrono::steady_clock::time_point::min()) {
-                ffx_main_load_time = std::chrono::steady_clock::now();
-            }
-            if (std::chrono::steady_clock::now() - ffx_main_load_time < std::chrono::seconds(15)) {
-                m_visible = false;
-                m_was_visible = false;
-                s_force_open = false;
-                return;
+#pragma warning(push)
+#pragma warning(disable: 6320 26429 26446 26462 26471 26472 26481 26482 26485 26493 26496)
+
+    // --- MANUAL MEMORY SCANNER UTILITIES ---
+    static void** safe_caveman_find_array() noexcept {
+        HMODULE hMod = ::GetModuleHandleW(L"FFXiMain.dll");
+        if (!hMod) return nullptr;
+
+        uint8_t* base = (uint8_t*)hMod;
+        PIMAGE_DOS_HEADER dos = (PIMAGE_DOS_HEADER)base;
+        PIMAGE_NT_HEADERS nt = (PIMAGE_NT_HEADERS)(base + dos->e_lfanew);
+        DWORD size = nt->OptionalHeader.SizeOfImage;
+
+        MEMORY_BASIC_INFORMATION mbi;
+        for (uint8_t* curr = base; curr < base + size; curr += mbi.RegionSize) {
+            if (!::VirtualQuery(curr, &mbi, sizeof(mbi))) break;
+
+            if (mbi.State != MEM_COMMIT) continue;
+            if (mbi.Protect & (PAGE_GUARD | PAGE_NOACCESS)) continue;
+
+            uint8_t* region_end = (uint8_t*)mbi.BaseAddress + mbi.RegionSize;
+            uint8_t* p = (uint8_t*)mbi.BaseAddress;
+
+            for (; p < region_end - 9; ++p) {
+                if (p[0] == 0x8B && p[1] == 0x56 && p[2] == 0x0C && p[3] == 0x8B &&
+                    p[4] == 0x04 && p[5] == 0x2A && p[6] == 0x8B && p[7] == 0x04 && p[8] == 0x85) {
+                    void** out = nullptr;
+                    std::memcpy(&out, p + 9, sizeof(void**));
+                    return out;
+                }
             }
         }
-        else
+        return nullptr;
+    }
+
+    static bool safe_raw_read(void** arr, int idx, void*& out_ent, char* out_data) noexcept {
+        __try {
+            out_ent = arr[idx];
+            if (!out_ent) return false;
+            std::memcpy(out_data, (char*)out_ent + 0x70, 32);
+            return true;
+        }
+        __except (1) { return false; }
+    }
+
+
+    bool engine_console::update_player_state() noexcept
+    {
+        // Simple UI lock/unlock tied to core logged-in state
+        return windower::ffximain::is_logged_in();
+    }
+
+    void engine_console::render_console_tab() noexcept
+    {
+        ImGuiTabItemFlags tab_flags = 0;
+        if (g_focus_console_tab) { tab_flags |= ImGuiTabItemFlags_SetSelected; g_focus_console_tab = false; }
+
+        if (ImGui::BeginTabItem("Console", nullptr, tab_flags))
         {
-            // FFXiMain isn't loaded at all. We are in PlayOnline Viewer. Lock it down!
+            const float footer_height = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
+
+            if (ImGui::BeginChild("ScrollingRegion", ImVec2(0, -footer_height), false, ImGuiWindowFlags_HorizontalScrollbar))
+            {
+                std::lock_guard<std::mutex> lock{ g_console_mutex };
+                for (auto const& line : s_log_buffer)
+                    ImGui::TextUnformatted(reinterpret_cast<char const*>(line.c_str()));
+
+                if (m_scroll_to_bottom || ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+                {
+                    ImGui::SetScrollHereY(1.0f);
+                    m_scroll_to_bottom = false;
+                }
+            }
+            ImGui::EndChild();
+            ImGui::Separator();
+
+            bool reclaim_focus = false;
+            constexpr ImGuiInputTextFlags input_flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory;
+
+            if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
+
+            ImGui::PushItemWidth(-1.0f);
+            if (ImGui::InputText("##Input", &m_input_buffer[0], std::size(m_input_buffer), input_flags, &text_edit_callback_stub, this))
+            {
+                std::u8string cmd_str = reinterpret_cast<char8_t*>(&m_input_buffer[0]);
+                m_input_buffer[0] = '\0';
+
+                if (!cmd_str.empty())
+                {
+                    if (m_history.empty() || m_history.back() != cmd_str) m_history.push_back(cmd_str);
+                    m_history_index = -1;
+
+                    if (cmd_str == u8"clear") {
+                        std::lock_guard<std::mutex> lock{ g_console_mutex };
+                        s_log_buffer.clear();
+                    }
+                    else if (cmd_str == u8"export") {
+                        try {
+                            auto export_dir = core::instance().settings.user_path / "NextXI_Logs";
+                            std::filesystem::create_directories(export_dir);
+                            auto export_path = export_dir / "console_export.txt";
+
+                            bool success = false;
+                            {
+                                std::lock_guard<std::mutex> lock{ g_console_mutex };
+                                std::ofstream out(export_path, std::ios::binary);
+                                if (out) {
+                                    for (auto const& line : s_log_buffer) {
+                                        out.write(reinterpret_cast<char const*>(line.data()), line.size());
+                                        out.write("\r\n", 2);
+                                    }
+                                    success = true;
+                                }
+                            }
+
+                            if (success) push_log(u8"--- Exported to: " + export_path.u8string() + u8" ---");
+                            else push_log(u8"--- ERROR: Failed to write export file ---");
+                        }
+                        catch (...) { push_log(u8"--- EXCEPTION: Failed to create export directory ---"); }
+                    }
+                    else if (cmd_str == u8"addons") {
+                        std::lock_guard<std::mutex> lock{ g_console_mutex };
+                        s_log_buffer.emplace_back(u8"--- Active Addons ---");
+                        int count = 0;
+                        if (core::instance().addon_manager) {
+                            for (auto const& a : m_browser.get_cached_addons()) {
+                                if (core::instance().addon_manager->get(a.name)) {
+                                    s_log_buffer.emplace_back(u8" - " + a.name);
+                                    count++;
+                                }
+                            }
+                        }
+                        if (count == 0) s_log_buffer.emplace_back(u8" None.");
+                        s_log_buffer.emplace_back(u8"---------------------");
+                    }
+                    else if (cmd_str.find(u8"autoload") == 0) {
+                        std::string args(cmd_str.begin() + 8, cmd_str.end());
+                        args.erase(0, args.find_first_not_of(" \t"));
+                        if (args.empty()) push_log(u8"Usage: //autoload <profile_name> (e.g. //autoload global)");
+                        else {
+                            push_log(u8"Auto-loading profile: " + std::u8string(args.begin(), args.end()));
+                            addon_browser::run_autoload(args);
+                        }
+                    }
+                    else if (cmd_str == u8"help") {
+                        push_log(u8"--- Console Commands ---");
+                        push_log(u8" clear               : Erases all text.");
+                        push_log(u8" export              : Dumps history to console_export.txt.");
+                        push_log(u8" addons              : Lists all active addons.");
+                        push_log(u8" autoload <name>     : Loads a character profile.");
+                        push_log(u8" //load <addon>      : Loads an addon.");
+                        push_log(u8" //unload <addon>    : Unloads an addon.");
+                    }
+                    else {
+                        std::u8string const echo_msg = u8"> Executing: " + cmd_str;
+                        push_log(echo_msg);
+                        core::instance().run_on_next_frame([cmd = cmd_str]() {
+                            command_manager::instance().handle_command(cmd, command_source::console);
+                            });
+                    }
+                    m_scroll_to_bottom = true;
+                }
+                reclaim_focus = true;
+            }
+            ImGui::PopItemWidth();
+            ImGui::SetItemDefaultFocus();
+            if (reclaim_focus) ImGui::SetKeyboardFocusHere(-1);
+            ImGui::EndTabItem();
+        }
+    }
+
+    void engine_console::render(context& /*ctx*/) noexcept
+    {
+        if (!::GetModuleHandleW(L"FFXiMain.dll"))
+        {
             m_visible = false;
             m_was_visible = false;
             s_force_open = false;
             return;
         }
-        // ------------------------------------------------
 
-        // 1. DRAIN MSG VAULT
         {
             std::lock_guard<std::mutex> lock(m_msg_mutex);
             for (auto const& msg : m_msg_queue)
@@ -129,21 +283,25 @@ namespace windower::ui
             m_msg_queue.clear();
         }
 
-        // 2. MOUSE CLEANUP & ALARM CATCHER
         if (m_was_visible && !m_visible) { ::ClipCursor(nullptr); m_was_visible = false; }
         else if (!m_was_visible && m_visible) { m_was_visible = true; }
 
-        if (s_force_open.exchange(false))
+        if (!m_visible)
         {
-            m_visible = true;
-            g_focus_console_tab = true;
+            m_browser.reset_scan();
+            return;
         }
 
-        // 3. DELEGATE ADDON SCANNING
-        if (m_visible) m_browser.check_directory_changes();
-        else { m_browser.reset_scan(); return; }
+        bool const player_active = update_player_state();
 
-        // 4. THE CAVEMAN LUXURY UI UPGRADE
+        if (player_active) {
+            try { m_browser.check_directory_changes(); }
+            catch (...) {}
+        }
+        else {
+            m_browser.reset_scan();
+        }
+
         ImGuiStyle& style = ImGui::GetStyle();
         ImVec2 const old_frame_padding = style.FramePadding;
         float const old_window_border = style.WindowBorderSize;
@@ -156,7 +314,7 @@ namespace windower::ui
         ImGui::SetNextWindowSize(ImVec2(750, 500), ImGuiCond_FirstUseEver);
         bool const is_open = ImGui::Begin("NextXI Control Center", &m_visible, ImGuiWindowFlags_NoCollapse);
 
-        style.FramePadding = old_frame_padding; // Restore internal sizing instantly
+        style.FramePadding = old_frame_padding;
 
         if (!is_open)
         {
@@ -166,152 +324,72 @@ namespace windower::ui
             return;
         }
 
-        // 5. MASTER TAB ROUTER
         if (ImGui::BeginTabBar("ConsoleTabs"))
         {
-            // --- TAB 1: CONSOLE LOG & PROMPT ---
-            ImGuiTabItemFlags tab_flags = 0;
-            if (g_focus_console_tab) { tab_flags |= ImGuiTabItemFlags_SetSelected; g_focus_console_tab = false; }
-
-            if (ImGui::BeginTabItem("Console", nullptr, tab_flags))
-            {
-                const float footer_height = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
-
-                if (ImGui::BeginChild("ScrollingRegion", ImVec2(0, -footer_height), false, ImGuiWindowFlags_HorizontalScrollbar))
-                {
-                    std::lock_guard<std::mutex> lock{ g_console_mutex };
-                    for (auto const& line : s_log_buffer)
-                        ImGui::TextUnformatted(reinterpret_cast<char const*>(line.c_str()));
-
-                    if (m_scroll_to_bottom || ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
-                    {
-                        ImGui::SetScrollHereY(1.0f);
-                        m_scroll_to_bottom = false;
-                    }
-                }
-                ImGui::EndChild();
-                ImGui::Separator();
-
-                bool reclaim_focus = false;
-                constexpr ImGuiInputTextFlags input_flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory;
-
-                if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
-
-                ImGui::PushItemWidth(-1.0f);
-                if (ImGui::InputText("##Input", &m_input_buffer[0], std::size(m_input_buffer), input_flags, &text_edit_callback_stub, this))
-                {
-                    std::u8string cmd_str = reinterpret_cast<char8_t*>(&m_input_buffer[0]);
-                    m_input_buffer[0] = '\0';
-
-                    if (!cmd_str.empty())
-                    {
-                        if (m_history.empty() || m_history.back() != cmd_str) m_history.push_back(cmd_str);
-                        m_history_index = -1;
-
-                        if (cmd_str == u8"clear") {
-                            std::lock_guard<std::mutex> lock{ g_console_mutex };
-                            s_log_buffer.clear();
-                        }
-                        else if (cmd_str == u8"export") {
-                            // CAVEMAN FIX: Safe Console Export without Mutex Deadlocks!
-                            try
-                            {
-                                auto export_dir = core::instance().settings.user_path / "NextXI_Logs";
-                                std::filesystem::create_directories(export_dir);
-                                auto export_path = export_dir / "console_export.txt";
-
-                                bool success = false;
-                                {
-                                    // SCOPE 1: Lock the buffer only while we read from it!
-                                    std::lock_guard<std::mutex> lock{ g_console_mutex };
-                                    std::ofstream out(export_path, std::ios::binary);
-                                    if (out) {
-                                        for (auto const& line : s_log_buffer) {
-                                            out.write(reinterpret_cast<char const*>(line.data()), line.size());
-                                            out.write("\r\n", 2);
-                                        }
-                                        success = true;
-                                    }
-                                } // g_console_mutex UNLOCKS HERE!
-
-                                // SCOPE 2: Now we can safely call push_log without double-locking!
-                                if (success) {
-                                    push_log(u8"--- Exported to: " + export_path.u8string() + u8" ---");
-                                }
-                                else {
-                                    push_log(u8"--- ERROR: Failed to write export file ---");
-                                }
-                            }
-                            catch (std::exception const& e)
-                            {
-                                push_log(u8"--- EXCEPTION: Failed to create export directory ---");
-                            }
-                        }
-                        else if (cmd_str == u8"addons") {
-                            std::lock_guard<std::mutex> lock{ g_console_mutex };
-                            s_log_buffer.emplace_back(u8"--- Active Addons ---");
-                            int count = 0;
-                            if (core::instance().addon_manager) {
-                                for (auto const& a : m_browser.get_cached_addons()) {
-                                    if (core::instance().addon_manager->get(a.name)) {
-                                        s_log_buffer.emplace_back(u8" - " + a.name);
-                                        count++;
-                                    }
-                                }
-                            }
-                            if (count == 0) s_log_buffer.emplace_back(u8" None.");
-                            s_log_buffer.emplace_back(u8"---------------------");
-                        }
-                        else if (cmd_str.find(u8"autoload") == 0) {
-                            std::string args(cmd_str.begin() + 8, cmd_str.end());
-                            args.erase(0, args.find_first_not_of(" \t"));
-                            if (args.empty()) push_log(u8"Usage: //autoload <profile_name> (e.g. //autoload global)");
-                            else {
-                                push_log(u8"Auto-loading profile: " + std::u8string(args.begin(), args.end()));
-                                addon_browser::run_autoload(args);
-                            }
-                        }
-                        else if (cmd_str == u8"help") {
-                            push_log(u8"--- Console Commands ---");
-                            push_log(u8" clear               : Erases all text.");
-                            push_log(u8" export              : Dumps history to console_export.txt.");
-                            push_log(u8" addons              : Lists all active addons.");
-                            push_log(u8" autoload <name>     : Loads a character profile.");
-                            push_log(u8" //load <addon>      : Loads an addon.");
-                            push_log(u8" //unload <addon>    : Unloads an addon.");
-                        }
-                        else {
-                            // Echo the command to the console BEFORE executing it!
-                            std::u8string const echo_msg = u8"> Executing: " + cmd_str;
-                            push_log(echo_msg);
-
-                            core::instance().run_on_next_frame([cmd = cmd_str]() {
-                                command_manager::instance().handle_command(cmd, command_source::console);
-                                });
-                        }
-                        m_scroll_to_bottom = true;
-                    }
-                    reclaim_focus = true;
-                }
-                ImGui::PopItemWidth();
-                ImGui::SetItemDefaultFocus();
-                if (reclaim_focus) ImGui::SetKeyboardFocusHere(-1);
-                ImGui::EndTabItem();
-            }
-
             system_diagnostics::render_about_tab();
 
-            // CAVEMAN FIX: Lock the Addon Browser until the character is fully logged in!
-            if (windower::ffximain::is_logged_in())
-            {
-                m_browser.render_tabs();
+            if (player_active) {
+                render_console_tab();
+
+                // ==========================================
+                // THE NEW MEMORY SCANNER DEBUG TAB
+                // ==========================================
+                if (ImGui::BeginTabItem("Memory Scanner", nullptr, 0)) {
+                    ImGui::Spacing();
+                    ImGui::TextWrapped("Clicking this button will force a manual scan of the FFXI memory space and dump the entity array to the Console tab.");
+                    ImGui::Spacing();
+
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
+
+                    if (ImGui::Button("ACTIVATE MANUAL MEMORY DUMP", ImVec2(-1, 40)))
+                    {
+                        push_log(u8"--- MANUAL MEMORY DUMP INITIATED ---");
+
+                        void** arr = safe_caveman_find_array();
+                        if (!arr) {
+                            push_log(u8"FATAL: Array signature not found in memory!");
+                        }
+                        else {
+                            char buf[256];
+                            sprintf_s(buf, "SUCCESS: Array found at %p. Sweeping 2304 slots...", (void*)arr);
+                            push_log(reinterpret_cast<const char8_t*>(buf));
+
+                            int count = 0;
+                            for (int i = 0; i < 2304; ++i) {
+                                void* e = nullptr;
+                                char d[32] = { 0 };
+
+                                if (safe_raw_read(arr, i, e, d)) {
+                                    char p[33] = { 0 };
+                                    for (int j = 0; j < 32; ++j) {
+                                        p[j] = (d[j] >= 32 && d[j] <= 126) ? d[j] : '.';
+                                    }
+
+                                    char line[256];
+                                    sprintf_s(line, "Slot %04d | Ptr: %p | %s", i, e, p);
+                                    push_log(reinterpret_cast<const char8_t*>(line));
+                                    count++;
+                                }
+                            }
+
+                            sprintf_s(buf, "DUMP COMPLETE: %d active entities found.", count);
+                            push_log(reinterpret_cast<const char8_t*>(buf));
+                        }
+                    }
+                    ImGui::PopStyleColor(2);
+                    ImGui::Spacing();
+                    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Note: Check the Console tab for the output, or use 'export' to save to a file.");
+                    ImGui::EndTabItem();
+                }
+
+                try { m_browser.render_tabs(); }
+                catch (...) {}
             }
-            else
-            {
-                if (ImGui::BeginTabItem("Addons (LOCKED)", nullptr, ImGuiTabItemFlags_NoReorder))
-                {
+            else {
+                if (ImGui::BeginTabItem("Addons (LOCKED)", nullptr, ImGuiTabItemFlags_NoReorder)) {
                     ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Addon Manager is locked.");
-                    ImGui::Text("You must log in to a character to load addons.");
+                    ImGui::Text("Awaiting FFXI login...");
                     ImGui::EndTabItem();
                 }
             }
@@ -319,6 +397,10 @@ namespace windower::ui
             ImGui::EndTabBar();
         }
 
+        ImGui::End();
+
+        style.WindowBorderSize = old_window_border;
+        style.WindowPadding = old_window_padding;
     }
 
     void engine_console::push_log(std::u8string_view text) noexcept
@@ -336,16 +418,6 @@ namespace windower::ui
             if (line.find(u8"PKG:P2") != std::u8string::npos) return;
             if (line.find(u8"PKG:F2") != std::u8string::npos) return;
 
-            if (line.find(u8"Error") != std::u8string::npos ||
-                line.find(u8"error") != std::u8string::npos ||
-                line.find(u8"aborted") != std::u8string::npos ||
-                line.find(u8"failed") != std::u8string::npos)
-            {
-                // Force the UI to open and switch immediately to the Console tab on error!
-                s_force_open = true;
-                g_focus_console_tab = true;
-            }
-
             s_log_buffer.emplace_back(std::move(line));
             };
 
@@ -360,4 +432,5 @@ namespace windower::ui
 
         while (s_log_buffer.size() > max_log_lines) s_log_buffer.pop_front();
     }
+#pragma warning(pop)
 }

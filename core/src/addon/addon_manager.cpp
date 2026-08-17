@@ -11,6 +11,7 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+#include <tuple>
 
 windower::addon_manager::~addon_manager() noexcept { unload_all(); }
 
@@ -117,8 +118,18 @@ void windower::addon_manager::run_until_idle()
             {
                 a->run_until_idle();
             }
+            catch (std::exception const& e)
+            {
+                // Force raw Lua error string to console
+                std::u8string const error_str = reinterpret_cast<char8_t const*>(e.what());
+                core::instance().output(a->package()->name() + u8" [LUA EXCEPTION]", error_str);
+
+                core::error(a->package()->name(), std::current_exception());
+                failed_addons.push_back(a->package()->name());
+            }
             catch (...)
             {
+                core::instance().output(a->package()->name() + u8" [FATAL EXCEPTION]", u8"<UNKNOWN C++ ERROR>");
                 core::error(a->package()->name(), std::current_exception());
                 failed_addons.push_back(a->package()->name());
             }
@@ -169,14 +180,17 @@ void windower::addon_manager::load(
 
                     core::output(u8"", ptr->package()->name() + u8" loaded");
                     loaded_in_transaction.push_back(ptr->package()->name());
-                    m_loaded_addons.emplace_back(std::move(ptr));
+                    std::ignore = m_loaded_addons.emplace_back(std::move(ptr));
                 }
             }
         }
     }
     catch (std::exception const& e)
     {
-        // CAVEMAN FIX: Pass the entire exception object to core::error to trigger God-Tier formatting!
+        // Force raw Lua error string to console before anything else
+        std::u8string const error_str = reinterpret_cast<char8_t const*>(e.what());
+        core::instance().output(u8"addon manager [LOAD EXCEPTION]", error_str);
+
         core::error(u8"addon manager", e);
 
         bool needs_purge = false;
@@ -194,7 +208,7 @@ void windower::addon_manager::load(
                 if (it != m_loaded_addons.end())
                 {
                     core::output(u8"", name + u8" aborted");
-                    m_loaded_addons.erase(it);
+                    std::ignore = m_loaded_addons.erase(it);
                     needs_purge = true;
                 }
             }
@@ -205,7 +219,7 @@ void windower::addon_manager::load(
             command_manager::instance().purge();
         }
 
-        // CAVEMAN FIX: Chain the exception just like we did in command_manager.cpp!
+        // Chain the exception just like we did in command_manager.cpp!
         std::throw_with_nested(windower::command_error{ u8"ADDON_LOAD_FAILED", u8"addon_manager::load failed" });
     }
 }
@@ -228,7 +242,7 @@ void windower::addon_manager::unload(
 
             if (it != m_loaded_addons.end())
             {
-                m_loaded_addons.erase(it);
+                std::ignore = m_loaded_addons.erase(it);
                 needs_purge = true;
                 core::output(u8"", package->name() + u8" unloaded");
             }

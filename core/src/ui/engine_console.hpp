@@ -30,6 +30,9 @@ namespace windower::ui
         bool m_visible = false;
         bool m_was_visible = false;
 
+        bool update_player_state() noexcept;
+        void render_console_tab() noexcept;
+
         char m_input_buffer[2048] = "";
         std::deque<std::u8string> m_history;
         int m_history_index = -1;
