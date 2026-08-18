@@ -52,6 +52,7 @@
     <ClInclude Include="src\addon\modules\imgui.hpp" />
     <ClInclude Include="src\addon\modules\os.hpp" />
     <ClInclude Include="src\addon\modules\pin.hpp" />
+    <ClInclude Include="src\addon\modules\player_scanner.hpp" />
     <ClInclude Include="src\addon\package.hpp" />
     <ClInclude Include="src\addon\unsafe.hpp" />
     <ClInclude Include="src\command_parser.hpp" />
@@ -120,6 +121,7 @@
     <ClInclude Include="src\ui\cursor.hpp" />
     <ClInclude Include="src\ui\data_buffer.hpp" />
     <ClInclude Include="src\ui\data_buffer_traits.hpp" />
+    <ClInclude Include="src\ui\debug_scanner.hpp" />
     <ClInclude Include="src\ui\dimension.hpp" />
     <ClInclude Include="src\ui\direction.hpp" />
     <ClInclude Include="src\ui\dwrite_iids.hpp" />
@@ -203,6 +205,7 @@
     <ClCompile Include="src\addon\modules\imgui.cpp" />
     <ClCompile Include="src\addon\modules\os.cpp" />
     <ClCompile Include="src\addon\modules\pin.cpp" />
+    <ClCompile Include="src\addon\modules\player_scanner.cpp" />
     <ClCompile Include="src\addon\package.cpp" />
     <ClCompile Include="src\addon\package_manager_graph.cpp" />
     <ClCompile Include="src\addon\package_manager_network.cpp" />
@@ -268,6 +271,7 @@
     <ClCompile Include="src\ui\cursor.cpp" />
     <ClCompile Include="src\ui\data_buffer_traits.cpp" />
     <ClCompile Include="src\ui\context.cpp" />
+    <ClCompile Include="src\ui\debug_scanner.cpp" />
     <ClCompile Include="src\ui\engine_console.cpp" />
     <ClCompile Include="src\ui\ffxi_image.cpp" />
     <ClCompile Include="src\ui\inline_object.cpp" />

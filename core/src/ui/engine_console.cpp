@@ -4,13 +4,13 @@
 #include "core.hpp"
 #include "addon/addon_manager.hpp"
 #include "hooks/user32_internal.hpp"
+#include "ui/debug_scanner.hpp" 
+#include "addon/modules/player_scanner.hpp" 
 
 #include <imgui.h>
 #include <fstream>
 #include <filesystem>
 #include <gsl/gsl>
-
-#include "scanner.hpp"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 extern "C" char const* get_ffxi_player_ffi();
@@ -95,56 +95,9 @@ namespace windower::ui
         return 0;
     }
 
-#pragma warning(push)
-#pragma warning(disable: 6320 26429 26446 26462 26471 26472 26481 26482 26485 26493 26496)
-
-    // --- MANUAL MEMORY SCANNER UTILITIES ---
-    static void** safe_caveman_find_array() noexcept {
-        HMODULE hMod = ::GetModuleHandleW(L"FFXiMain.dll");
-        if (!hMod) return nullptr;
-
-        uint8_t* base = (uint8_t*)hMod;
-        PIMAGE_DOS_HEADER dos = (PIMAGE_DOS_HEADER)base;
-        PIMAGE_NT_HEADERS nt = (PIMAGE_NT_HEADERS)(base + dos->e_lfanew);
-        DWORD size = nt->OptionalHeader.SizeOfImage;
-
-        MEMORY_BASIC_INFORMATION mbi;
-        for (uint8_t* curr = base; curr < base + size; curr += mbi.RegionSize) {
-            if (!::VirtualQuery(curr, &mbi, sizeof(mbi))) break;
-
-            if (mbi.State != MEM_COMMIT) continue;
-            if (mbi.Protect & (PAGE_GUARD | PAGE_NOACCESS)) continue;
-
-            uint8_t* region_end = (uint8_t*)mbi.BaseAddress + mbi.RegionSize;
-            uint8_t* p = (uint8_t*)mbi.BaseAddress;
-
-            for (; p < region_end - 9; ++p) {
-                if (p[0] == 0x8B && p[1] == 0x56 && p[2] == 0x0C && p[3] == 0x8B &&
-                    p[4] == 0x04 && p[5] == 0x2A && p[6] == 0x8B && p[7] == 0x04 && p[8] == 0x85) {
-                    void** out = nullptr;
-                    std::memcpy(&out, p + 9, sizeof(void**));
-                    return out;
-                }
-            }
-        }
-        return nullptr;
-    }
-
-    static bool safe_raw_read(void** arr, int idx, void*& out_ent, char* out_data) noexcept {
-        __try {
-            out_ent = arr[idx];
-            if (!out_ent) return false;
-            std::memcpy(out_data, (char*)out_ent + 0x70, 32);
-            return true;
-        }
-        __except (1) { return false; }
-    }
-
-
     bool engine_console::update_player_state() noexcept
     {
-        // Simple UI lock/unlock tied to core logged-in state
-        return windower::ffximain::is_logged_in();
+        return windower::player_scanner::get_local_player_json() != nullptr;
     }
 
     void engine_console::render_console_tab() noexcept
@@ -294,6 +247,28 @@ namespace windower::ui
 
         bool const player_active = update_player_state();
 
+        // ====================================================================
+        // STATE TRANSITION TRACKER - AUTOMATIC ADDON UNLOADER
+        // ====================================================================
+        static bool s_was_player_active = false;
+
+        if (s_was_player_active && !player_active) {
+            push_log(u8"--- SESSION ENDED: Unloading all active addons ---");
+
+            if (core::instance().addon_manager) {
+                for (auto const& a : m_browser.get_cached_addons()) {
+                    if (core::instance().addon_manager->get(a.name)) {
+                        // Safely queue the unload command for the next frame
+                        core::instance().run_on_next_frame([cmd = u8"//unload " + a.name]() {
+                            command_manager::instance().handle_command(cmd, command_source::console);
+                            });
+                    }
+                }
+            }
+        }
+        s_was_player_active = player_active;
+        // ====================================================================
+
         if (player_active) {
             try { m_browser.check_directory_changes(); }
             catch (...) {}
@@ -311,7 +286,7 @@ namespace windower::ui
         style.WindowBorderSize = 2.0f;
         style.WindowPadding = ImVec2(12.0f, 12.0f);
 
-        ImGui::SetNextWindowSize(ImVec2(750, 500), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(750, 550), ImGuiCond_FirstUseEver);
         bool const is_open = ImGui::Begin("NextXI Control Center", &m_visible, ImGuiWindowFlags_NoCollapse);
 
         style.FramePadding = old_frame_padding;
@@ -331,55 +306,50 @@ namespace windower::ui
             if (player_active) {
                 render_console_tab();
 
-                // ==========================================
-                // THE NEW MEMORY SCANNER DEBUG TAB
-                // ==========================================
-                if (ImGui::BeginTabItem("Memory Scanner", nullptr, 0)) {
+                if (ImGui::BeginTabItem("Debug Tools", nullptr, 0)) {
                     ImGui::Spacing();
-                    ImGui::TextWrapped("Clicking this button will force a manual scan of the FFXI memory space and dump the entity array to the Console tab.");
+                    ImGui::TextWrapped("Diagnostic and execution tools for the NextXI engine.");
                     ImGui::Spacing();
 
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
+                    if (ImGui::CollapsingHeader("Memory Scanning", ImGuiTreeNodeFlags_DefaultOpen)) {
+                        ImGui::Spacing();
 
-                    if (ImGui::Button("ACTIVATE MANUAL MEMORY DUMP", ImVec2(-1, 40)))
-                    {
-                        push_log(u8"--- MANUAL MEMORY DUMP INITIATED ---");
+                        ImGui::TextWrapped("1. Find Player Status Block");
+                        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Scans memory for your exact name and dumps the surrounding HP/MP/Job structures.");
+                        static char s_search_name[64] = "Please Select a Character";
+                        ImGui::InputText("Character Name", s_search_name, sizeof(s_search_name));
 
-                        void** arr = safe_caveman_find_array();
-                        if (!arr) {
-                            push_log(u8"FATAL: Array signature not found in memory!");
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.2f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.8f, 0.3f, 1.0f));
+                        if (ImGui::Button("SCAN FOR PLAYER STATUS BLOCK", ImVec2(-1, 35)))
+                        {
+                            debug_scanner::execute_status_scan(s_search_name, [this](std::u8string_view msg) { push_log(msg); });
+                            g_focus_console_tab = true;
                         }
-                        else {
-                            char buf[256];
-                            sprintf_s(buf, "SUCCESS: Array found at %p. Sweeping 2304 slots...", (void*)arr);
-                            push_log(reinterpret_cast<const char8_t*>(buf));
+                        ImGui::PopStyleColor(2);
 
-                            int count = 0;
-                            for (int i = 0; i < 2304; ++i) {
-                                void* e = nullptr;
-                                char d[32] = { 0 };
+                        ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
 
-                                if (safe_raw_read(arr, i, e, d)) {
-                                    char p[33] = { 0 };
-                                    for (int j = 0; j < 32; ++j) {
-                                        p[j] = (d[j] >= 32 && d[j] <= 126) ? d[j] : '.';
-                                    }
+                        ImGui::TextWrapped("2. Find Global Entity Array");
+                        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Extracts every active entity currently loaded in your zone.");
 
-                                    char line[256];
-                                    sprintf_s(line, "Slot %04d | Ptr: %p | %s", i, e, p);
-                                    push_log(reinterpret_cast<const char8_t*>(line));
-                                    count++;
-                                }
-                            }
-
-                            sprintf_s(buf, "DUMP COMPLETE: %d active entities found.", count);
-                            push_log(reinterpret_cast<const char8_t*>(buf));
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
+                        if (ImGui::Button("SCAN GLOBAL ENTITY ARRAY", ImVec2(-1, 35)))
+                        {
+                            debug_scanner::execute_entity_scan([this](std::u8string_view msg) { push_log(msg); });
+                            g_focus_console_tab = true;
                         }
+                        ImGui::PopStyleColor(2);
                     }
-                    ImGui::PopStyleColor(2);
-                    ImGui::Spacing();
-                    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Note: Check the Console tab for the output, or use 'export' to save to a file.");
+
+                    ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+
+                    if (ImGui::Button("RESET AUTHENTICATION SCANNER", ImVec2(-1, 35))) {
+                        windower::player_scanner::reset_scan();
+                        push_log(u8"--- MANUAL AUTHENTICATION RESET ---");
+                    }
+
                     ImGui::EndTabItem();
                 }
 
@@ -389,7 +359,15 @@ namespace windower::ui
             else {
                 if (ImGui::BeginTabItem("Addons (LOCKED)", nullptr, ImGuiTabItemFlags_NoReorder)) {
                     ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Addon Manager is locked.");
-                    ImGui::Text("Awaiting FFXI login...");
+                    ImGui::Text("NextXI requires a valid Character Name to load Addon configurations.");
+
+                    ImGui::Spacing();
+                    ImGui::Separator();
+                    ImGui::Spacing();
+
+                    ImGui::Text("Authentication Status:");
+                    ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f), windower::player_scanner::get_diagnostic_message());
+
                     ImGui::EndTabItem();
                 }
             }
@@ -432,5 +410,4 @@ namespace windower::ui
 
         while (s_log_buffer.size() > max_log_lines) s_log_buffer.pop_front();
     }
-#pragma warning(pop)
 }
