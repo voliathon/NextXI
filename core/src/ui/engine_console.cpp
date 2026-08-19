@@ -46,7 +46,20 @@ namespace windower::ui
         if (m_visible) ::ClipCursor(nullptr);
     }
 
-    bool engine_console::is_visible() const noexcept { return m_visible; }
+    // ========================================================================
+    // THE ULTIMATE DIRECTINPUT BYPASS
+    // NextXI's dinput8 hook queries this function to decide if it should lock 
+    // out the game's control keys (Enter, Escape, Arrows). 
+    // We lie to the engine: if the console is open but you aren't actively 
+    // typing inside its text box, we claim it's "hidden". This forces the 
+    // engine to let the Enter key pass right through to FFXI!
+    // ========================================================================
+    bool engine_console::is_visible() const noexcept {
+        if (m_visible && ImGui::GetCurrentContext()) {
+            return ImGui::GetIO().WantTextInput;
+        }
+        return m_visible;
+    }
 
     std::optional<::LRESULT> engine_console::process_message(::MSG const& message) noexcept {
         if (message.message == WM_KEYDOWN || message.message == WM_SYSKEYDOWN) {
@@ -55,6 +68,11 @@ namespace windower::ui
         }
 
         if (ImGui::GetCurrentContext()) {
+            ImGuiIO& io = ImGui::GetIO();
+
+            // Globally disable ImGui's greedy keyboard menu navigation
+            io.ConfigFlags &= ~ImGuiConfigFlags_NavEnableKeyboard;
+
             bool const is_mouse = (message.message >= WM_MOUSEFIRST && message.message <= WM_MOUSELAST);
             bool const is_keyboard = (message.message >= WM_KEYFIRST && message.message <= WM_KEYLAST) || message.message == WM_CHAR;
 
@@ -64,13 +82,10 @@ namespace windower::ui
                     m_msg_queue.push_back(message);
                 }
 
-                ImGuiIO& io = ImGui::GetIO();
                 if (is_mouse && io.WantCaptureMouse) return 0;
 
-                if (is_keyboard) {
-                    if (io.WantTextInput) return 0;
-                    if (m_visible && io.WantCaptureKeyboard) return 0;
-                }
+                // ONLY block FFXI Win32 input if actively typing in an ImGui text box
+                if (is_keyboard && io.WantTextInput) return 0;
             }
         }
 
@@ -251,6 +266,7 @@ namespace windower::ui
 
         session_tracker::update(player_active, m_browser, [this](std::u8string_view msg) { push_log(msg); });
 
+        // Note: Render uses m_visible internally, completely bypassing our is_visible() lie!
         if (!m_visible) {
             return;
         }
