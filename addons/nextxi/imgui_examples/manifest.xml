@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <package>
-    <name>caveman_test</name>
+    <name>imgui_examples</name>
     <description>Tests the ImGui Lua Bridge</description>
-    <author>NextXI</author>
+    <author>Voliathon</author>
     <version>1.0</version>
 </package>

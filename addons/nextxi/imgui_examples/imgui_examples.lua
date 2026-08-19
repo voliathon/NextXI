@@ -13,22 +13,22 @@ local addon_state = {
     theme_b = 0.4
 }
 
-local caveman_cmd = command.new('caveman_test')
+local caveman_cmd = command.new('imgui_examples')
 
 caveman_cmd:register('show', function()
     addon_state.is_visible = true
-    print("[caveman_test] UI is now VISIBLE! Ooga Booga!")
+    print("[imgui_examples] UI is now VISIBLE! Ooga Booga!")
 end)
 
 caveman_cmd:register('hide', function()
     addon_state.is_visible = false
-    print("[caveman_test] UI is now HIDDEN!")
+    print("[imgui_examples] UI is now HIDDEN!")
 end)
 
 function imgui_render()
     if not addon_state.is_visible then return end
     
-    local window_open = imgui.begin_window("NextXI Reference Sandbox")
+    local window_open = imgui.begin_window("NextXI imgui Examples")
     if not window_open then
         addon_state.is_visible = false
         imgui.end_window()
