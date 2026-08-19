@@ -149,13 +149,10 @@ namespace windower::player_scanner
         strcpy_s(g_diag_msg, "Scanning memory in background...");
     }
 
-    char const* get_diagnostic_message() noexcept {
-        return g_diag_msg;
-    }
+    char const* get_diagnostic_message() noexcept { return g_diag_msg; }
+    char const* get_cached_player_name() noexcept { return g_player_found ? g_cached_player_name : nullptr; }
 
     char const* get_local_player_json() noexcept {
-
-        // --- THE SESSION VERIFICATION LOOP ---
         if (g_player_found) {
             static auto last_verify = std::chrono::steady_clock::now();
             if (std::chrono::steady_clock::now() - last_verify > std::chrono::seconds(2)) {
@@ -185,17 +182,14 @@ namespace windower::player_scanner
                 static int missing_counter = 0;
 
                 if (found_in_pc) {
-                    // Player is safely in-game.
                     missing_counter = 0;
                 }
                 else if (found_in_npc) {
-                    // Player is explicitly in the NPC block -> WE LOGGED OUT TO CHARACTER SELECT!
                     reset_scan();
                 }
                 else {
-                    // Player is completely missing -> WE ARE ZONING OR ON THE OVERVIEW MENU
                     missing_counter++;
-                    if (missing_counter >= 5) { // 10 seconds of missing = drop the session
+                    if (missing_counter >= 5) {
                         reset_scan();
                         missing_counter = 0;
                     }
@@ -205,10 +199,8 @@ namespace windower::player_scanner
             }
         }
 
-        // --- THE ACQUISITION SCANNER ---
         if (!g_player_found) {
             static auto last_auth_scan = std::chrono::steady_clock::now() - std::chrono::seconds(5);
-
             if (std::chrono::steady_clock::now() - last_auth_scan > std::chrono::seconds(2)) {
                 if (execute_deep_scan()) {
                     g_player_found = true;

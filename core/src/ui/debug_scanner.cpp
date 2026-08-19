@@ -1,7 +1,9 @@
 #include "debug_scanner.hpp"
+#include "addon/modules/player_scanner.hpp"
 #include <windows.h>
 #include <cstring>
 #include <cstdio>
+#include <imgui.h>
 
 namespace windower::ui::debug_scanner
 {
@@ -150,5 +152,53 @@ namespace windower::ui::debug_scanner
         sprintf_s(end_msg, "SEARCH COMPLETE: Found %d instances of '%s'.", match_count, search_name);
         log(reinterpret_cast<const char8_t*>(end_msg));
     }
+
+    void render_debug_tab(logger_callback const& log, bool& focus_console) noexcept {
+        if (ImGui::BeginTabItem("Debug Tools", nullptr, 0)) {
+            ImGui::Spacing();
+            ImGui::TextWrapped("Diagnostic and execution tools for the NextXI engine.");
+            ImGui::Spacing();
+
+            if (ImGui::CollapsingHeader("Memory Scanning", ImGuiTreeNodeFlags_DefaultOpen)) {
+                ImGui::Spacing();
+
+                ImGui::TextWrapped("1. Find Player Status Block");
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Scans memory for your exact name and dumps the surrounding HP/MP/Job structures.");
+                static char s_search_name[64] = "Please Select a Character";
+                ImGui::InputText("Character Name", s_search_name, sizeof(s_search_name));
+
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.2f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.8f, 0.3f, 1.0f));
+                if (ImGui::Button("SCAN FOR PLAYER STATUS BLOCK", ImVec2(-1, 35))) {
+                    execute_status_scan(s_search_name, log);
+                    focus_console = true;
+                }
+                ImGui::PopStyleColor(2);
+
+                ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+
+                ImGui::TextWrapped("2. Find Global Entity Array");
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Extracts every active entity currently loaded in your zone.");
+
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
+                if (ImGui::Button("SCAN GLOBAL ENTITY ARRAY", ImVec2(-1, 35))) {
+                    execute_entity_scan(log);
+                    focus_console = true;
+                }
+                ImGui::PopStyleColor(2);
+            }
+
+            ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+
+            if (ImGui::Button("RESET AUTHENTICATION SCANNER", ImVec2(-1, 35))) {
+                windower::player_scanner::reset_scan();
+                log(u8"--- MANUAL AUTHENTICATION RESET ---");
+            }
+
+            ImGui::EndTabItem();
+        }
+    }
+
 #pragma warning(pop)
 }

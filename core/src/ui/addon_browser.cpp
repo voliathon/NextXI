@@ -3,7 +3,7 @@
 #include "command_manager.hpp"
 #include "core.hpp"
 #include "addon/addon_manager.hpp"
-
+#include "addon/modules/player_scanner.hpp" // Added to grab the character name
 #include <imgui.h>
 #include <fstream>
 
@@ -77,7 +77,7 @@ namespace windower::ui
         {
             m_last_dir_time_nx = time_nx;
             m_last_dir_time_w4 = time_w4;
-            m_scanned = false; // Forces UI to rescan
+            m_scanned = false;
 
             if (core::instance().package_manager)
             {
@@ -88,14 +88,8 @@ namespace windower::ui
         if (!m_scanned)
         {
             scan_addons();
-
-            // Pull the trigger on the global autoloads exactly once!
-            static bool initial_autoload_run = false;
-            if (!initial_autoload_run)
-            {
-                run_autoload("global");
-                initial_autoload_run = true;
-            }
+            // The global autoload execution block was permanently removed from here.
+            // Our session_tracker now handles this safely!
         }
     }
 
@@ -110,7 +104,6 @@ namespace windower::ui
         auto base_dir = core::instance().settings.user_path.parent_path() / u8"addons";
         if (!std::filesystem::exists(base_dir, ec)) base_dir = std::filesystem::current_path() / u8"addons";
 
-        // Helper lambda to scan a specific subdirectory
         auto scan_dir = [&](std::filesystem::path const& dir) {
             if (std::filesystem::exists(dir, ec))
             {
@@ -141,7 +134,6 @@ namespace windower::ui
             }
             };
 
-        // ONLY scan these two folders. We completely ignore addons/libs!
         scan_dir(base_dir / u8"nextxi");
         scan_dir(base_dir / u8"windower");
 
@@ -166,6 +158,10 @@ namespace windower::ui
 
         ImGui::Separator();
 
+        // Dynamically pull the currently authenticated character profile
+        char const* name_ptr = windower::player_scanner::get_cached_player_name();
+        std::string current_profile = (name_ptr && name_ptr[0] != '\0') ? name_ptr : "global";
+
         if (ImGui::BeginChild(is_modern ? "ModernScroll" : "LegacyScroll"))
         {
             for (auto const& addon : m_cached_addons)
@@ -177,7 +173,9 @@ namespace windower::ui
                 if (core::instance().addon_manager) {
                     is_active = (core::instance().addon_manager->get(addon.name) != nullptr);
                 }
-                bool const is_auto = is_autoload_enabled(name_str);
+
+                // Explicitly pass the active profile string so we no longer read/write to the global file!
+                bool const is_auto = is_autoload_enabled(name_str, current_profile);
 
                 ImGui::Text("%-25s", name_str.c_str());
 
@@ -203,7 +201,10 @@ namespace windower::ui
 
                 ImGui::SameLine();
                 if (is_auto) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.2f, 1.0f));
-                if (ImGui::Button(("Auto-Load##" + name_str).c_str())) toggle_autoload(name_str);
+
+                // Explicitly pass the active profile string so the toggle writes to your character file
+                if (ImGui::Button(("Auto-Load##" + name_str).c_str())) toggle_autoload(name_str, current_profile);
+
                 if (is_auto) ImGui::PopStyleColor();
 
                 if (addon.has_readme)

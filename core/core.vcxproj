@@ -134,6 +134,7 @@
     <ClInclude Include="src\ui\mouse.hpp" />
     <ClInclude Include="src\ui\mouse_button.hpp" />
     <ClInclude Include="src\ui\mouse_scroll_axis.hpp" />
+    <ClInclude Include="src\ui\session_tracker.hpp" />
     <ClInclude Include="src\ui\system_diagnostics.hpp" />
     <ClInclude Include="src\ui\thickness.hpp" />
     <ClInclude Include="src\ui\patch.hpp" />
@@ -278,6 +279,7 @@
     <ClCompile Include="src\ui\markdown.cpp" />
     <ClCompile Include="src\ui\mouse.cpp" />
     <ClCompile Include="src\ui\primitives.cpp" />
+    <ClCompile Include="src\ui\session_tracker.cpp" />
     <ClCompile Include="src\ui\system_diagnostics.cpp" />
     <ClCompile Include="src\ui\texture_cache.cpp" />
     <ClCompile Include="src\ui\texture_loaders.cpp" />
@@ -437,6 +439,7 @@
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <CodeAnalysisTreatWarningsAsErrors>false</CodeAnalysisTreatWarningsAsErrors>
     <IncludePath>$(UniversalCRTSdkDir)Include\$(TargetPlatformVersion)\ucrt;$(IncludePath)</IncludePath>
+    <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='release|Win32'">
     <OutDir>$(SolutionDir)build\bin\$(Configuration)\</OutDir>
@@ -445,6 +448,7 @@
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
     <IncludePath>$(UniversalCRTSdkDir)Include\$(TargetPlatformVersion)\ucrt;$(IncludePath)</IncludePath>
+    <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='debug|Win32'">
     <ClCompile>
@@ -470,6 +474,7 @@
       <AdditionalLibraryDirectories>$(SolutionDir)build\lib\luajit\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ModuleDefinitionFile>$(ProjectName).def</ModuleDefinitionFile>
       <AdditionalDependencies>lua51.static.lib;shlwapi.lib;dbghelp.lib;winhttp.lib;imm32.lib;dwrite.lib;d2d1.lib;windowscodecs.lib;icu.lib;psapi.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>DebugFastLink</GenerateDebugInformation>
     </Link>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(IntDir)src;$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -526,6 +531,7 @@ xcopy /E /I /Y "$(SolutionDir)extern\luajit\src\jit\*" "$(SolutionDir)build\lib\
       <AdditionalDependencies>lua51.static.lib;shlwapi.lib;dbghelp.lib;winhttp.lib;imm32.lib;dwrite.lib;d2d1.lib;windowscodecs.lib;icu.lib;psapi.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <GenerateMapFile>true</GenerateMapFile>
+      <GenerateDebugInformation>DebugFastLink</GenerateDebugInformation>
     </Link>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(IntDir)src;$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
