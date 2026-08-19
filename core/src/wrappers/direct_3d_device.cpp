@@ -17,8 +17,8 @@
 #include <cstddef>
 #include <memory>
 #include <string>
-#include <stdio.h> // Required for our macro!
-#include <array>   // Added for std::array to satisfy bounds checking!
+#include <stdio.h> 
+#include <array>   
 
 // --- NEXTXI LOGGING MACRO ---
 #ifdef _DEBUG
@@ -35,7 +35,6 @@
 
 static bool g_imgui_initialized = false;
 
-// Use Invalidate/Create instead of Shutdown to survive Alt-Tab and dragging!
 extern IMGUI_IMPL_API void ImGui_ImplDX8_Shutdown();
 extern IMGUI_IMPL_API void ImGui_ImplWin32_Shutdown();
 
@@ -91,6 +90,19 @@ windower::direct_3d_device::~direct_3d_device()
     core.incoming_packet_queue = nullptr;
     core.outgoing_packet_queue = nullptr;
 
+    // ========================================================================
+    // ZOMBIE SLAYER
+    // Properly tear down ImGui so it can rebuild itself on the next login!
+    // ========================================================================
+    if (g_imgui_initialized)
+    {
+        ImGui_ImplDX8_Shutdown();
+        ImGui_ImplWin32_Shutdown();
+        ImGui::DestroyContext();
+        g_imgui_initialized = false;
+    }
+    // ========================================================================
+
     m_impl->Release();
     m_impl = nullptr;
 
@@ -142,14 +154,12 @@ windower::direct_3d_device::~direct_3d_device()
 ::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::Reset(
     ::D3DPRESENT_PARAMETERS* pPresentationParameters) noexcept
 {
-    // Explicitly cast the UINT struct fields to (int) to match the %d format!
     NEXTXI_LOG("Reset() Triggered! Windowed: %d | Width: %d | Height: %d | RefreshRate: %d",
         pPresentationParameters ? (int)pPresentationParameters->Windowed : -1,
         pPresentationParameters ? (int)pPresentationParameters->BackBufferWidth : -1,
         pPresentationParameters ? (int)pPresentationParameters->BackBufferHeight : -1,
         pPresentationParameters ? (int)pPresentationParameters->FullScreen_RefreshRateInHz : -1);
 
-    // Marked as const per Core Guidelines
     const HRESULT hr = m_impl->Reset(pPresentationParameters);
 
     NEXTXI_LOG("Reset() Result HRESULT: 0x%08X", hr);
@@ -175,12 +185,10 @@ windower::direct_3d_device::~direct_3d_device()
 {
     auto& core = core::instance();
 
-    // --- ULTIMATE RADAR: TRACK THE THIEF AT 60 FPS ---
     HWND target_hwnd = hDestWindowOverride ? hDestWindowOverride : static_cast<HWND>(core.client_hwnd);
     if (target_hwnd)
     {
         static LONG last_style = 0;
-        // Marked as const
         const LONG current_style = ::GetWindowLongW(target_hwnd, GWL_STYLE);
 
         if (last_style != 0 && current_style != last_style)
@@ -193,7 +201,6 @@ windower::direct_3d_device::~direct_3d_device()
         RECT r;
         if (::GetWindowRect(target_hwnd, &r))
         {
-            // Marked as const
             const int w = r.right - r.left;
             const int h = r.bottom - r.top;
             if (last_w != 0 && (w != last_w || h != last_h))
@@ -203,7 +210,6 @@ windower::direct_3d_device::~direct_3d_device()
             last_w = w; last_h = h;
         }
     }
-    // --- RADAR END ---
 
     if (!g_imgui_initialized)
     {

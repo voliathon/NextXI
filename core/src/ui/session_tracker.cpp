@@ -15,7 +15,6 @@ namespace windower::ui::session_tracker
         static bool s_pending_autoload = false;
         static std::string s_pending_name = "";
 
-        // Removed the static initialization so we can cleanly reset it!
         static std::chrono::steady_clock::time_point s_login_time;
 
         // ----------------------------------------------------
@@ -45,8 +44,6 @@ namespace windower::ui::session_tracker
 
                 s_pending_autoload = true;
                 s_pending_name = name_ptr;
-
-                // Explicitly reset the clock to RIGHT NOW on every single login
                 s_login_time = std::chrono::steady_clock::now();
 
                 log(u8"--- SESSION STARTED: Waiting 3 seconds for engine to stabilize... ---");
