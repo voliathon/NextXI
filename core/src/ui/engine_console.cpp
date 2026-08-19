@@ -53,15 +53,27 @@ namespace windower::ui
             if (message.wParam == VK_INSERT) { toggle(); return 0; }
             if (message.wParam == VK_ESCAPE && m_visible) { m_visible = false; return 0; }
         }
-        if (m_visible) {
-            if ((message.message >= WM_KEYFIRST && message.message <= WM_KEYLAST) ||
-                (message.message >= WM_MOUSEFIRST && message.message <= WM_MOUSELAST) ||
-                message.message == WM_CHAR) {
-                std::lock_guard<std::mutex> lock(m_msg_mutex);
-                m_msg_queue.push_back(message);
-                return 0;
+
+        if (ImGui::GetCurrentContext()) {
+            bool const is_mouse = (message.message >= WM_MOUSEFIRST && message.message <= WM_MOUSELAST);
+            bool const is_keyboard = (message.message >= WM_KEYFIRST && message.message <= WM_KEYLAST) || message.message == WM_CHAR;
+
+            if (is_mouse || is_keyboard) {
+                {
+                    std::lock_guard<std::mutex> lock(m_msg_mutex);
+                    m_msg_queue.push_back(message);
+                }
+
+                ImGuiIO& io = ImGui::GetIO();
+                if (is_mouse && io.WantCaptureMouse) return 0;
+
+                if (is_keyboard) {
+                    if (io.WantTextInput) return 0;
+                    if (m_visible && io.WantCaptureKeyboard) return 0;
+                }
             }
         }
+
         return std::nullopt;
     }
 
@@ -92,7 +104,6 @@ namespace windower::ui
     }
 
     bool engine_console::update_player_state() noexcept {
-        // REVERT: Restored FFXI's native check to shield against ghost memory at the title screens!
         if (!windower::ffximain::is_logged_in()) {
             windower::player_scanner::reset_scan();
             return false;
@@ -183,12 +194,16 @@ namespace windower::ui
                             addon_browser::run_autoload(args);
                         }
                     }
+                    else if (cmd_str == u8"exit") {
+                        m_visible = false;
+                    }
                     else if (cmd_str == u8"help") {
                         push_log(u8"--- Console Commands ---");
                         push_log(u8" clear               : Erases all text.");
                         push_log(u8" export              : Dumps history to console_export.txt.");
                         push_log(u8" addons              : Lists all active addons.");
                         push_log(u8" autoload <name>     : Loads a character profile.");
+                        push_log(u8" exit                : Closes the Control Center.");
                         push_log(u8" //load <addon>      : Loads an addon.");
                         push_log(u8" //unload <addon>    : Unloads an addon.");
                     }

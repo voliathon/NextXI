@@ -1,5 +1,4 @@
 #include "addon/modules/command.hpp"
-
 #include "addon/addon.hpp"
 #include "addon/lua.hpp"
 #include "addon/modules/command.lua.hpp"
@@ -17,97 +16,95 @@
 
 namespace
 {
+    std::byte call_command_handler_key;
 
-std::byte call_command_handler_key;
-
-int parse_args(windower::lua::state s)
-{
-    using namespace windower;
-
-    auto const arg_string = lua::get<std::u8string_view>(s, 1);
-    auto const arg_count  = lua::get<std::size_t>(s, 2);
-    auto const results = command_manager::get_arguments(arg_string, arg_count);
-    lua::stack_guard guard{s};
-    for (auto const& arg : results)
+    int parse_args(windower::lua::state s)
     {
-        lua::push(guard, arg);
-    }
-    return guard.release();
-}
+        using namespace windower;
 
-int register_handler(windower::lua::state s)
-{
-    using namespace windower;
-
-    auto const handle = script_base::get_script_base(s)->root_handle();
-
-    auto const command = lua::get<std::u8string>(s, 1);
-    auto const raw     = lua::get<bool>(s, 2);
-    auto const tag     = handle.lock();
-
-    auto layer     = command_manager::layer::script;
-    auto component = std::u8string_view{u8"__script"};
-    if (auto package = addon::get_package(s))
-    {
-        layer     = command_manager::layer::addon;
-        component = package->name();
+        auto const arg_string = lua::get<std::u8string_view>(s, 1);
+        auto const arg_count = lua::get<std::size_t>(s, 2);
+        auto const results = command_manager::get_arguments(arg_string, arg_count);
+        lua::stack_guard guard{ s };
+        for (auto const& arg : results)
+        {
+            lua::push(guard, arg);
+        }
+        return guard.release();
     }
 
-    command_manager::instance().register_command(
-        layer, component, command,
-        [handle, command](
-            std::vector<std::u8string> const& args,
-            windower::command_source source) {
-            if (auto ptr = handle.lock())
-            {
-                try
-                {
-                    lua::stack_guard guard{*ptr};
-                    lua::push(guard, &::call_command_handler_key);
-                    lua::raw_get(guard, lua::registry);
+    int register_handler(windower::lua::state s)
+    {
+        using namespace windower;
 
-                    lua::push(guard, command);
-                    lua::push(guard, static_cast<std::int32_t>(source));
-                    for (auto const& arg : args)
+        auto const handle = script_base::get_script_base(s)->root_handle();
+
+        auto const command = lua::get<std::u8string>(s, 1);
+        auto const raw = lua::get<bool>(s, 2);
+        auto const tag = handle.lock();
+
+        auto layer = command_manager::layer::script;
+        auto component = std::u8string_view{ u8"__script" };
+        if (auto package = addon::get_package(s))
+        {
+            layer = command_manager::layer::addon;
+            component = package->name();
+        }
+
+        command_manager::instance().register_command(
+            layer, component, command,
+            [handle, command](
+                std::vector<std::u8string> const& args,
+                windower::command_source source) {
+                    if (auto ptr = handle.lock())
                     {
-                        lua::push(guard, arg);
+                        try
+                        {
+                            lua::stack_guard guard{ *ptr };
+                            lua::push(guard, &::call_command_handler_key);
+                            lua::raw_get(guard, lua::registry);
+
+                            lua::push(guard, command);
+                            lua::push(guard, static_cast<std::int32_t>(source));
+                            for (auto const& arg : args)
+                            {
+                                lua::push(guard, arg);
+                            }
+
+                            lua::call(guard, args.size() + 2);
+                        }
+                        catch (std::exception const&)
+                        {
+                            core::instance().addon_manager->raise_error(
+                                addon::get_package(*ptr).get(),
+                                std::current_exception());
+                        }
                     }
+            },
+            raw, tag);
 
-                    lua::call(guard, args.size() + 2);
-                }
-                catch (std::exception const&)
-                {
-                    core::instance().addon_manager->raise_error(
-                        addon::get_package(*ptr).get(),
-                        std::current_exception());
-                }
-            }
-        },
-        raw, tag);
-
-    return 0;
-}
-
-int unregister_handler(windower::lua::state s)
-{
-    using namespace windower;
-
-    auto const command = lua::get<std::u8string>(s, 1);
-
-    auto layer     = command_manager::layer::script;
-    auto component = std::u8string_view{u8"__script"};
-    if (auto package = addon::get_package(s))
-    {
-        layer     = command_manager::layer::addon;
-        component = package->name();
+        return 0;
     }
 
-    windower::command_manager::instance().unregister_command(
-        layer, component, command);
+    int unregister_handler(windower::lua::state s)
+    {
+        using namespace windower;
 
-    return 0;
-}
+        auto const command = lua::get<std::u8string>(s, 1);
 
+        auto layer = command_manager::layer::script;
+        auto component = std::u8string_view{ u8"__script" };
+        if (auto package = addon::get_package(s))
+        {
+            layer = command_manager::layer::addon;
+            component = package->name();
+        }
+
+        windower::command_manager::instance().unregister_command(
+            layer, component, command);
+
+        return 0;
+    }
 }
 
 extern "C"
@@ -134,7 +131,7 @@ bool windower::trigger_unknown_command(
     bool handled = false;
 
     run_on_all_interpreters([&](lua::state s) {
-        lua::stack_guard guard{s};
+        lua::stack_guard guard{ s };
         lua::push(guard, &call_command_handler_key);
         lua::raw_get(guard, lua::registry);
         if (lua::typeof(guard, -1) != lua::type::function)
@@ -147,14 +144,14 @@ bool windower::trigger_unknown_command(
         lua::push(guard, handled);
         lua::call(guard, 4, 1);
         handled |= lua::get<bool>(guard, -1);
-    });
+        });
 
     return handled;
 }
 
 int windower::load_command_module(lua::state s)
 {
-    lua::stack_guard guard{s};
+    lua::stack_guard guard{ s };
 
     lua::load(guard, lua_command_source, u8"core.command");
 
@@ -163,9 +160,7 @@ int windower::load_command_module(lua::state s)
     lua::push(guard, ::register_handler);
     lua::push(guard, ::unregister_handler);
     lua::push(guard, ::parse_args);
-    lua::push(guard, reinterpret_cast<void*>(::input)); // Explicit FFI void* cast!
-
-    lua::call(guard, 6);
+    lua::push(guard, reinterpret_cast<void*>(::input));
 
     lua::call(guard, 6);
 

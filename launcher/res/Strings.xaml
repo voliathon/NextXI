@@ -169,7 +169,7 @@ SOFTWARE.
     <sys:String x:Key="Strings.CrashReporterReportNotSubmitted">Crash report saved</sys:String>
     <sys:String x:Key="Strings.CrashReporterReportNotSubmittedDetails">The crash report files have been saved to your hard drive and have not been submitted to the m.</sys:String>
     <sys:String x:Key="Strings.CrashReporterReportingDisabled">Crash reporting disabled</sys:String>
-    <sys:String x:Key="Strings.CrashReporterReportingDisabledDetails">Crash reporting has been disabled for this version of Windower. The crash report files have been saved to your hard drive.</sys:String>
+    <sys:String x:Key="Strings.CrashReporterReportingDisabledDetails">Crash reporting has been disabled for this version of NextXI. The crash report files have been saved to your hard drive.</sys:String>
     <sys:String x:Key="Strings.CrashReporterReportingFailed">Failed to report crash</sys:String>
     <sys:String x:Key="Strings.CrashReporterReportingFailedDetails">A problem occurred while submitting the crash report. The crash report files have been saved to your hard drive.</sys:String>
     <sys:String x:Key="Strings.CrashReporterDeleteFiles">Delete crash report files</sys:String>

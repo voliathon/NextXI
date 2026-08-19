@@ -90,10 +90,6 @@ windower::direct_3d_device::~direct_3d_device()
     core.incoming_packet_queue = nullptr;
     core.outgoing_packet_queue = nullptr;
 
-    // ========================================================================
-    // ZOMBIE SLAYER
-    // Properly tear down ImGui so it can rebuild itself on the next login!
-    // ========================================================================
     if (g_imgui_initialized)
     {
         ImGui_ImplDX8_Shutdown();
@@ -101,7 +97,6 @@ windower::direct_3d_device::~direct_3d_device()
         ImGui::DestroyContext();
         g_imgui_initialized = false;
     }
-    // ========================================================================
 
     m_impl->Release();
     m_impl = nullptr;
@@ -154,26 +149,12 @@ windower::direct_3d_device::~direct_3d_device()
 ::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::Reset(
     ::D3DPRESENT_PARAMETERS* pPresentationParameters) noexcept
 {
-    NEXTXI_LOG("Reset() Triggered! Windowed: %d | Width: %d | Height: %d | RefreshRate: %d",
-        pPresentationParameters ? (int)pPresentationParameters->Windowed : -1,
-        pPresentationParameters ? (int)pPresentationParameters->BackBufferWidth : -1,
-        pPresentationParameters ? (int)pPresentationParameters->BackBufferHeight : -1,
-        pPresentationParameters ? (int)pPresentationParameters->FullScreen_RefreshRateInHz : -1);
-
     const HRESULT hr = m_impl->Reset(pPresentationParameters);
-
-    NEXTXI_LOG("Reset() Result HRESULT: 0x%08X", hr);
 
     if (SUCCEEDED(hr) && g_imgui_initialized)
     {
-        NEXTXI_LOG("Reset Successful. Rebuilding ImGui DX8 Backend...");
         ImGui_ImplDX8_Shutdown();
         ImGui_ImplDX8_Init(m_impl);
-        NEXTXI_LOG("ImGui Rebuild Complete.");
-    }
-    else if (!SUCCEEDED(hr))
-    {
-        NEXTXI_LOG("CRITICAL WARNING: Reset() FAILED!");
     }
 
     return hr;
@@ -186,30 +167,6 @@ windower::direct_3d_device::~direct_3d_device()
     auto& core = core::instance();
 
     HWND target_hwnd = hDestWindowOverride ? hDestWindowOverride : static_cast<HWND>(core.client_hwnd);
-    if (target_hwnd)
-    {
-        static LONG last_style = 0;
-        const LONG current_style = ::GetWindowLongW(target_hwnd, GWL_STYLE);
-
-        if (last_style != 0 && current_style != last_style)
-        {
-            NEXTXI_LOG("THIEF CAUGHT: Style mutated from 0x%08X to 0x%08X outside of hooks!", last_style, current_style);
-        }
-        last_style = current_style;
-
-        static int last_w = 0, last_h = 0;
-        RECT r;
-        if (::GetWindowRect(target_hwnd, &r))
-        {
-            const int w = r.right - r.left;
-            const int h = r.bottom - r.top;
-            if (last_w != 0 && (w != last_w || h != last_h))
-            {
-                NEXTXI_LOG("THIEF CAUGHT: Window Rect mutated from %dx%d to %dx%d!", last_w, last_h, w, h);
-            }
-            last_w = w; last_h = h;
-        }
-    }
 
     if (!g_imgui_initialized)
     {
@@ -232,14 +189,30 @@ windower::direct_3d_device::~direct_3d_device()
         ImGui::NewFrame();
 
         windower::run_on_all_interpreters([](windower::lua::state s) {
-            windower::lua::stack_guard guard{ s };
-            windower::lua::push(guard, u8"imgui_render");
-            windower::lua::raw_get(guard, windower::lua::globals);
-
-            if (windower::lua::typeof(guard, -1) == windower::lua::type::function)
+            // ========================================================================
+            // CRITICAL CATCH BLOCK: Guarantees addon UI crashes never kill the client
+            // ========================================================================
+            try
             {
-                windower::lua::call(guard, 0, 0);
+                windower::lua::stack_guard guard{ s };
+                windower::lua::push(guard, u8"imgui_render");
+                windower::lua::raw_get(guard, windower::lua::globals);
+
+                if (windower::lua::typeof(guard, -1) == windower::lua::type::function)
+                {
+                    windower::lua::call(guard, 0, 0);
+                }
             }
+            catch (std::exception const& e)
+            {
+                // Print the Lua script error to the console, but DO NOT CRASH.
+                windower::core::error(u8"ImGui Bridge", e, windower::command_source::console);
+            }
+            catch (...)
+            {
+                // Swallow unknown unmanaged exceptions completely.
+            }
+            // ========================================================================
             });
     }
 
