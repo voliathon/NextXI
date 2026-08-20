@@ -50,6 +50,7 @@
     <ClInclude Include="src\addon\modules\class.hpp" />
     <ClInclude Include="src\addon\modules\hash.hpp" />
     <ClInclude Include="src\addon\modules\imgui.hpp" />
+    <ClInclude Include="src\addon\modules\imgui_internal.hpp" />
     <ClInclude Include="src\addon\modules\os.hpp" />
     <ClInclude Include="src\addon\modules\pin.hpp" />
     <ClInclude Include="src\addon\modules\player_scanner.hpp" />
@@ -204,6 +205,10 @@
     <ClCompile Include="src\addon\modules\class.cpp" />
     <ClCompile Include="src\addon\modules\hash.cpp" />
     <ClCompile Include="src\addon\modules\imgui.cpp" />
+    <ClCompile Include="src\addon\modules\imgui_layout.cpp" />
+    <ClCompile Include="src\addon\modules\imgui_style.cpp" />
+    <ClCompile Include="src\addon\modules\imgui_widgets.cpp" />
+    <ClCompile Include="src\addon\modules\imgui_window.cpp" />
     <ClCompile Include="src\addon\modules\os.cpp" />
     <ClCompile Include="src\addon\modules\pin.cpp" />
     <ClCompile Include="src\addon\modules\player_scanner.cpp" />
