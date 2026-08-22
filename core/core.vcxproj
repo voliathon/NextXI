@@ -37,6 +37,7 @@
   </Target>
   <Import Project="$(SolutionDir)extern\vcpkg\scripts\buildsystems\msbuild\vcpkg.targets" />
   <ItemGroup>
+    <ClInclude Include="F:\Downloads\json.hpp" />
     <ClInclude Include="lib\d3d8.h" />
     <ClInclude Include="lib\ddraw.h" />
     <ClInclude Include="lib\dinput.h" />
@@ -46,6 +47,7 @@
     <ClInclude Include="lib\imgui\imgui.h" />
     <ClInclude Include="lib\imgui\imgui_internal.h" />
     <ClInclude Include="lib\imgui\misc\cpp\imgui_stdlib.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="src\addon\errors\package_error.hpp" />
     <ClInclude Include="src\addon\modules\class.hpp" />
     <ClInclude Include="src\addon\modules\hash.hpp" />
@@ -55,6 +57,7 @@
     <ClInclude Include="src\addon\modules\pin.hpp" />
     <ClInclude Include="src\addon\modules\player_scanner.hpp" />
     <ClInclude Include="src\addon\package.hpp" />
+    <ClInclude Include="src\addon\profile_manager.hpp" />
     <ClInclude Include="src\addon\unsafe.hpp" />
     <ClInclude Include="src\command_parser.hpp" />
     <ClInclude Include="src\errors\command_error.hpp" />
@@ -89,6 +92,7 @@
     <ClInclude Include="src\guid.hpp" />
     <ClInclude Include="src\hooks\user32_internal.hpp" />
     <ClInclude Include="src\hooks\ws2_32.hpp" />
+    <ClInclude Include="src\nlohmann\json.hpp" />
     <ClInclude Include="src\packet_queue.hpp" />
     <ClInclude Include="src\settings_channel.hpp" />
     <ClInclude Include="src\crash_handler.hpp" />
@@ -136,7 +140,10 @@
     <ClInclude Include="src\ui\mouse_button.hpp" />
     <ClInclude Include="src\ui\mouse_scroll_axis.hpp" />
     <ClInclude Include="src\ui\session_tracker.hpp" />
+    <ClInclude Include="src\ui\style_manager.hpp" />
     <ClInclude Include="src\ui\system_diagnostics.hpp" />
+    <ClInclude Include="src\ui\tabs\tab_addons.hpp" />
+    <ClInclude Include="src\ui\tabs\tab_styling.hpp" />
     <ClInclude Include="src\ui\thickness.hpp" />
     <ClInclude Include="src\ui\patch.hpp" />
     <ClInclude Include="src\ui\primitives.hpp" />
@@ -215,6 +222,7 @@
     <ClCompile Include="src\addon\package.cpp" />
     <ClCompile Include="src\addon\package_manager_graph.cpp" />
     <ClCompile Include="src\addon\package_manager_network.cpp" />
+    <ClCompile Include="src\addon\profile_manager.cpp" />
     <ClCompile Include="src\addon\unsafe.cpp" />
     <ClCompile Include="src\command_parser.cpp" />
     <ClCompile Include="src\errors\command_error.cpp" />
@@ -285,7 +293,10 @@
     <ClCompile Include="src\ui\mouse.cpp" />
     <ClCompile Include="src\ui\primitives.cpp" />
     <ClCompile Include="src\ui\session_tracker.cpp" />
+    <ClCompile Include="src\ui\style_manager.cpp" />
     <ClCompile Include="src\ui\system_diagnostics.cpp" />
+    <ClCompile Include="src\ui\tabs\tab_addons.cpp" />
+    <ClCompile Include="src\ui\tabs\tab_styling.cpp" />
     <ClCompile Include="src\ui\texture_cache.cpp" />
     <ClCompile Include="src\ui\texture_loaders.cpp" />
     <ClCompile Include="src\ui\text_layout_engine.cpp" />
@@ -329,9 +340,11 @@
     <ClCompile Include="src\errors\windower_error.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="..\..\..\Users\volia\OneDrive\Desktop\settings.png" />
     <Image Include="res\favicon.ico" />
     <Image Include="res\icon.ico" />
     <Image Include="res\icons.png" />
+    <Image Include="res\info.png" />
     <Image Include="res\layout-grid.100.png" />
     <Image Include="res\layout-grid.125.png" />
     <Image Include="res\layout-grid.150.png" />
@@ -345,6 +358,8 @@
     <Image Include="res\layout-grid.350.png" />
     <Image Include="res\layout-grid.375.png" />
     <Image Include="res\layout-grid.400.png" />
+    <Image Include="res\load.png" />
+    <Image Include="res\settings.png" />
     <Image Include="res\stable\icon.ico" />
     <Image Include="res\stable\skin.100.png" />
     <Image Include="res\stable\skin.125.png" />
@@ -386,6 +401,7 @@
     <Image Include="res\test\skin.350.png" />
     <Image Include="res\test\skin.375.png" />
     <Image Include="res\test\skin.400.png" />
+    <Image Include="res\unload.png" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="res\client-commands.txt" />

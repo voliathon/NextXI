@@ -6,6 +6,7 @@
 #include "core.hpp"
 #include "hooks/ffximain.hpp"
 #include "wrappers/direct_3d.hpp"
+#include "utilities/paths.hpp"
 
 #include <windows.h>
 #include <imgui.h>
@@ -18,7 +19,8 @@
 #include <memory>
 #include <string>
 #include <stdio.h> 
-#include <array>   
+#include <array>
+#include <filesystem>
 
 // --- NEXTXI LOGGING MACRO ---
 #ifdef _DEBUG
@@ -34,7 +36,6 @@
 // ----------------------------
 
 static bool g_imgui_initialized = false;
-
 extern IMGUI_IMPL_API void ImGui_ImplDX8_Shutdown();
 extern IMGUI_IMPL_API void ImGui_ImplWin32_Shutdown();
 
@@ -177,6 +178,57 @@ windower::direct_3d_device::~direct_3d_device()
         io.ConfigWindowsResizeFromEdges = true;
         ImGui::StyleColorsDark();
 
+        // ====================================================================
+        // FONT ATLAS GENERATION (Injected before DX8 Init locks the texture)
+        // ====================================================================
+        io.Fonts->AddFontDefault();
+
+        auto try_load_font = [&](std::filesystem::path const& path) {
+            std::error_code ec;
+            if (std::filesystem::exists(path, ec)) {
+                ImFontConfig font_cfg;
+                font_cfg.OversampleH = 2;
+                font_cfg.OversampleV = 2;
+                io.Fonts->AddFontFromFileTTF(path.string().c_str(), 16.0f, &font_cfg);
+            }
+            };
+
+        // 1. Physically locate this DLL via memory address using our static variable
+        HMODULE hModule = nullptr;
+        ::GetModuleHandleExW(
+            GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+            reinterpret_cast<LPCWSTR>(&g_imgui_initialized),
+            &hModule
+        );
+
+        if (hModule) {
+            WCHAR module_path[MAX_PATH];
+            ::GetModuleFileNameW(hModule, module_path, MAX_PATH);
+            std::filesystem::path core_dll_path(module_path);
+
+            auto custom_font_dir = core_dll_path.parent_path() / "assets" / "fonts";
+
+            std::error_code ec;
+            if (std::filesystem::exists(custom_font_dir, ec)) {
+                for (auto const& entry : std::filesystem::directory_iterator(custom_font_dir, ec)) {
+                    std::string ext = entry.path().extension().string();
+                    if (ext == ".ttf" || ext == ".TTF") {
+                        try_load_font(entry.path());
+                    }
+                }
+            }
+        }
+
+        // 2. Standard Windows Fallbacks
+        try_load_font("C:\\Windows\\Fonts\\arial.ttf");
+        try_load_font("C:\\Windows\\Fonts\\consola.ttf");
+        try_load_font("C:\\Windows\\Fonts\\trebuc.ttf");
+        try_load_font("C:\\Windows\\Fonts\\tahoma.ttf");
+        try_load_font("C:\\Windows\\Fonts\\verdana.ttf");
+        try_load_font("C:\\Windows\\Fonts\\comic.ttf");
+        try_load_font("C:\\Windows\\Fonts\\times.ttf");
+        // ====================================================================
+
         ImGui_ImplWin32_Init(target_hwnd);
         ImGui_ImplDX8_Init(m_impl);
         g_imgui_initialized = true;
@@ -189,9 +241,6 @@ windower::direct_3d_device::~direct_3d_device()
         ImGui::NewFrame();
 
         windower::run_on_all_interpreters([](windower::lua::state s) {
-            // ========================================================================
-            // CRITICAL CATCH BLOCK: Guarantees addon UI crashes never kill the client
-            // ========================================================================
             try
             {
                 windower::lua::stack_guard guard{ s };
@@ -205,14 +254,11 @@ windower::direct_3d_device::~direct_3d_device()
             }
             catch (std::exception const& e)
             {
-                // Print the Lua script error to the console, but DO NOT CRASH.
                 windower::core::error(u8"ImGui Bridge", e, windower::command_source::console);
             }
             catch (...)
             {
-                // Swallow unknown unmanaged exceptions completely.
             }
-            // ========================================================================
             });
     }
 

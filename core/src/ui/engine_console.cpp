@@ -8,13 +8,52 @@
 #include "ui/session_tracker.hpp"
 #include "addon/modules/player_scanner.hpp" 
 
+// --- NEW COMPARTMENTALIZED TABS ---
+#include "ui/tabs/tab_addons.hpp"
+#include "ui/tabs/tab_styling.hpp"
+#include "addon/package_manager.hpp"
+
 #include <imgui.h>
 #include <fstream>
 #include <filesystem>
 #include <gsl/gsl>
+#include <vector>
+#include <string>
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 extern "C" char const* get_ffxi_player_ffi();
+
+namespace {
+    // Helper to gather installed NextXI packages for the new table layout
+    std::vector<windower::ui::tabs::addon_info> get_nextxi_addons_list() {
+        std::vector<windower::ui::tabs::addon_info> list;
+        auto const& pm = windower::core::instance().package_manager;
+        if (pm) {
+            for (auto const& pkg : pm->installed_packages()) {
+                bool has_rd = std::filesystem::exists(pkg->path() / u8"README.md");
+                std::string name(reinterpret_cast<const char*>(pkg->name().c_str()));
+
+                bool is_loaded = false;
+                if (windower::core::instance().addon_manager) {
+                    is_loaded = windower::core::instance().addon_manager->get(pkg->name()) != nullptr;
+                }
+
+                list.push_back({ name, is_loaded, has_rd });
+            }
+        }
+        return list;
+    }
+
+    // Helper for legacy Windower 4 Addons
+    std::vector<windower::ui::tabs::addon_info> get_windower4_addons_list() {
+        std::vector<windower::ui::tabs::addon_info> list;
+        // Legacy list mock/hook
+        list.push_back({ "Distance", false, true });
+        list.push_back({ "TParty", false, true });
+        list.push_back({ "Blinkmenot", false, false });
+        return list;
+    }
+}
 
 namespace windower::ui
 {
@@ -48,11 +87,6 @@ namespace windower::ui
 
     // ========================================================================
     // THE ULTIMATE DIRECTINPUT BYPASS
-    // NextXI's dinput8 hook queries this function to decide if it should lock 
-    // out the game's control keys (Enter, Escape, Arrows). 
-    // We lie to the engine: if the console is open but you aren't actively 
-    // typing inside its text box, we claim it's "hidden". This forces the 
-    // engine to let the Enter key pass right through to FFXI!
     // ========================================================================
     bool engine_console::is_visible() const noexcept {
         if (m_visible && ImGui::GetCurrentContext()) {
@@ -240,7 +274,7 @@ namespace windower::ui
         }
     }
 
-    void engine_console::render(context& /*ctx*/) noexcept
+    void engine_console::render(context& ctx) noexcept
     {
         if (!::GetModuleHandleW(L"FFXiMain.dll")) {
             m_visible = false;
@@ -299,11 +333,42 @@ namespace windower::ui
             if (player_active) {
                 render_console_tab();
                 debug_scanner::render_debug_tab([this](std::u8string_view msg) { push_log(msg); }, g_focus_console_tab);
-                try { m_browser.render_tabs(); }
-                catch (...) {}
+
+                // MINE THE REAL DATA FROM ADDON_BROWSER!
+                std::vector<tabs::addon_info> w4_addons;
+                std::vector<tabs::addon_info> nxi_addons;
+
+                auto am = core::instance().addon_manager.get();
+                for (auto const& a : m_browser.get_cached_addons()) {
+                    tabs::addon_info info;
+                    info.name = std::string(a.name.begin(), a.name.end());
+                    info.is_loaded = am && (am->get(a.name) != nullptr);
+                    info.has_readme = a.has_readme;
+                    info.readme_path = a.readme_path.string();
+
+                    if (a.is_modern) nxi_addons.push_back(info);
+                    else w4_addons.push_back(info);
+                }
+
+                if (ImGui::BeginTabItem("Windower 4 Addons")) {
+                    ImGui::Spacing();
+                    tabs::render_addon_table(ctx, "W4AddonTable", w4_addons, true);
+                    ImGui::EndTabItem();
+                }
+
+                if (ImGui::BeginTabItem("NextXI Addons")) {
+                    ImGui::Spacing();
+                    tabs::render_addon_table(ctx, "NXIAddonTable", nxi_addons, true);
+                    ImGui::EndTabItem();
+                }
             }
             else {
                 render_locked_tab();
+            }
+
+            if (ImGui::BeginTabItem("Styling")) {
+                tabs::render_styling_tab();
+                ImGui::EndTabItem();
             }
 
             ImGui::EndTabBar();

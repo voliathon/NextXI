@@ -1,16 +1,16 @@
 #include "windower.hpp"
-
 #include "addon/addon.hpp"
 #include "addon/package_manager.hpp"
 #include "addon/lua.hpp"
 #include "addon/modules/windower.lua.hpp"
+#include "addon/profile_manager.hpp"
+#include "addon/unsafe.hpp" 
+#include <lua.hpp>
 #include "core.hpp"
 #include "utility.hpp"
 #include "utilities/paths.hpp"
 #include "version.hpp"
-
 #include "player_scanner.hpp" 
-
 #include "../../scanner.hpp"
 #include <windows.h>
 #include <cstring>
@@ -20,8 +20,7 @@
 #include <fstream>
 #include <chrono>
 
-namespace
-{
+namespace {
     extern "C" char const* get_package_list_ffi()
     {
         static std::string result;
@@ -141,11 +140,9 @@ namespace
         out_span[1] = vp.Y + (1.0f - ndcy) * vp.Height / 2.0f;
     }
 #pragma warning(pop)
-
 }
 
-int windower::load_windower_module(lua::state s)
-{
+int windower::load_windower_module(lua::state s) {
     lua::stack_guard guard{ s };
 
     lua::load(guard, lua_windower_source, u8"core.windower");
@@ -187,6 +184,7 @@ int windower::load_windower_module(lua::state s)
         lua::push(guard, lua::nil);
         lua::push(guard, lua::nil);
     }
+
     lua::push(guard, &get_package_list_ffi);
     lua::push(guard, &get_package_readme_ffi);
     lua::push(guard, &read_market_file_ffi);
@@ -197,7 +195,36 @@ int windower::load_windower_module(lua::state s)
     lua::push(guard, &get_ffxi_spells_ffi);
     lua::push(guard, &get_ffxi_entities_ffi);
     lua::push(guard, &project_ffi);
+
     lua::call(guard, 25);
+
+    // ==========================================
+     // INJECT PROFILE MANAGER TO GLOBAL core.profile 
+     // ==========================================
+    auto L = lua::unsafe::unwrap(s);
+
+    lua_getglobal(L, "core");
+    if (!lua_istable(L, -1)) {
+        lua_pop(L, 1);
+        lua_newtable(L);
+        lua_pushvalue(L, -1);
+        lua_setglobal(L, "core");
+    }
+
+    lua_pushstring(L, "profile");
+    lua_newtable(L);
+
+    // Use NextXI's safe wrapper to push the functions so the types match perfectly
+    lua::push(guard, u8"set_autoload");
+    lua::push(guard, windower::profile_manager::lua_set_autoload);
+    lua::raw_set(guard, -3);
+
+    lua::push(guard, u8"get_autoload");
+    lua::push(guard, windower::profile_manager::lua_get_autoload);
+    lua::raw_set(guard, -3);
+
+    lua_rawset(L, -3);  // core["profile"] = table
+    lua_pop(L, 1);      // pop "core"
 
     return guard.release();
 }

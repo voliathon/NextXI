@@ -1,12 +1,12 @@
 #include "player_scanner.hpp"
+#include "addon/profile_manager.hpp"
 #include <windows.h>
 #include <cstring>
 #include <cstdio>
 #include <string>
 #include <chrono>
 
-namespace windower::player_scanner
-{
+namespace windower::player_scanner {
     static char g_cached_player_name[24] = { 0 };
     static char g_cached_server_name[32] = { 0 };
     static bool g_player_found = false;
@@ -122,6 +122,10 @@ namespace windower::player_scanner
                                     if (spawned_in_world) {
                                         strcpy_s(g_cached_player_name, 24, potential_name);
                                         strcpy_s(g_cached_server_name, 32, server);
+
+                                        // Tell the Engine's Profile Manager exactly who we are!
+                                        windower::profile_manager::instance().set_character(reinterpret_cast<const char8_t*>(g_cached_player_name));
+
                                         return true;
                                     }
                                 }

@@ -27,6 +27,11 @@ namespace windower::ui
         std::vector<addon_list_item> const& get_cached_addons() const noexcept;
         static void run_autoload(std::string const& profile);
 
+        // Moved from private so the new modular UI tabs can write to the text files!
+        static std::filesystem::path get_autoload_file(std::string const& profile);
+        static bool is_autoload_enabled(std::string const& addon_name, std::string const& profile = "global");
+        static void toggle_autoload(std::string const& addon_name, std::string const& profile = "global");
+
     private:
         bool m_scanned = false;
 
@@ -42,11 +47,7 @@ namespace windower::ui
 
         void scan_addons();
         void load_readme(std::filesystem::path const& path);
-        void render_addon_list(bool is_modern); // Caveman DRY code trick!
-
-        static std::filesystem::path get_autoload_file(std::string const& profile);
-        static bool is_autoload_enabled(std::string const& addon_name, std::string const& profile = "global");
-        static void toggle_autoload(std::string const& addon_name, std::string const& profile = "global");
+        void render_addon_list(bool is_modern);
     };
 }
 
