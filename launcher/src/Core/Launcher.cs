@@ -45,9 +45,17 @@ namespace Windower.Core
                     var region = (Region)profile.Region;
                     GraphicsUpdater.ApplyGraphicsEngine(profile.SelectedEngine, region.GetPOLInstallDirectory());
 
-                    // Removed the double GetDirectoryName so the files land in the right spot!
-                    await ResourceManager.CheckAndDownloadResourcesAsync(Path.GetDirectoryName(CorePath), progress);
+                    // Generate dgVoodoo.conf automatically in the PlayOnline directory
+                    if (profile.SelectedEngine == Profile.GraphicsEngine.Vanilla)
+                    {
+                        var polDir = region.GetPOLInstallDirectory();
+                        if (!string.IsNullOrEmpty(polDir))
+                        {
+                            DgVoodooManager.DeployConfig(polDir, profile.VramAllocation);
+                        }
+                    }
 
+                    await ResourceManager.CheckAndDownloadResourcesAsync(Path.GetDirectoryName(CorePath), progress);
                     using (var injector = await CreateInjectorAsync(profile, token))
                     {
                         process = injector.Process;

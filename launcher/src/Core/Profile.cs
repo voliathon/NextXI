@@ -139,6 +139,10 @@ namespace Windower.Core
 
         public bool PolNoThrottle => polNoThrottle ?? false;
 
+        public bool DisableDgVoodooWatermark => true;
+        public int VramAllocation => 1024;
+        public bool EnableDirectX11 => true;
+
         public enum GraphicsEngine
         {
             Vanilla,
