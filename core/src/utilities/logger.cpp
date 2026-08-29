@@ -1,20 +1,20 @@
 #include "logger.hpp"
-
 #include "core.hpp"
 #include "addon/error.hpp"
 #include "addon/errors/package_error.hpp"
 #include "errors/windower_error.hpp"
 #include "ui/engine_console.hpp"
 #include "unicode.hpp"
-#include "utilities/string_helpers.hpp" // For windower::to_u8string
-
+#include "utilities/string_helpers.hpp"
 #include <windows.h>
 #include <gsl/gsl>
-
 #include <condition_variable>
 #include <mutex>
 #include <thread>
 #include <vector>
+#include <fstream>
+#include "utilities/paths.hpp"
+#include <filesystem>
 
 namespace
 {
@@ -47,6 +47,7 @@ namespace
                 {
                     break;
                 }
+
                 std::swap(log_queue, local_queue);
             }
 
@@ -83,6 +84,7 @@ namespace
                 }
 
                 ::OutputDebugStringW(w_text.c_str());
+
                 windower::core::instance().run_on_next_frame(
                     [text = std::move(msg.text)]() {
                         std::u8string::size_type start = 0;
@@ -92,7 +94,6 @@ namespace
                         {
                             auto line = text.substr(start, pos - start);
                             while (!line.empty() && line.back() == u8'\r') line.pop_back();
-
                             if (!line.empty()) {
                                 windower::ui::engine_console::push_log(line);
                             }
@@ -101,7 +102,6 @@ namespace
 
                         auto final_line = text.substr(start);
                         while (!final_line.empty() && final_line.back() == u8'\r') final_line.pop_back();
-
                         if (!final_line.empty()) {
                             windower::ui::engine_console::push_log(final_line);
                         }
@@ -118,7 +118,6 @@ namespace
         async_logger_cleanup(async_logger_cleanup&&) = delete;
         async_logger_cleanup& operator=(async_logger_cleanup const&) = delete;
         async_logger_cleanup& operator=(async_logger_cleanup&&) = delete;
-
         ~async_logger_cleanup()
         {
             {
@@ -147,6 +146,7 @@ namespace
                     result.append(1, u8')');
                 }
                 result.append(frame.name.empty() ? frame.name : u8"<unknown>");
+
                 if (!frame.source.value.empty())
                 {
                     result.append(u8"\n  ");
@@ -243,7 +243,7 @@ namespace
             result.append(u8"\n==================================================\n");
         }
     }
-} // namespace
+}
 
 void windower::logger::queue_log(std::u8string text, bool is_error)
 {
@@ -268,13 +268,16 @@ std::u8string windower::logger::get_error_message(std::exception const& exceptio
 std::u8string windower::logger::process_output(std::u8string_view component, std::u8string_view text)
 {
     if (component.empty()) { component = u8"core"; }
+
     auto const count = std::count(text.begin(), text.end(), u8'\n') + 1;
     std::u8string temp;
     temp.reserve(temp.size() + (component.size() + 3) * count);
+
     temp.append(1, u8'[');
     temp.append(component);
     temp.append(1, u8']');
     temp.append(1, u8' ');
+
     std::u8string::size_type start = 0;
     std::u8string::size_type pos;
     while ((pos = text.find(u8'\n', start)) != std::u8string::npos)
@@ -287,5 +290,28 @@ std::u8string windower::logger::process_output(std::u8string_view component, std
         start = pos + 1;
     }
     temp.append(text, start, std::u8string::npos);
+
     return temp;
+}
+
+// Synchronous Hardware Tracer Implementation
+void windower::logger::sync_trace_clear()
+{
+    auto dir_path = windower::windower_path() / u8"user" / u8"crash";
+    std::filesystem::create_directories(dir_path); // Ensure the folder exists
+    auto log_path = dir_path / u8"NextXI_Boot.log";
+
+    std::ofstream f(log_path, std::ios::trunc);
+    f << "--- NEW NEXTXI BOOT SEQUENCE ---" << std::endl;
+}
+
+void windower::logger::sync_trace(const char* msg)
+{
+    auto log_path = windower::windower_path() / u8"user" / u8"crash" / u8"NextXI_Boot.log";
+    std::ofstream f(log_path, std::ios::app);
+    f << msg << std::endl;
+
+#ifdef _WIN32
+    ::OutputDebugStringA(msg);
+#endif
 }

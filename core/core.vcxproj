@@ -90,7 +90,10 @@
     <ClInclude Include="src\addon\lua_internal.hpp" />
     <ClInclude Include="src\geometry.hpp" />
     <ClInclude Include="src\guid.hpp" />
+    <ClInclude Include="src\hooks\kernel32_internal.hpp" />
     <ClInclude Include="src\hooks\user32_internal.hpp" />
+    <ClInclude Include="src\hooks\user32_window_find.hpp" />
+    <ClInclude Include="src\hooks\user32_window_split.hpp" />
     <ClInclude Include="src\hooks\ws2_32.hpp" />
     <ClInclude Include="src\nlohmann\json.hpp" />
     <ClInclude Include="src\packet_queue.hpp" />
@@ -180,6 +183,7 @@
     <ClInclude Include="src\unicode.hpp" />
     <ClInclude Include="src\utilities\coroutine.hpp" />
     <ClInclude Include="src\utilities\debug_helpers.hpp" />
+    <ClInclude Include="src\utilities\iat_hook.hpp" />
     <ClInclude Include="src\utilities\logger.hpp" />
     <ClInclude Include="src\utilities\null_output.hpp" />
     <ClInclude Include="src\utilities\paths.hpp" />
@@ -258,9 +262,17 @@
     <ClCompile Include="src\hooks\ffximain.cpp" />
     <ClCompile Include="src\hooks\imm32.cpp" />
     <ClCompile Include="src\hooks\advapi32.cpp" />
+    <ClCompile Include="src\hooks\kernel32_misc.cpp" />
+    <ClCompile Include="src\hooks\kernel32_process.cpp" />
+    <ClCompile Include="src\hooks\kernel32_sync.cpp" />
     <ClCompile Include="src\hooks\user32_audio.cpp" />
     <ClCompile Include="src\hooks\user32_input.cpp" />
     <ClCompile Include="src\hooks\user32_window.cpp" />
+    <ClCompile Include="src\hooks\user32_window_class.cpp" />
+    <ClCompile Include="src\hooks\user32_window_create.cpp" />
+    <ClCompile Include="src\hooks\user32_window_find.cpp" />
+    <ClCompile Include="src\hooks\user32_window_msg.cpp" />
+    <ClCompile Include="src\hooks\user32_window_state.cpp" />
     <ClCompile Include="src\library.cpp" />
     <ClCompile Include="src\lua_imgui.cpp" />
     <ClCompile Include="src\lua_window.cpp" />
@@ -321,6 +333,7 @@
     <ClCompile Include="src\ui\window_manager.cpp" />
     <ClCompile Include="src\unicode.cpp" />
     <ClCompile Include="src\utilities\debug_helpers.cpp" />
+    <ClCompile Include="src\utilities\iat_hook.cpp" />
     <ClCompile Include="src\utilities\logger.cpp" />
     <ClCompile Include="src\utilities\module_info.cpp" />
     <ClCompile Include="src\utilities\paths.cpp" />

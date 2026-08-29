@@ -69,10 +69,13 @@ namespace Windower.Core
                 {
                     token.ThrowIfCancellationRequested();
 
-                    // Safely break the infinite loop if the C++ core crashes during boot!
                     if (targetProcess != null && targetProcess.HasExited)
                     {
-                        throw new InvalidOperationException("The game process crashed before settings could be transferred.");
+                        int exitCode = -1;
+                        try
+                        { exitCode = targetProcess.ExitCode; }
+                        catch { }
+                        throw new InvalidOperationException($"The game process crashed before settings could be transferred. Exit Code: 0x{exitCode:X8}");
                     }
                 }
                 while (!flag.WaitOne(100));

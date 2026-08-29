@@ -1,8 +1,6 @@
 #include "core.hpp"
-
 #include "addon/error.hpp"
 #include "addon/errors/package_error.hpp"
-
 #include "command_handlers.hpp"
 #include "command_manager.hpp"
 #include "crash_handler.hpp"
@@ -27,7 +25,6 @@
 #include <condition_variable>
 #include <mutex>
 #include <thread>
-
 #include "utilities/logger.hpp"
 
 void windower::core::initialize() noexcept { instance(); }
@@ -37,37 +34,55 @@ windower::core& windower::core::instance() noexcept
     static core instance;
     return instance;
 }
+
 windower::core::core() noexcept
 {
-    // Allocate all core engine subsystems first!
+    windower::logger::sync_trace("core() -> Starting");
+
     incoming_packet_queue = std::make_unique<packet_queue>(packet_direction::incoming);
     outgoing_packet_queue = std::make_unique<packet_queue>(packet_direction::outgoing);
     addon_manager = std::make_unique<windower::addon_manager>();
 
-    // Install the FFXI hooks
+    windower::logger::sync_trace("core() -> Installing kernel32");
     kernel32::install();
+
+    windower::logger::sync_trace("core() -> Installing user32");
     user32::install();
+
+    windower::logger::sync_trace("core() -> Installing advapi32");
     advapi32::install();
+
+    windower::logger::sync_trace("core() -> Installing imm32");
     imm32::install();
+
+    windower::logger::sync_trace("core() -> Installing d3d8");
     d3d8::install();
+
+    windower::logger::sync_trace("core() -> Installing dinput8");
     dinput8::install();
+
+    windower::logger::sync_trace("core() -> Installing ddraw");
     ddraw::install();
+
+    windower::logger::sync_trace("core() -> Installing ws2_32");
     ws2_32::install();
 
-    // Load configurations
+    windower::logger::sync_trace("core() -> Loading settings");
     settings.load();
+
+    windower::logger::sync_trace("core() -> Setting dump_path");
     crash_handler::instance().dump_path(settings.temp_path);
 
-    // Defer the heavy initialization to the first frame
+    windower::logger::sync_trace("core() -> Queueing next frame");
     run_on_next_frame([]() mutable {
         debug_console::initialize(core::instance().settings.debug);
-
         core::instance().package_manager =
             std::make_unique<windower::package_manager>();
         core::instance().package_manager->update_all();
-
         command_handlers::register_all();
         });
+
+    windower::logger::sync_trace("core() -> Finished successfully");
 }
 
 void windower::core::output(
@@ -131,6 +146,7 @@ void windower::core::update() noexcept
     if (!m_updated)
     {
         m_updated = true;
+
         class FpuStateGuard
         {
             unsigned int original_state;
@@ -146,31 +162,37 @@ void windower::core::update() noexcept
                 _controlfp_s(&original_state, 0, 0);
                 _controlfp_s(nullptr, _PC_53, _MCW_PC);
             }
+
             ~FpuStateGuard()
             {
                 _controlfp_s(nullptr, original_state, _MCW_PC);
             }
         };
+
         FpuStateGuard fpu_guard;
+
         windower::pol_hacks::apply();
         scheduler::next_frame();
         script_environment.run_until_idle();
+
         if (addon_manager)
         {
             addon_manager->run_until_idle();
         }
+
         std::queue<std::function<void()>> local_functions;
         {
             std::lock_guard<std::mutex> guard{ m_queued_functions_mutex };
             std::swap(m_queued_functions, local_functions);
-        } // Mutex is instantly unlocked here!
+        }
+
         while (!local_functions.empty())
         {
             try
             {
                 local_functions.front()();
             }
-            catch (std::exception const& e) // <--- Catch the variable 'e'
+            catch (std::exception const& e)
             {
                 error(u8"Background Task", e, command_source::client);
             }
@@ -189,7 +211,7 @@ void windower::core::end_frame() noexcept { ui.end_frame(); }
 
 void windower::core::run_on_next_frame(std::function<void()> function)
 {
-    std::lock_guard<std::mutex> guard{m_queued_functions_mutex};
+    std::lock_guard<std::mutex> guard{ m_queued_functions_mutex };
     m_queued_functions.emplace(std::move(function));
 }
 

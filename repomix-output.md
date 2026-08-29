@@ -1,0 +1,664 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files, combined into a single document by Repomix.
+The content has been processed where comments have been removed, empty lines have been removed.
+
+# File Summary
+
+## Purpose
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+
+## File Format
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  a. A header with the file path (## File: path/to/file)
+  b. The full contents of the file in a code block
+
+## Usage Guidelines
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+
+## Notes
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: launcher/src/Core/SettingsChannel.cs, core/src/main.cpp, core/src/core.cpp, core/src/utilities/logger.hpp, core/src/utilities/logger.cpp
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Code comments have been removed from supported file types
+- Empty lines have been removed from all files
+- Files are sorted by Git change count (files with more changes are at the bottom)
+
+# Directory Structure
+```
+core/src/core.cpp
+core/src/main.cpp
+core/src/utilities/logger.cpp
+core/src/utilities/logger.hpp
+launcher/src/Core/SettingsChannel.cs
+```
+
+# Files
+
+## File: core/src/utilities/logger.hpp
+```
+#ifndef WINDOWER_UTILITIES_LOGGER_HPP
+#define WINDOWER_UTILITIES_LOGGER_HPP
+#include <exception>
+#include <string>
+#include <string_view>
+namespace windower::logger
+{
+    std::u8string process_output(std::u8string_view component, std::u8string_view text);
+    void queue_log(std::u8string text, bool is_error);
+    std::u8string get_error_message(std::exception const& exception);
+}
+#endif
+```
+
+## File: core/src/main.cpp
+```cpp
+#include "cloak.hpp"
+#include "command_manager.hpp"
+#include "core.hpp"
+#include "crash_handler.hpp"
+#include "library.hpp"
+#include "unicode.hpp"
+#include <windows.h>
+#include <shellscalingapi.h>
+namespace
+{
+void enable_process_dpi_awareness()
+{
+    if (windower::library shcore{u8"shcore.dll"})
+    {
+        if (auto ptr = shcore.get_function(u8"SetProcessDpiAwareness"))
+        {
+            using SetProcessDpiAwareness =
+                ::HRESULT(WINAPI*)(::PROCESS_DPI_AWARENESS);
+            if (SUCCEEDED(reinterpret_cast<SetProcessDpiAwareness>(ptr)(
+                    PROCESS_PER_MONITOR_DPI_AWARE)))
+            {
+                return;
+            }
+        }
+    }
+    ::SetProcessDPIAware();
+}
+}
+extern "C"
+{
+    static ::DWORD WINAPI initialize_thread(::LPVOID) noexcept(false)
+    {
+        windower::crash_handler::initialize();
+        windower::pin_and_cloak();
+        enable_process_dpi_awareness();
+        windower::command_manager::initialize();
+        windower::core::initialize();
+        return EXIT_SUCCESS;
+    }
+    ::BOOL WINAPI DllMain(::HINSTANCE hinstDLL, ::DWORD fdwReason, ::LPVOID)
+    {
+        switch (fdwReason)
+        {
+        default: break;
+        case DLL_PROCESS_ATTACH:
+            return ::CreateThread(
+                       nullptr, 0, &::initialize_thread, hinstDLL, 0, nullptr)
+                     ? TRUE
+                     : FALSE;
+        }
+        return TRUE;
+    }
+}
+```
+
+## File: core/src/utilities/logger.cpp
+```cpp
+#include "logger.hpp"
+#include "core.hpp"
+#include "addon/error.hpp"
+#include "addon/errors/package_error.hpp"
+#include "errors/windower_error.hpp"
+#include "ui/engine_console.hpp"
+#include "unicode.hpp"
+#include "utilities/string_helpers.hpp"
+#include <windows.h>
+#include <gsl/gsl>
+#include <condition_variable>
+#include <mutex>
+#include <thread>
+#include <vector>
+namespace
+{
+    struct log_message
+    {
+        std::u8string text;
+        bool is_error;
+    };
+    std::mutex log_mutex;
+    std::condition_variable log_cv;
+    std::vector<log_message> log_queue;
+    bool log_shutdown = false;
+    std::thread log_thread;
+    void log_worker()
+    {
+        auto output_handle = ::GetStdHandle(STD_OUTPUT_HANDLE);
+        auto error_handle = ::GetStdHandle(STD_ERROR_HANDLE);
+        std::vector<log_message> local_queue;
+        while (true)
+        {
+            {
+                std::unique_lock<std::mutex> lock{ log_mutex };
+                log_cv.wait(
+                    lock, [] { return !log_queue.empty() || log_shutdown; });
+                if (log_shutdown && log_queue.empty())
+                {
+                    break;
+                }
+                std::swap(log_queue, local_queue);
+            }
+            for (auto& msg : local_queue)
+            {
+                auto w_text = windower::to_wstring(msg.text);
+                auto handle = msg.is_error ? error_handle : output_handle;
+                ::CONSOLE_SCREEN_BUFFER_INFO buffer_info;
+                bool const has_info =
+                    ::GetConsoleScreenBufferInfo(handle, &buffer_info);
+                if (has_info && buffer_info.dwCursorPosition.X != 0)
+                {
+                    w_text.insert(w_text.begin(), L'\n');
+                }
+                if (msg.is_error)
+                {
+                    ::SetConsoleTextAttribute(
+                        handle, FOREGROUND_RED | FOREGROUND_INTENSITY);
+                }
+                ::DWORD written = 0;
+                ::WriteConsoleW(
+                    handle, w_text.data(), w_text.size(), &written, nullptr);
+                if (msg.is_error)
+                {
+                    ::SetConsoleTextAttribute(
+                        handle, has_info ? buffer_info.wAttributes
+                        : (FOREGROUND_RED | FOREGROUND_GREEN |
+                            FOREGROUND_BLUE));
+                }
+                ::OutputDebugStringW(w_text.c_str());
+                windower::core::instance().run_on_next_frame(
+                    [text = std::move(msg.text)]() {
+                        std::u8string::size_type start = 0;
+                        std::u8string::size_type pos;
+                        while ((pos = text.find(u8'\n', start)) != std::u8string::npos)
+                        {
+                            auto line = text.substr(start, pos - start);
+                            while (!line.empty() && line.back() == u8'\r') line.pop_back();
+                            if (!line.empty()) {
+                                windower::ui::engine_console::push_log(line);
+                            }
+                            start = pos + 1;
+                        }
+                        auto final_line = text.substr(start);
+                        while (!final_line.empty() && final_line.back() == u8'\r') final_line.pop_back();
+                        if (!final_line.empty()) {
+                            windower::ui::engine_console::push_log(final_line);
+                        }
+                    });
+            }
+            local_queue.clear();
+        }
+    }
+    struct async_logger_cleanup
+    {
+        constexpr async_logger_cleanup() noexcept = default;
+        async_logger_cleanup(async_logger_cleanup const&) = delete;
+        async_logger_cleanup(async_logger_cleanup&&) = delete;
+        async_logger_cleanup& operator=(async_logger_cleanup const&) = delete;
+        async_logger_cleanup& operator=(async_logger_cleanup&&) = delete;
+        ~async_logger_cleanup()
+        {
+            {
+                std::lock_guard<std::mutex> lock{ log_mutex };
+                log_shutdown = true;
+            }
+            log_cv.notify_all();
+            if (log_thread.joinable())
+            {
+                log_thread.detach();
+            }
+        }
+    } cleanup_logger;
+    void format_lua_error(std::u8string& result, windower::lua::error const& exception)
+    {
+        if (exception.has_stack_trace())
+        {
+            for (auto const& frame : exception.stack_trace())
+            {
+                result.append(1, u8'\n');
+                if (!frame.type.empty())
+                {
+                    result.append(1, u8'(');
+                    result.append(frame.type);
+                    result.append(1, u8')');
+                }
+                result.append(frame.name.empty() ? frame.name : u8"<unknown>");
+                if (!frame.source.value.empty())
+                {
+                    result.append(u8"\n  ");
+                    if (frame.source.type == u8"string")
+                    {
+                        if (gsl::at(frame.source.value, 0) == u8'=')
+                            result.append(frame.source.value.substr(1));
+                        else
+                        {
+                            result.append(u8"[string]");
+                            result.append(frame.source.value);
+                        }
+                    }
+                    else
+                    {
+                        if (frame.source.type != u8"file")
+                        {
+                            result.append(1, u8'[');
+                            result.append(frame.source.type);
+                            result.append(1, u8']');
+                        }
+                        result.append(frame.source.value);
+                    }
+                    if (frame.source.line != 0)
+                    {
+                        result.append(1, u8':');
+                        result.append(windower::to_u8string(frame.source.line));
+                    }
+                }
+            }
+        }
+    }
+    void unwrap_exception(std::u8string& result, std::size_t level, std::exception const& ex)
+    {
+        if (level == 0) {
+            result.append(u8"\n==================================================");
+            result.append(u8"\n [SYSTEM FATAL] Exception Caught at Level 0");
+            result.append(u8"\n==================================================");
+        }
+        else {
+            result.append(u8"\n--------------------------------------------------");
+            result.append(u8"\n [NESTED ERROR] Exception Caught at Level ");
+            result.append(windower::to_u8string(level));
+            result.append(u8"\n--------------------------------------------------");
+        }
+        result.append(u8"\n > Type:  ");
+        std::string_view const type_name = typeid(ex).name();
+        result.append(type_name.begin(), type_name.end());
+        result.append(u8"\n > Error: ");
+        auto const* const what_str = ex.what();
+        if (what_str && *what_str != '\0') {
+            result.append(windower::to_u8string(what_str));
+        }
+        else {
+            result.append(u8"<Unknown internal failure>");
+        }
+        if (auto windower_err = dynamic_cast<windower::windower_error const*>(&ex)) {
+            result.append(u8"\n > Details: ");
+            result.append(windower_err->message());
+        }
+        if (auto pkg_err = dynamic_cast<windower::package_error const*>(&ex)) {
+            result.append(u8"\n > Packages Involved: ");
+            for (auto const& p : pkg_err->packages()) {
+                result.append(p);
+                result.append(1, u8' ');
+            }
+        }
+        if (auto lua_err = dynamic_cast<windower::lua::error const*>(&ex)) {
+            format_lua_error(result, *lua_err);
+        }
+        if (auto nested = dynamic_cast<std::nested_exception const*>(&ex)) {
+            if (auto nested_ptr = nested->nested_ptr()) {
+                try {
+                    std::rethrow_exception(nested_ptr);
+                }
+                catch (std::exception const& e) {
+                    unwrap_exception(result, level + 1, e);
+                }
+                catch (...) {
+                    result.append(u8"\n > Nested: <Unknown Exception Type>");
+                }
+            }
+        }
+        if (level == 0) {
+            result.append(u8"\n==================================================\n");
+        }
+    }
+}
+void windower::logger::queue_log(std::u8string text, bool is_error)
+{
+    {
+        std::lock_guard<std::mutex> lock{ log_mutex };
+        if (!log_thread.joinable())
+        {
+            log_thread = std::thread{ log_worker };
+        }
+        log_queue.push_back({ std::move(text), is_error });
+    }
+    log_cv.notify_one();
+}
+std::u8string windower::logger::get_error_message(std::exception const& exception)
+{
+    std::u8string result;
+    unwrap_exception(result, 0, exception);
+    return result;
+}
+std::u8string windower::logger::process_output(std::u8string_view component, std::u8string_view text)
+{
+    if (component.empty()) { component = u8"core"; }
+    auto const count = std::count(text.begin(), text.end(), u8'\n') + 1;
+    std::u8string temp;
+    temp.reserve(temp.size() + (component.size() + 3) * count);
+    temp.append(1, u8'[');
+    temp.append(component);
+    temp.append(1, u8']');
+    temp.append(1, u8' ');
+    std::u8string::size_type start = 0;
+    std::u8string::size_type pos;
+    while ((pos = text.find(u8'\n', start)) != std::u8string::npos)
+    {
+        temp.append(text, start, pos - start + 1);
+        temp.append(1, u8'[');
+        temp.append(component);
+        temp.append(1, u8']');
+        temp.append(1, u8' ');
+        start = pos + 1;
+    }
+    temp.append(text, start, std::u8string::npos);
+    return temp;
+}
+```
+
+## File: launcher/src/Core/SettingsChannel.cs
+```csharp
+namespace Windower.Core
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Diagnostics;
+    using System.Diagnostics.CodeAnalysis;
+    using System.Globalization;
+    using System.IO;
+    using System.IO.MemoryMappedFiles;
+    using System.Linq;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using System.Xml.Linq;
+    using static System.FormattableString;
+    public class SettingsChannel : IDisposable
+    {
+        private bool disposed = false;
+        private MemoryMappedFile file;
+        private EventWaitHandle flag;
+        private Process targetProcess;
+        [SuppressMessage("Microsoft.Design", "CA1006")]
+        public SettingsChannel(Process process, IEnumerable<KeyValuePair<string, object>> settings)
+        {
+            if (process == null)
+            {
+                throw new ArgumentNullException(nameof(process));
+            }
+            if (settings == null)
+            {
+                throw new ArgumentNullException(nameof(settings));
+            }
+            targetProcess = process;
+            var dataName = Invariant($"Windower.Settings[{process.Id:X8}].Data");
+            var flagName = Invariant($"Windower.Settings[{process.Id:X8}].Flag");
+            var document = new XDocument(
+                new XElement("settings",
+                    from pair in settings
+                    select new XElement(pair.Key, Unwrap(pair.Value))));
+            using (var buffer = new MemoryStream())
+            {
+                document.Save(buffer, SaveOptions.DisableFormatting);
+                file = MemoryMappedFile.CreateNew(dataName, buffer.Length + sizeof(long));
+                using (var stream = file.CreateViewStream(0, 0))
+                {
+                    stream.Write(BitConverter.GetBytes(buffer.Length), 0, sizeof(long));
+                    buffer.WriteTo(stream);
+                }
+            }
+            flag = new EventWaitHandle(false, EventResetMode.ManualReset, flagName);
+        }
+        public Task FinishAsync(CancellationToken token) =>
+            Task.Run(() =>
+            {
+                do
+                {
+                    token.ThrowIfCancellationRequested();
+                    if (targetProcess != null && targetProcess.HasExited)
+                    {
+                        int exitCode = -1;
+                        try
+                        { exitCode = targetProcess.ExitCode; }
+                        catch { }
+                        throw new InvalidOperationException($"The game process crashed before settings could be transferred. Exit Code: 0x{exitCode:X8}");
+                    }
+                }
+                while (!flag.WaitOne(100));
+            }, token);
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposed && disposing)
+            {
+                file.Dispose();
+                flag.Dispose();
+            }
+            disposed = true;
+        }
+        private static object Unwrap(object value)
+        {
+            if (value is Enum e)
+            {
+                return Convert.ChangeType(e, Enum.GetUnderlyingType(e.GetType()), CultureInfo.InvariantCulture);
+            }
+            return value;
+        }
+    }
+}
+```
+
+## File: core/src/core.cpp
+```cpp
+#include "core.hpp"
+#include "addon/error.hpp"
+#include "addon/errors/package_error.hpp"
+#include "command_handlers.hpp"
+#include "command_manager.hpp"
+#include "crash_handler.hpp"
+#include "debug_console.hpp"
+#include "hooks/advapi32.hpp"
+#include "hooks/d3d8.hpp"
+#include "hooks/ddraw.hpp"
+#include "hooks/dinput8.hpp"
+#include "hooks/ffximain.hpp"
+#include "hooks/imm32.hpp"
+#include "hooks/kernel32.hpp"
+#include "hooks/user32.hpp"
+#include "hooks/ws2_32.hpp"
+#include "settings.hpp"
+#include "ui/user_interface.hpp"
+#include "ui/engine_console.hpp"
+#include "unicode.hpp"
+#include "utility.hpp"
+#include "utilities/pol_hacks.hpp"
+#include <float.h>
+#include <gsl/gsl>
+#include <condition_variable>
+#include <mutex>
+#include <thread>
+#include "utilities/logger.hpp"
+void windower::core::initialize() noexcept { instance(); }
+windower::core& windower::core::instance() noexcept
+{
+    static core instance;
+    return instance;
+}
+windower::core::core() noexcept
+{
+    incoming_packet_queue = std::make_unique<packet_queue>(packet_direction::incoming);
+    outgoing_packet_queue = std::make_unique<packet_queue>(packet_direction::outgoing);
+    addon_manager = std::make_unique<windower::addon_manager>();
+    kernel32::install();
+    user32::install();
+    advapi32::install();
+    imm32::install();
+    d3d8::install();
+    dinput8::install();
+    ddraw::install();
+    ws2_32::install();
+    settings.load();
+    crash_handler::instance().dump_path(settings.temp_path);
+    run_on_next_frame([]() mutable {
+        debug_console::initialize(core::instance().settings.debug);
+        core::instance().package_manager =
+            std::make_unique<windower::package_manager>();
+        core::instance().package_manager->update_all();
+        command_handlers::register_all();
+        });
+}
+void windower::core::output(
+    std::u8string_view component, std::u8string_view text,
+    command_source source)
+{
+    if (source < command_source::client)
+    {
+        auto u8_text = logger::process_output(component, text);
+        u8_text.append(1, u8'\n');
+        logger::queue_log(std::move(u8_text), false);
+    }
+    else
+    {
+        instance().run_on_next_frame([text = logger::process_output(component, text)] {
+            ffximain::add_to_chat(text);
+            });
+    }
+}
+void windower::core::error(
+    std::u8string_view component, std::u8string_view text,
+    command_source source)
+{
+    std::ignore = source;
+    auto u8_text = logger::process_output(component, text);
+    u8_text.append(1, u8'\n');
+    logger::queue_log(std::move(u8_text), true);
+}
+void windower::core::error(
+    std::u8string_view component, std::exception const& exception,
+    command_source source)
+{
+    error(component, logger::get_error_message(exception), source);
+}
+void windower::core::error(
+    std::u8string_view component, std::exception_ptr exception,
+    command_source source)
+{
+    if (exception)
+    {
+        try
+        {
+            std::rethrow_exception(exception);
+        }
+        catch (std::exception const& e)
+        {
+            error(component, e, source);
+        }
+    }
+    else
+    {
+        error(component, u8"unknown error", source);
+    }
+}
+void windower::core::update() noexcept
+{
+    if (!m_updated)
+    {
+        m_updated = true;
+        class FpuStateGuard
+        {
+            unsigned int original_state;
+        public:
+            FpuStateGuard(FpuStateGuard const&) = delete;
+            FpuStateGuard(FpuStateGuard&&) = delete;
+            FpuStateGuard& operator=(FpuStateGuard const&) = delete;
+            FpuStateGuard& operator=(FpuStateGuard&&) = delete;
+            FpuStateGuard() noexcept
+            {
+                _controlfp_s(&original_state, 0, 0);
+                _controlfp_s(nullptr, _PC_53, _MCW_PC);
+            }
+            ~FpuStateGuard()
+            {
+                _controlfp_s(nullptr, original_state, _MCW_PC);
+            }
+        };
+        FpuStateGuard fpu_guard;
+        windower::pol_hacks::apply();
+        scheduler::next_frame();
+        script_environment.run_until_idle();
+        if (addon_manager)
+        {
+            addon_manager->run_until_idle();
+        }
+        std::queue<std::function<void()>> local_functions;
+        {
+            std::lock_guard<std::mutex> guard{ m_queued_functions_mutex };
+            std::swap(m_queued_functions, local_functions);
+        }
+        while (!local_functions.empty())
+        {
+            try
+            {
+                local_functions.front()();
+            }
+            catch (std::exception const& e)
+            {
+                error(u8"Background Task", e, command_source::client);
+            }
+            local_functions.pop();
+        }
+    }
+}
+void windower::core::begin_frame() noexcept
+{
+    ui.begin_frame();
+    m_updated = false;
+}
+void windower::core::end_frame() noexcept { ui.end_frame(); }
+void windower::core::run_on_next_frame(std::function<void()> function)
+{
+    std::lock_guard<std::mutex> guard{m_queued_functions_mutex};
+    m_queued_functions.emplace(std::move(function));
+}
+std::optional<::LRESULT>
+windower::core::process_message(::MSG const& msg) noexcept
+{
+    if (auto const result = ui.process_message(msg))
+    {
+        return result;
+    }
+    if (auto const result = binding_manager.process_message(msg))
+    {
+        return result;
+    }
+    return std::nullopt;
+}
+```

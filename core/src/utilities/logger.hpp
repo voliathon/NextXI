@@ -8,10 +8,12 @@
 namespace windower::logger
 {
     std::u8string process_output(std::u8string_view component, std::u8string_view text);
-
     void queue_log(std::u8string text, bool is_error);
-
     std::u8string get_error_message(std::exception const& exception);
+
+    // Synchronous Hardware Tracer Functions
+    void sync_trace_clear();
+    void sync_trace(const char* msg);
 }
 
 #endif

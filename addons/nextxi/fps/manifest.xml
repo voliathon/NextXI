@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package>
+    <name>fps</name>
+    <version>1.0.0</version>
+    <type>addon</type>
+    <description>A native ImGui framerate monitor for NextXI.</description>
+    <dependencies>
+        <!-- No external libraries required for this native addon -->
+    </dependencies>
+</package>

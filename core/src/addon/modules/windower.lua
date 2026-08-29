@@ -25,6 +25,7 @@ local -- params
     get_ffxi_entities_ptr,
     project_ptr = ...
 
+local table = require('table')
 local ffi = require('ffi')
 local get_package_list_c = ffi.typeof('char const*(*)()')(get_package_list_ptr)
 local get_package_readme_c = ffi.typeof('char const*(*)(char const*)')(get_package_readme_ptr)
@@ -245,13 +246,15 @@ local event_registry = {
     ['incoming chunk'] = {},
     ['outgoing chunk'] = {},
     ['status change'] = {},
-    ['login'] = {}
+    ['login'] = {},
+    ['keyboard'] = {}
 }
 
 windower.register_event = function(event_name, callback)
-    if event_registry[event_name] then
-        table.insert(event_registry[event_name], callback)
+    if not event_registry[event_name] then
+        event_registry[event_name] = {}
     end
+    table.insert(event_registry[event_name], callback)
 end
 windower.trigger_event = function(event_name, ...)
     local blocked = false
