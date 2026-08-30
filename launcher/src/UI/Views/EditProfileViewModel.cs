@@ -102,8 +102,25 @@ namespace Windower.UI.Views
         public int SelectedEngine
         {
             get => (int)profile.SelectedEngine;
-            set => Set(ref profile, profile.With(SelectedEngine: (Profile.GraphicsEngine)value));
+            set
+            {
+                Set(ref profile, profile.With(SelectedEngine: (Profile.GraphicsEngine)value));
+                OnPropertyChanged(nameof(IsVramSettingsVisible));
+            }
         }
+
+        // Tells the UI to show the VRAM slider for both NextXI (dgVoodoo) engines
+        public bool IsVramSettingsVisible => profile.SelectedEngine == Profile.GraphicsEngine.Direct3D11 ||
+                                             profile.SelectedEngine == Profile.GraphicsEngine.Direct3D12;
+
+        public int VramAllocation
+        {
+            get => profile.VramAllocation;
+            set => Set(ref profile, profile.With(VramAllocation: value));
+        }
+
+        public int VramAllocationMin { get; } = 256;
+        public int VramAllocationMax { get; } = 4096;
 
         public WindowType WindowType
         {

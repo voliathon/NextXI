@@ -5,16 +5,17 @@ namespace Windower.Core
 
     public static class DgVoodooManager
     {
-        // We default to 1024MB. This is the optimal safe budget for FFXI multi-boxing. 
-        // 2048MB is only needed if the user loads aggressive HD texture packs (like Ashenbubs).
-        public static void DeployConfig(string targetDirectory, int vramMb = 1024)
+        public static void DeployConfig(string targetDirectory, int vramMb, Profile.GraphicsEngine engine)
         {
             var conf = new StringBuilder();
 
+            // Map the Launcher enum directly to dgVoodoo's expected Feature Level strings
+            var outputApi = engine == Profile.GraphicsEngine.Direct3D12 ? "d3d12_fl12_0" : "d3d11_fl11_0";
+
             // General Settings
             conf.AppendLine("[General]");
-            conf.AppendLine("OutputAPI = d3d11_fl11_0"); // Force DirectX 11 Feature Level 11
-            conf.AppendLine("Adapters = all");         // 'all' safely defaults to the primary GPU in DX11
+            conf.AppendLine($"OutputAPI = {outputApi}"); // Dynamically forces DX11 or DX12
+            conf.AppendLine("Adapters = all");
             conf.AppendLine("ScalingMode = stretched_ar");
             conf.AppendLine();
 
@@ -28,10 +29,9 @@ namespace Windower.Core
             conf.AppendLine("AppControlledScreenMode = true");
             conf.AppendLine("DisableAltEnterToToggleScreenMode = true");
             conf.AppendLine("BilinearAUMipZooming = false");
-            conf.AppendLine("FastVideoMemoryAccess = false"); // Must be false or screenshots/ImGui corrupt
-            conf.AppendLine("dgVoodooWatermark = false");     // Kills the watermark
+            conf.AppendLine("FastVideoMemoryAccess = false");
+            conf.AppendLine("dgVoodooWatermark = false");     // Completely kills the watermark
 
-            // Write the config directly to the PlayOnline folder
             File.WriteAllText(Path.Combine(targetDirectory, "dgVoodoo.conf"), conf.ToString());
         }
     }

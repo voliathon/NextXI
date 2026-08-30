@@ -45,13 +45,20 @@ namespace Windower.Core
                     var region = (Region)profile.Region;
                     GraphicsUpdater.ApplyGraphicsEngine(profile.SelectedEngine, region.GetPOLInstallDirectory());
 
-                    // Generate dgVoodoo.conf automatically in the PlayOnline directory
-                    if (profile.SelectedEngine == Profile.GraphicsEngine.Vanilla)
+                    // Generate dgVoodoo.conf in BOTH directories so it survives the POL -> FFXI handoff
+                    if (profile.SelectedEngine == Profile.GraphicsEngine.Direct3D11 ||
+                        profile.SelectedEngine == Profile.GraphicsEngine.Direct3D12)
                     {
                         var polDir = region.GetPOLInstallDirectory();
+                        var ffxiDir = region.GetFF11InstallDirectory();
+
                         if (!string.IsNullOrEmpty(polDir))
                         {
-                            DgVoodooManager.DeployConfig(polDir, profile.VramAllocation);
+                            DgVoodooManager.DeployConfig(polDir, profile.VramAllocation, profile.SelectedEngine);
+                        }
+                        if (!string.IsNullOrEmpty(ffxiDir))
+                        {
+                            DgVoodooManager.DeployConfig(ffxiDir, profile.VramAllocation, profile.SelectedEngine);
                         }
                     }
 

@@ -217,6 +217,10 @@ void windower::settings::load()
     pol_fast_login = s.get(u8"pol_fast_login", false);
     pol_no_throttle = s.get(u8"pol_no_throttle", false);
 
+    // Read the Engine API string and VRAM allocation from the C# Launcher
+    graphics_engine = s.get(u8"graphics_engine", u8"Vanilla");
+    vram_allocation = s.get(u8"vram_allocation", 1024);
+
     settings_path = s.get(u8"settings_path", u8"");
     user_path     = s.get(u8"user_path", u8"");
     temp_path     = s.get(u8"temp_path", u8"");

@@ -1,26 +1,3 @@
-<!--
-Copyright © Windower Dev Team
-
-Permission is hereby granted, free of charge, to any person
-obtaining a copy of this software and associated documentation files
-(the "Software"),to deal in the Software without restriction,
-including without limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of the Software,
-and to permit persons to whom the Software is furnished to do so,
-subject to the following conditions:
-
-The above copyright notice and this permission notice shall be
-included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
-BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
-ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
--->
 <Page x:Class="Windower.UI.Views.EditProfileView"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -286,6 +263,8 @@ SOFTWARE.
                         <ColumnDefinition Width="56"/>
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
+                        <!-- Added an extra row to support the VRAM slider cleanly -->
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
@@ -304,28 +283,73 @@ SOFTWARE.
                     </Grid.RowDefinitions>
 
                     <Label Content="Graphics Engine" Margin="12,12,12,0" Grid.Row="0" Grid.ColumnSpan="5"/>
-                    <ComboBox Margin="12,4,12,0" SelectedIndex="{Binding SelectedEngine}" Grid.Row="1" Grid.ColumnSpan="5" ToolTip="Select the underlying graphics rendering API. NextXI (DX12) is recommended for modern features.">
+                    <ComboBox Margin="12,4,12,0" SelectedIndex="{Binding SelectedEngine}" Grid.Row="1" Grid.ColumnSpan="5" ToolTip="Select the underlying graphics rendering API.">
                         <ComboBoxItem Content="Vanilla (DirectX 8) - Legacy" ToolTip="The original, unmodified FFXI rendering pipeline." />
-                        <ComboBoxItem Content="NextXI (dgVoodoo2 / DX12)" ToolTip="Translates DX8 to DX12. Required for ImGui and CEF web addons." />
+                        <ComboBoxItem Content="NextXI (DirectX 11)" ToolTip="Translates DX8 to DX11 via dgVoodoo2. Highly recommended for modern GPUs and stability."/>
+                        <ComboBoxItem Content="NextXI (DirectX 12 - Experimental)" ToolTip="Translates DX8 to DX12. Required for ImGui and CEF web addons but may be unstable."/>
                     </ComboBox>
 
-                    <Label ToolTip="Renders the game at a massive internal resolution and scales it down to smooth out jagged pixel edges. Extremely high visual quality, but requires a powerful graphics card." Content="{StaticResource Strings.SupersampleAntiAliasing}" Margin="12,12,12,0" d:LayoutOverrides="Height" Grid.ColumnSpan="5" Grid.Row="2"/>
-                    <Slider ToolTip="Adjust SSAA multiplier." Margin="0,4,0,0" Ticks="0.25 0.5 1 2 4" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True" TickPlacement="Both" Maximum="{Binding SamplesPerPixelMax}" Minimum="{Binding SamplesPerPixelMin}" SmallChange="0.25" Value="{Binding SamplesPerPixel}" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="3"/>
-                    <Label Content="{Binding SamplesPerPixelMin}" ContentStringFormat="{StaticResource Strings.SupersampleAntiAliasingFormat}" Margin="12,4,4,0" Grid.Row="3" d:LayoutOverrides="Height" HorizontalContentAlignment="Right" MinWidth="40"/>
-                    <Label Content="{Binding SamplesPerPixelMax}" ContentStringFormat="{StaticResource Strings.SupersampleAntiAliasingFormat}" Grid.Column="4" Margin="4,4,12,0" Grid.Row="3" d:LayoutOverrides="Height" MinWidth="40"/>
-                    <Label Content="{Binding SamplesPerPixel}" ContentStringFormat="{StaticResource Strings.SupersampleAntiAliasingFormat}" Grid.Column="1" Margin="0,4,0,0" Grid.Row="4" d:LayoutOverrides="Width" HorizontalContentAlignment="Center" Grid.ColumnSpan="3"/>
+                    <!-- VRAM ALLOCATION & SAFETY CALLOUT -->
+                    <Grid Grid.ColumnSpan="5" Grid.Row="2" Margin="0,12,0,0">
+                        <Grid.Style>
+                            <Style TargetType="{x:Type Grid}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsVramSettingsVisible}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
 
-                    <Label ToolTip="Adjusts how textures are filtered at a distance. Higher values reduce texture shimmering." Content="{StaticResource Strings.Mipmapping}" Margin="12,12,12,0" Grid.ColumnSpan="5" d:LayoutOverrides="Height" Grid.Row="5"/>
-                    <Slider ToolTip="Set Mipmap quality level." Margin="0,4,0,0" TickFrequency="1" IsMoveToPointEnabled="True" TickPlacement="Both" Maximum="{Binding MipmappingMax}" Minimum="{Binding MipmappingMin}" SmallChange="0.25" Value="{Binding Mipmapping}" Grid.Row="6" Grid.Column="1" Grid.ColumnSpan="3" IsSnapToTickEnabled="True"/>
-                    <Label Content="{Binding MipmappingMin, Converter={StaticResource ResourceStringConverter}, ConverterParameter=Mipmapping{0}}" Margin="12,4,4,0" Grid.Row="6" HorizontalContentAlignment="Right" d:LayoutOverrides="Height" MinWidth="40"/>
-                    <Label Content="{Binding MipmappingMax, Converter={StaticResource ResourceStringConverter}, ConverterParameter=Mipmapping{0}}" Grid.Column="4" Margin="4,4,12,0" Grid.Row="6" d:LayoutOverrides="Height" MinWidth="40"/>
-                    <Label Content="{Binding Mipmapping, Converter={StaticResource ResourceStringConverter}, ConverterParameter=Mipmapping{0}}" Grid.Column="1" Margin="0,4,0,0" Grid.Row="7" HorizontalContentAlignment="Center" d:LayoutOverrides="Width" Grid.ColumnSpan="3"/>
+                        <Label Content="Video RAM (VRAM) Allocation" Grid.ColumnSpan="5" Margin="12,0,12,0"/>
+                        <Slider Grid.Column="1" Grid.ColumnSpan="3" Grid.Row="1" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True" LargeChange="512" Margin="0,4,0,0" Maximum="{Binding VramAllocationMax}" Minimum="{Binding VramAllocationMin}" SmallChange="256" TickFrequency="256" TickPlacement="Both" ToolTip="Set the amount of simulated VRAM in Megabytes." Value="{Binding VramAllocation}"/>
+                        <Label Content="{Binding VramAllocationMin}" ContentStringFormat="{}{0} MB" Grid.Row="1" HorizontalContentAlignment="Right" Margin="12,4,4,0" VerticalAlignment="Center"/>
+                        <Label Content="{Binding VramAllocationMax}" ContentStringFormat="{}{0} MB" Grid.Column="4" Grid.Row="1" Margin="4,4,12,0" VerticalAlignment="Center"/>
+                        <Label Content="{Binding VramAllocation}" ContentStringFormat="{}{0} MB" Grid.Column="1" Grid.ColumnSpan="3" Grid.Row="2" HorizontalContentAlignment="Center" Margin="0,2,0,0" FontWeight="SemiBold"/>
 
-                    <CheckBox ToolTip="Enables advanced lighting trickery to make flat textures (like brick walls and armor) appear to have realistic 3D depth and shadows." Content="{StaticResource Strings.BumpMapping}" Margin="11,12,0,0" Grid.ColumnSpan="2" Style="{StaticResource ToggleSwitch}" Grid.Row="8" IsChecked="{Binding BumpMapping}" d:LayoutOverrides="Height"/>
-                    <CheckBox ToolTip="Compresses map textures to reduce memory usage. May slightly lower visual quality." Content="{StaticResource Strings.MapCompression}" Margin="2,12,11,0" Grid.ColumnSpan="2" Grid.Column="3" Grid.Row="8" IsChecked="{Binding MapCompression}" d:LayoutOverrides="Height" Style="{StaticResource YesNoToggleSwitch}"/>
+                        <!-- Safety Notice / Multi-box Budgeting Warning -->
+                        <Grid Margin="12,6,12,4" Grid.Row="3" Grid.ColumnSpan="5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Control Style="{StaticResource IconInfo}" Foreground="{StaticResource BaseInfo}" Height="15" Width="15" VerticalAlignment="Top" Margin="0,2,8,0"/>
+                            <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="11" Foreground="#FF666666" LineHeight="15"
+                                       Text="VRAM is allocated per active game instance. Setting this higher than your physical GPU's capacity across all running instances can lead to performance degradation or driver crashes. 1024 MB is optimal for standard multi-boxing; 2048 MB+ is recommended only when using high-definition texture overhauls."/>
+                        </Grid>
+                    </Grid>
 
-                    <Label Content="{StaticResource Strings.TextureCompression}" Margin="12,12,0,0" Grid.ColumnSpan="2" Grid.Row="9"/>
-                    <Grid Margin="11,4,0,0" Grid.Row="10" Grid.ColumnSpan="2">
+                    <Label ToolTip="Renders the game at a massive internal resolution and scales it down to smooth out jagged pixel edges. Extremely high visual quality, but requires a powerful graphics card." Content="{StaticResource Strings.SupersampleAntiAliasing}" Margin="12,12,12,0" d:LayoutOverrides="Height" Grid.ColumnSpan="5" Grid.Row="3"/>
+                    <Slider ToolTip="Adjust SSAA multiplier." Margin="0,4,0,0" Ticks="0.25 0.5 1 2 4" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True" TickPlacement="Both" Maximum="{Binding SamplesPerPixelMax}" Minimum="{Binding SamplesPerPixelMin}" SmallChange="0.25" Value="{Binding SamplesPerPixel}" Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="3"/>
+                    <Label Content="{Binding SamplesPerPixelMin}" ContentStringFormat="{StaticResource Strings.SupersampleAntiAliasingFormat}" Margin="12,4,4,0" Grid.Row="4" d:LayoutOverrides="Height" HorizontalContentAlignment="Right" MinWidth="40"/>
+                    <Label Content="{Binding SamplesPerPixelMax}" ContentStringFormat="{StaticResource Strings.SupersampleAntiAliasingFormat}" Grid.Column="4" Margin="4,4,12,0" Grid.Row="4" d:LayoutOverrides="Height" MinWidth="40"/>
+                    <Label Content="{Binding SamplesPerPixel}" ContentStringFormat="{StaticResource Strings.SupersampleAntiAliasingFormat}" Grid.Column="1" Margin="0,4,0,0" Grid.Row="5" d:LayoutOverrides="Width" HorizontalContentAlignment="Center" Grid.ColumnSpan="3"/>
+
+                    <Label ToolTip="Adjusts how textures are filtered at a distance. Higher values reduce texture shimmering." Content="{StaticResource Strings.Mipmapping}" Margin="12,12,12,0" Grid.ColumnSpan="5" d:LayoutOverrides="Height" Grid.Row="6"/>
+                    <Slider ToolTip="Set Mipmap quality level." Margin="0,4,0,0" TickFrequency="1" IsMoveToPointEnabled="True" TickPlacement="Both" Maximum="{Binding MipmappingMax}" Minimum="{Binding MipmappingMin}" SmallChange="0.25" Value="{Binding Mipmapping}" Grid.Row="7" Grid.Column="1" Grid.ColumnSpan="3" IsSnapToTickEnabled="True"/>
+                    <Label Content="{Binding MipmappingMin, Converter={StaticResource ResourceStringConverter}, ConverterParameter=Mipmapping{0}}" Margin="12,4,4,0" Grid.Row="7" HorizontalContentAlignment="Right" d:LayoutOverrides="Height" MinWidth="40"/>
+                    <Label Content="{Binding MipmappingMax, Converter={StaticResource ResourceStringConverter}, ConverterParameter=Mipmapping{0}}" Grid.Column="4" Margin="4,4,12,0" Grid.Row="7" d:LayoutOverrides="Height" MinWidth="40"/>
+                    <Label Content="{Binding Mipmapping, Converter={StaticResource ResourceStringConverter}, ConverterParameter=Mipmapping{0}}" Grid.Column="1" Margin="0,4,0,0" Grid.Row="8" HorizontalContentAlignment="Center" d:LayoutOverrides="Width" Grid.ColumnSpan="3"/>
+
+                    <CheckBox ToolTip="Enables advanced lighting trickery to make flat textures (like brick walls and armor) appear to have realistic 3D depth and shadows." Content="{StaticResource Strings.BumpMapping}" Margin="11,12,0,0" Grid.ColumnSpan="2" Style="{StaticResource ToggleSwitch}" Grid.Row="9" IsChecked="{Binding BumpMapping}" d:LayoutOverrides="Height"/>
+                    <CheckBox ToolTip="Compresses map textures to reduce memory usage. May slightly lower visual quality." Content="{StaticResource Strings.MapCompression}" Margin="2,12,11,0" Grid.ColumnSpan="2" Grid.Column="3" Grid.Row="9" IsChecked="{Binding MapCompression}" d:LayoutOverrides="Height" Style="{StaticResource YesNoToggleSwitch}"/>
+
+                    <Label Content="{StaticResource Strings.TextureCompression}" Margin="12,12,0,0" Grid.ColumnSpan="2" Grid.Row="10"/>
+                    <Grid Margin="11,4,0,0" Grid.Row="11" Grid.ColumnSpan="2">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
@@ -336,8 +360,8 @@ SOFTWARE.
                         <RadioButton ToolTip="Maximum texture compression for best performance." Content="{StaticResource Strings.TextureCompressionHigh}" IsChecked="{Binding TextureCompression, ConverterParameter={x:Static core:TextureCompression.High}, Converter={StaticResource BooleanEqualityConverter}}" Grid.Row="2" Margin="0,4,0,0"/>
                     </Grid>
 
-                    <Label Content="{StaticResource Strings.EnvironmentAnimation}" Margin="0,12,12,0" Grid.ColumnSpan="2" Grid.Row="9" Grid.Column="3"/>
-                    <Grid Margin="0,4,11,0" Grid.Row="10" Grid.Column="3" Grid.ColumnSpan="2">
+                    <Label Content="{StaticResource Strings.EnvironmentAnimation}" Margin="0,12,12,0" Grid.ColumnSpan="2" Grid.Row="10" Grid.Column="3"/>
+                    <Grid Margin="0,4,11,0" Grid.Row="11" Grid.Column="3" Grid.ColumnSpan="2">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>

@@ -1,4 +1,5 @@
 #include "ui/system_diagnostics.hpp"
+#include "core.hpp" // Added to access core::instance().settings
 #include <imgui.h>
 #include <windows.h>
 #include <string>
@@ -64,12 +65,27 @@ void windower::ui::system_diagnostics::render_about_tab()
         ImGui::Separator();
         ImGui::Spacing();
 
-        // Dynamically detect if the Launcher wrapped the graphics engine
-        std::string graphics_engine = "Vanilla (DirectX 8)";
+        auto const& settings = core::instance().settings;
+        std::string graphics_engine = "Unknown";
         std::string voodoo_ver = get_dgvoodoo_version();
 
-        if (!voodoo_ver.empty()) {
-            graphics_engine = "NextXI (dgVoodoo2 / DX12)" + voodoo_ver;
+        // Map the new launcher settings to the UI display strings
+        if (settings.graphics_engine == u8"Vanilla")
+        {
+            graphics_engine = "DirectX 8 (Vanilla)";
+        }
+        else if (settings.graphics_engine == u8"Direct3D11")
+        {
+            graphics_engine = "NextXI (DirectX 11 via dgVoodoo2)" + voodoo_ver;
+        }
+        else if (settings.graphics_engine == u8"Direct3D12")
+        {
+            graphics_engine = "NextXI (DirectX 12 via dgVoodoo2)" + voodoo_ver;
+        }
+        else if (!voodoo_ver.empty())
+        {
+            // Fallback just in case
+            graphics_engine = "NextXI (dgVoodoo2)" + voodoo_ver;
         }
 
         std::string lua_version_str = "LuaJIT (Sandbox)";
@@ -80,7 +96,20 @@ void windower::ui::system_diagnostics::render_about_tab()
 #endif
 
         ImGui::Text("Core Engine Build Date : %s %s", __DATE__, __TIME__);
-        ImGui::Text("Graphics Renderer      : %s", graphics_engine.c_str());
+
+        // Formatted engine output
+        ImGui::Text("Graphics Renderer      : ");
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f), "%s", graphics_engine.c_str());
+
+        // Dynamic VRAM output (Only shows for NextXI wrappers)
+        if (settings.graphics_engine != u8"Vanilla")
+        {
+            ImGui::Text("Simulated VRAM         : ");
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "%d MB", settings.vram_allocation);
+        }
+
         ImGui::Text("Scripting Environment  : %s", lua_version_str.c_str());
         ImGui::Spacing();
         ImGui::Separator();

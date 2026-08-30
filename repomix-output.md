@@ -1,0 +1,439 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files, combined into a single document by Repomix.
+The content has been processed where comments have been removed, empty lines have been removed.
+
+# File Summary
+
+## Purpose
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+
+## File Format
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  a. A header with the file path (## File: path/to/file)
+  b. The full contents of the file in a code block
+
+## Usage Guidelines
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+
+## Notes
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: core/src/ui/engine_console.hpp, core/src/ui/engine_console.cpp
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Code comments have been removed from supported file types
+- Empty lines have been removed from all files
+- Files are sorted by Git change count (files with more changes are at the bottom)
+
+# Directory Structure
+```
+core/src/ui/engine_console.cpp
+core/src/ui/engine_console.hpp
+```
+
+# Files
+
+## File: core/src/ui/engine_console.hpp
+```
+#ifndef WINDOWER_UI_ENGINE_CONSOLE_HPP
+#define WINDOWER_UI_ENGINE_CONSOLE_HPP
+#include "ui/context.hpp"
+#include "ui/addon_browser.hpp"
+#include <imgui.h>
+#include <windows.h>
+#include <deque>
+#include <string>
+#include <optional>
+#include <vector>
+#include <mutex>
+#include <atomic>
+namespace windower::ui
+{
+    class engine_console
+    {
+    public:
+        void toggle() noexcept;
+        bool is_visible() const noexcept;
+        std::optional<::LRESULT> process_message(::MSG const& message) noexcept;
+        void render(context& ctx) noexcept;
+        static void push_log(std::u8string_view text) noexcept;
+    private:
+        bool m_visible = false;
+        bool m_was_visible = false;
+        bool update_player_state() noexcept;
+        void render_console_tab() noexcept;
+        char m_input_buffer[2048] = "";
+        std::deque<std::u8string> m_history;
+        int m_history_index = -1;
+        bool m_scroll_to_bottom = false;
+        std::mutex m_msg_mutex;
+        std::vector<::MSG> m_msg_queue;
+        addon_browser m_browser;
+        static std::deque<std::u8string> s_log_buffer;
+        static constexpr std::size_t max_log_lines = 1000;
+        static std::atomic<bool> s_force_open;
+        int text_edit_callback(ImGuiInputTextCallbackData* data);
+        static int text_edit_callback_stub(ImGuiInputTextCallbackData* data);
+    };
+}
+#endif
+```
+
+## File: core/src/ui/engine_console.cpp
+```cpp
+#include "ui/engine_console.hpp"
+#include "ui/system_diagnostics.hpp"
+#include "command_manager.hpp"
+#include "core.hpp"
+#include "addon/addon_manager.hpp"
+#include "hooks/user32_internal.hpp"
+#include "ui/debug_scanner.hpp"
+#include "ui/session_tracker.hpp"
+#include "addon/modules/player_scanner.hpp"
+#include "ui/tabs/tab_addons.hpp"
+#include "ui/tabs/tab_styling.hpp"
+#include "addon/package_manager.hpp"
+#include <imgui.h>
+#include <fstream>
+#include <filesystem>
+#include <gsl/gsl>
+#include <vector>
+#include <string>
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+extern "C" char const* get_ffxi_player_ffi();
+namespace {
+    std::vector<windower::ui::tabs::addon_info> get_nextxi_addons_list() {
+        std::vector<windower::ui::tabs::addon_info> list;
+        auto const& pm = windower::core::instance().package_manager;
+        if (pm) {
+            for (auto const& pkg : pm->installed_packages()) {
+                bool has_rd = std::filesystem::exists(pkg->path() / u8"README.md");
+                std::string name(reinterpret_cast<const char*>(pkg->name().c_str()));
+                bool is_loaded = false;
+                if (windower::core::instance().addon_manager) {
+                    is_loaded = windower::core::instance().addon_manager->get(pkg->name()) != nullptr;
+                }
+                list.push_back({ name, is_loaded, has_rd });
+            }
+        }
+        return list;
+    }
+    std::vector<windower::ui::tabs::addon_info> get_windower4_addons_list() {
+        std::vector<windower::ui::tabs::addon_info> list;
+        list.push_back({ "Distance", false, true });
+        list.push_back({ "TParty", false, true });
+        list.push_back({ "Blinkmenot", false, false });
+        return list;
+    }
+}
+namespace windower::ui
+{
+    std::deque<std::u8string> engine_console::s_log_buffer = {
+        u8"==================================================",
+        u8" NextXI Advanced Engine Console",
+        u8"==================================================",
+        u8" * The console is fully active! Type your commands below.",
+        u8" * Type 'help' and press Enter for a list of commands." };
+    std::mutex g_console_mutex;
+    std::atomic<bool> engine_console::s_force_open{ false };
+    bool g_focus_console_tab = false;
+    static void render_locked_tab() noexcept {
+        if (ImGui::BeginTabItem("Addons (LOCKED)", nullptr, ImGuiTabItemFlags_NoReorder)) {
+            ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Addon Manager is locked.");
+            ImGui::Text("NextXI requires a valid Character Name to load Addon configurations.");
+            ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+            ImGui::Text("Authentication Status:");
+            ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f), windower::player_scanner::get_diagnostic_message());
+            ImGui::EndTabItem();
+        }
+    }
+    void engine_console::toggle() noexcept {
+        m_visible = !m_visible;
+        m_scroll_to_bottom = true;
+        if (m_visible) ::ClipCursor(nullptr);
+    }
+    // ========================================================================
+    // THE ULTIMATE DIRECTINPUT BYPASS
+    // ========================================================================
+    bool engine_console::is_visible() const noexcept {
+        if (m_visible && ImGui::GetCurrentContext()) {
+            return ImGui::GetIO().WantTextInput;
+        }
+        return m_visible;
+    }
+    std::optional<::LRESULT> engine_console::process_message(::MSG const& message) noexcept {
+        if (message.message == WM_KEYDOWN || message.message == WM_SYSKEYDOWN) {
+            if (message.wParam == VK_INSERT) { toggle(); return 0; }
+            if (message.wParam == VK_ESCAPE && m_visible) { m_visible = false; return 0; }
+        }
+        if (ImGui::GetCurrentContext()) {
+            ImGuiIO& io = ImGui::GetIO();
+            // Globally disable ImGui's greedy keyboard menu navigation
+            io.ConfigFlags &= ~ImGuiConfigFlags_NavEnableKeyboard;
+            bool const is_mouse = (message.message >= WM_MOUSEFIRST && message.message <= WM_MOUSELAST);
+            bool const is_keyboard = (message.message >= WM_KEYFIRST && message.message <= WM_KEYLAST) || message.message == WM_CHAR;
+            if (is_mouse || is_keyboard) {
+                {
+                    std::lock_guard<std::mutex> lock(m_msg_mutex);
+                    m_msg_queue.push_back(message);
+                }
+                if (is_mouse && io.WantCaptureMouse) return 0;
+                // ONLY block FFXI Win32 input if actively typing in an ImGui text box
+                if (is_keyboard && io.WantTextInput) return 0;
+            }
+        }
+        return std::nullopt;
+    }
+    int engine_console::text_edit_callback_stub(ImGuiInputTextCallbackData* data) {
+        if (!data || !data->UserData) return 0;
+        return static_cast<engine_console*>(data->UserData)->text_edit_callback(data);
+    }
+    int engine_console::text_edit_callback(ImGuiInputTextCallbackData* data) {
+        if (!data) return 0;
+        if (data->EventFlag == ImGuiInputTextFlags_CallbackHistory) {
+            int const prev_history_pos = m_history_index;
+            if (data->EventKey == ImGuiKey_UpArrow) {
+                if (m_history_index == -1) m_history_index = gsl::narrow_cast<int>(m_history.size()) - 1;
+                else if (m_history_index > 0) m_history_index--;
+            }
+            else if (data->EventKey == ImGuiKey_DownArrow) {
+                if (m_history_index != -1)
+                    if (++m_history_index >= gsl::narrow_cast<int>(m_history.size())) m_history_index = -1;
+            }
+            if (prev_history_pos != m_history_index) {
+                const char* history_str = (m_history_index >= 0) ? reinterpret_cast<const char*>(m_history.at(m_history_index).c_str()) : "";
+                data->DeleteChars(0, data->BufTextLen);
+                data->InsertChars(0, history_str);
+            }
+        }
+        return 0;
+    }
+    bool engine_console::update_player_state() noexcept {
+        if (!windower::ffximain::is_logged_in()) {
+            windower::player_scanner::reset_scan();
+            return false;
+        }
+        return windower::player_scanner::get_local_player_json() != nullptr;
+    }
+    void engine_console::render_console_tab() noexcept {
+        ImGuiTabItemFlags tab_flags = 0;
+        if (g_focus_console_tab) { tab_flags |= ImGuiTabItemFlags_SetSelected; g_focus_console_tab = false; }
+        if (ImGui::BeginTabItem("Console", nullptr, tab_flags)) {
+            const float footer_height = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
+            if (ImGui::BeginChild("ScrollingRegion", ImVec2(0, -footer_height), false, ImGuiWindowFlags_HorizontalScrollbar)) {
+                std::lock_guard<std::mutex> lock{ g_console_mutex };
+                for (auto const& line : s_log_buffer) ImGui::TextUnformatted(reinterpret_cast<char const*>(line.c_str()));
+                if (m_scroll_to_bottom || ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {
+                    ImGui::SetScrollHereY(1.0f);
+                    m_scroll_to_bottom = false;
+                }
+            }
+            ImGui::EndChild();
+            ImGui::Separator();
+            bool reclaim_focus = false;
+            constexpr ImGuiInputTextFlags input_flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory;
+            if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
+            ImGui::PushItemWidth(-1.0f);
+            if (ImGui::InputText("##Input", &m_input_buffer[0], std::size(m_input_buffer), input_flags, &text_edit_callback_stub, this)) {
+                std::u8string cmd_str = reinterpret_cast<char8_t*>(&m_input_buffer[0]);
+                m_input_buffer[0] = '\0';
+                if (!cmd_str.empty()) {
+                    if (m_history.empty() || m_history.back() != cmd_str) m_history.push_back(cmd_str);
+                    m_history_index = -1;
+                    if (cmd_str == u8"clear") {
+                        std::lock_guard<std::mutex> lock{ g_console_mutex };
+                        s_log_buffer.clear();
+                    }
+                    else if (cmd_str == u8"export") {
+                        try {
+                            auto export_dir = core::instance().settings.user_path / "NextXI_Logs";
+                            std::filesystem::create_directories(export_dir);
+                            auto export_path = export_dir / "console_export.txt";
+                            bool success = false;
+                            {
+                                std::lock_guard<std::mutex> lock{ g_console_mutex };
+                                std::ofstream out(export_path, std::ios::binary);
+                                if (out) {
+                                    for (auto const& line : s_log_buffer) {
+                                        out.write(reinterpret_cast<char const*>(line.data()), line.size());
+                                        out.write("\r\n", 2);
+                                    }
+                                    success = true;
+                                }
+                            }
+                            if (success) push_log(u8"--- Exported to: " + export_path.u8string() + u8" ---");
+                            else push_log(u8"--- ERROR: Failed to write export file ---");
+                        }
+                        catch (...) { push_log(u8"--- EXCEPTION: Failed to create export directory ---"); }
+                    }
+                    else if (cmd_str == u8"addons") {
+                        std::lock_guard<std::mutex> lock{ g_console_mutex };
+                        s_log_buffer.emplace_back(u8"--- Active Addons ---");
+                        int count = 0;
+                        if (core::instance().addon_manager) {
+                            for (auto const& a : m_browser.get_cached_addons()) {
+                                if (core::instance().addon_manager->get(a.name)) {
+                                    s_log_buffer.emplace_back(u8" - " + a.name);
+                                    count++;
+                                }
+                            }
+                        }
+                        if (count == 0) s_log_buffer.emplace_back(u8" None.");
+                        s_log_buffer.emplace_back(u8"---------------------");
+                    }
+                    else if (cmd_str.find(u8"autoload") == 0) {
+                        std::string args(cmd_str.begin() + 8, cmd_str.end());
+                        args.erase(0, args.find_first_not_of(" \t"));
+                        if (args.empty()) push_log(u8"Usage:
+                        else {
+                            push_log(u8"Auto-loading profile: " + std::u8string(args.begin(), args.end()));
+                            addon_browser::run_autoload(args);
+                        }
+                    }
+                    else if (cmd_str == u8"exit") {
+                        m_visible = false;
+                    }
+                    else if (cmd_str == u8"help") {
+                        push_log(u8"--- Console Commands ---");
+                        push_log(u8" clear               : Erases all text.");
+                        push_log(u8" export              : Dumps history to console_export.txt.");
+                        push_log(u8" addons              : Lists all active addons.");
+                        push_log(u8" autoload <name>     : Loads a character profile.");
+                        push_log(u8" exit                : Closes the Control Center.");
+                        push_log(u8"
+                        push_log(u8"
+                    }
+                    else {
+                        std::u8string const echo_msg = u8"> Executing: " + cmd_str;
+                        push_log(echo_msg);
+                        core::instance().run_on_next_frame([cmd = cmd_str]() {
+                            command_manager::instance().handle_command(cmd, command_source::console);
+                            });
+                    }
+                    m_scroll_to_bottom = true;
+                }
+                reclaim_focus = true;
+            }
+            ImGui::PopItemWidth();
+            ImGui::SetItemDefaultFocus();
+            if (reclaim_focus) ImGui::SetKeyboardFocusHere(-1);
+            ImGui::EndTabItem();
+        }
+    }
+    void engine_console::render(context& ctx) noexcept
+    {
+        if (!::GetModuleHandleW(L"FFXiMain.dll")) {
+            m_visible = false;
+            m_was_visible = false;
+            s_force_open = false;
+            return;
+        }
+        {
+            std::lock_guard<std::mutex> lock(m_msg_mutex);
+            for (auto const& msg : m_msg_queue)
+                ImGui_ImplWin32_WndProcHandler(msg.hwnd, msg.message, msg.wParam, msg.lParam);
+            m_msg_queue.clear();
+        }
+        if (m_was_visible && !m_visible) { ::ClipCursor(nullptr); m_was_visible = false; }
+        else if (!m_was_visible && m_visible) { m_was_visible = true; }
+        bool const player_active = update_player_state();
+        try { m_browser.check_directory_changes(); }
+        catch (...) {}
+        session_tracker::update(player_active, m_browser, [this](std::u8string_view msg) { push_log(msg); });
+        if (!m_visible) {
+            return;
+        }
+        ImGuiStyle& style = ImGui::GetStyle();
+        ImVec2 const old_frame_padding = style.FramePadding;
+        float const old_window_border = style.WindowBorderSize;
+        ImVec2 const old_window_padding = style.WindowPadding;
+        style.FramePadding.y = 12.0f;
+        style.WindowBorderSize = 2.0f;
+        style.WindowPadding = ImVec2(12.0f, 12.0f);
+        ImGui::SetNextWindowSize(ImVec2(750, 550), ImGuiCond_FirstUseEver);
+        bool const is_open = ImGui::Begin("NextXI Control Center", &m_visible, ImGuiWindowFlags_NoCollapse);
+        style.FramePadding = old_frame_padding;
+        if (!is_open) {
+            ImGui::End();
+            style.WindowBorderSize = old_window_border;
+            style.WindowPadding = old_window_padding;
+            return;
+        }
+        if (ImGui::BeginTabBar("ConsoleTabs"))
+        {
+            system_diagnostics::render_about_tab();
+            if (player_active) {
+                render_console_tab();
+                debug_scanner::render_debug_tab([this](std::u8string_view msg) { push_log(msg); }, g_focus_console_tab);
+                std::vector<tabs::addon_info> w4_addons;
+                std::vector<tabs::addon_info> nxi_addons;
+                auto am = core::instance().addon_manager.get();
+                for (auto const& a : m_browser.get_cached_addons()) {
+                    tabs::addon_info info;
+                    info.name = std::string(a.name.begin(), a.name.end());
+                    info.is_loaded = am && (am->get(a.name) != nullptr);
+                    info.has_readme = a.has_readme;
+                    info.readme_path = a.readme_path.string();
+                    if (a.is_modern) nxi_addons.push_back(info);
+                    else w4_addons.push_back(info);
+                }
+                if (ImGui::BeginTabItem("Windower 4 Addons")) {
+                    ImGui::Spacing();
+                    tabs::render_addon_table(ctx, "W4AddonTable", w4_addons, true);
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("NextXI Addons")) {
+                    ImGui::Spacing();
+                    tabs::render_addon_table(ctx, "NXIAddonTable", nxi_addons, true);
+                    ImGui::EndTabItem();
+                }
+            }
+            else {
+                render_locked_tab();
+            }
+            if (ImGui::BeginTabItem("Styling")) {
+                tabs::render_styling_tab();
+                ImGui::EndTabItem();
+            }
+            ImGui::EndTabBar();
+        }
+        ImGui::End();
+        style.WindowBorderSize = old_window_border;
+        style.WindowPadding = old_window_padding;
+    }
+    void engine_console::push_log(std::u8string_view text) noexcept
+    {
+        std::lock_guard<std::mutex> lock{ g_console_mutex };
+        auto process_and_push = [](std::u8string_view raw_line) {
+            std::u8string line{ raw_line };
+            if (!line.empty() && line.back() == u8'\r') line.pop_back();
+            if (line.empty()) return;
+            if (line.find(u8"packet_service") != std::u8string::npos) return;
+            if (line.find(u8"linkshell_service") != std::u8string::npos) return;
+            if (line.find(u8"windower::package") != std::u8string::npos) return;
+            if (line.find(u8"PKG:P2") != std::u8string::npos) return;
+            if (line.find(u8"PKG:F2") != std::u8string::npos) return;
+            s_log_buffer.emplace_back(std::move(line));
+            };
+        std::u8string::size_type start = 0;
+        std::u8string::size_type pos;
+        while ((pos = text.find(u8'\n', start)) != std::u8string::npos) {
+            process_and_push(text.substr(start, pos - start));
+            start = pos + 1;
+        }
+        if (start < text.length()) process_and_push(text.substr(start));
+        while (s_log_buffer.size() > max_log_lines) s_log_buffer.pop_front();
+    }
+}
+```

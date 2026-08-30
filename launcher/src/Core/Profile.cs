@@ -23,6 +23,7 @@ namespace Windower.Core
         private readonly bool? polAccountLimit;
         private readonly bool? polFastLogin;
         private readonly bool? polNoThrottle;
+        private readonly int? vramAllocation; // NEW: VRAM allocation
 
         public static Profile Default { get; } = default(Profile);
 
@@ -32,7 +33,7 @@ namespace Windower.Core
             TextureCompression textureCompression, EnvironmentAnimation environmentAnimation, FontType fontType, float? gamma,
             bool driverStability, bool playIntro, bool debug, bool developerMode, string settingsPath, string userPath,
             string tempPath, bool accessControlPrompt, GraphicsEngine selectedEngine,
-            bool polAccountLimit, bool polFastLogin, bool polNoThrottle)
+            bool polAccountLimit, bool polFastLogin, bool polNoThrottle, int? vramAllocation)
         {
             this.name = name?.Trim() ?? throw new ArgumentNullException(nameof(name));
             this.samplesPerPixel = samplesPerPixel;
@@ -47,6 +48,7 @@ namespace Windower.Core
             this.polAccountLimit = polAccountLimit;
             this.polFastLogin = polFastLogin;
             this.polNoThrottle = polNoThrottle;
+            this.vramAllocation = vramAllocation;
 
             Region = region;
             UseSteam = useSteam;
@@ -72,80 +74,45 @@ namespace Windower.Core
         }
 
         public string Name => name ?? string.Empty;
-
         public GraphicsEngine SelectedEngine => selectedEngine ?? GraphicsEngine.Vanilla;
-
+        public int VramAllocation => vramAllocation ?? 1024; // Default to 1024MB
         public Region? Region { get; }
-
         public bool UseSteam { get; }
-
         public string Executable { get; }
-
         public string ExecutableArgs { get; }
-
         public bool RunAsAdmin { get; }
-
         public WindowType WindowType { get; }
-
         public string Display { get; }
-
         public Dimension? Resolution { get; }
-
         public Point? Position { get; }
-
         public float SamplesPerPixel => samplesPerPixel ?? 1f;
-
         public float? UIScale { get; }
-
         public bool HardwareMouse => hardwareMouse ?? true;
-
         public int MaxSounds => maxSounds ?? 32;
-
         public bool PlaySoundWhenUnfocused => playSoundWhenUnfocused ?? true;
-
         public int Mipmapping { get; }
-
         public bool BumpMapping { get; }
-
         public bool MapCompression { get; }
-
         public TextureCompression TextureCompression => textureCompression ?? TextureCompression.Uncompressed;
-
         public EnvironmentAnimation EnvironmentAnimation => environmentAnimation ?? EnvironmentAnimation.Smooth;
-
         public FontType FontType => fontType ?? FontType.Uncompressed;
-
         public float? Gamma { get; }
-
         public bool DriverStability { get; }
-
         public bool PlayIntro { get; }
-
         public bool Debug { get; }
-
         public bool DeveloperMode { get; }
-
         public string SettingsPath { get; }
-
         public string UserPath { get; }
-
         public string TempPath { get; }
-
         public bool AccessControlPrompt => accessControlPrompt ?? true;
-
         public bool PolAccountLimit => polAccountLimit ?? false;
-
         public bool PolFastLogin => polFastLogin ?? false;
-
         public bool PolNoThrottle => polNoThrottle ?? false;
-
-        public bool DisableDgVoodooWatermark => true;
-        public int VramAllocation => 1024;
-        public bool EnableDirectX11 => true;
 
         public enum GraphicsEngine
         {
             Vanilla,
+            Direct3D11, // NEW: Added D3D11 (dgVoodoo)
             Direct3D12
         }
 
@@ -187,7 +154,8 @@ namespace Windower.Core
             Maybe<GraphicsEngine> SelectedEngine = new Maybe<GraphicsEngine>(),
             Maybe<bool> PolAccountLimit = new Maybe<bool>(),
             Maybe<bool> PolFastLogin = new Maybe<bool>(),
-            Maybe<bool> PolNoThrottle = new Maybe<bool>())
+            Maybe<bool> PolNoThrottle = new Maybe<bool>(),
+            Maybe<int?> VramAllocation = new Maybe<int?>())
         {
             if (Name != this.Name || Region != this.Region || UseSteam != this.UseSteam || Executable != this.Executable ||
                 ExecutableArgs != this.ExecutableArgs || RunAsAdmin != this.RunAsAdmin || WindowType != this.WindowType ||
@@ -200,7 +168,8 @@ namespace Windower.Core
                 PlayIntro != this.PlayIntro || Debug != this.Debug || DeveloperMode != this.DeveloperMode ||
                 SettingsPath != this.SettingsPath || UserPath != this.UserPath || TempPath != this.TempPath ||
                 AccessControlPrompt != this.AccessControlPrompt || SelectedEngine != this.SelectedEngine ||
-                PolAccountLimit != this.PolAccountLimit || PolFastLogin != this.PolFastLogin || PolNoThrottle != this.PolNoThrottle)
+                PolAccountLimit != this.PolAccountLimit || PolFastLogin != this.PolFastLogin || PolNoThrottle != this.PolNoThrottle ||
+                VramAllocation != this.VramAllocation)
             {
                 return new Profile(
                     Name.Default(this.Name),
@@ -236,9 +205,9 @@ namespace Windower.Core
                     SelectedEngine.Default(this.SelectedEngine),
                     PolAccountLimit.Default(this.PolAccountLimit),
                     PolFastLogin.Default(this.PolFastLogin),
-                    PolNoThrottle.Default(this.PolNoThrottle));
+                    PolNoThrottle.Default(this.PolNoThrottle),
+                    VramAllocation.Default(this.VramAllocation));
             }
-
             return this;
         }
 
@@ -248,6 +217,7 @@ namespace Windower.Core
             get
             {
                 yield return Pair("graphics_engine", SelectedEngine.ToString());
+                yield return Pair("vram_allocation", VramAllocation); // NEW: Send to C++ Core!
                 yield return Pair("window_type", WindowType);
                 yield return Pair("display_device_name", Display);
                 yield return Pair("width", Resolution?.Width);
@@ -288,6 +258,7 @@ namespace Windower.Core
             {
                 var builder = new StringBuilder("launch");
                 AddOption(builder, p => p.SelectedEngine, "engine");
+                AddOption(builder, p => p.VramAllocation, "vram");
                 AddOption(builder, p => p.Region, "region");
                 AddOption(builder, p => p.UseSteam, "steam");
                 AddOption(builder, p => p.Executable, "executable");
