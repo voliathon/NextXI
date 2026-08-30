@@ -109,7 +109,6 @@ namespace Windower.UI.Views
             }
         }
 
-        // Tells the UI to show the VRAM slider for both NextXI (dgVoodoo) engines
         public bool IsVramSettingsVisible => profile.SelectedEngine == Profile.GraphicsEngine.Direct3D11 ||
                                              profile.SelectedEngine == Profile.GraphicsEngine.Direct3D12;
 
@@ -597,4 +596,5 @@ namespace Windower.UI.Views
 
         private static string GetString(string name) => System.Windows.Application.Current.TryFindResource(name) as string;
     }
+
 }
