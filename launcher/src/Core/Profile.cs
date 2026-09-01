@@ -75,7 +75,7 @@ namespace Windower.Core
 
         public string Name => name ?? string.Empty;
         public GraphicsEngine SelectedEngine => selectedEngine ?? GraphicsEngine.Vanilla;
-        public int VramAllocation => vramAllocation ?? 1024; // Default to 1024MB
+        public int VramAllocation => vramAllocation ?? 256; // Default to 256MB
         public Region? Region { get; }
         public bool UseSteam { get; }
         public string Executable { get; }

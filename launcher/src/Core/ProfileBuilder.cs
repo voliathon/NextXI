@@ -39,6 +39,7 @@ namespace Windower.Core
         private Maybe<bool> polAccountLimit;
         private Maybe<bool> polFastLogin;
         private Maybe<bool> polNoThrottle;
+        private Maybe<int?> vramAllocation;
 
         public string Name
         {
@@ -49,208 +50,46 @@ namespace Windower.Core
                 {
                     throw new ArgumentNullException(nameof(value));
                 }
-
                 name = value.Trim();
             }
         }
 
-        public Region? Region
-        {
-            get => region.Default(null);
-            set => region = value;
-        }
+        public Region? Region { get => region.Default(null); set => region = value; }
+        public bool UseSteam { get => useSteam.Default(false); set => useSteam = value; }
+        public string Executable { get => executable.Default(null); set => executable = value; }
+        public string ExecutableArgs { get => executableArgs.Default(null); set => executableArgs = value; }
+        public bool RunAsAdmin { get => runAsAdmin.Default(false); set => runAsAdmin = value; }
+        public WindowType WindowType { get => windowType.Default(WindowType.Borderless); set => windowType = value; }
+        public string Display { get => display.Default(null); set => display = value; }
+        public Dimension? Resolution { get => resolution.Default(null); set => resolution = value; }
+        public Point? Position { get => position.Default(null); set => position = value; }
+        public float SamplesPerPixel { get => samplesPerPixel.Default(1); set => samplesPerPixel = value; }
+        public float? UIScale { get => uiScale.Default(null); set => uiScale = value; }
+        public bool HardwareMouse { get => hardwareMouse.Default(true); set => hardwareMouse = value; }
+        public int MaxSounds { get => maxSounds.Default(32); set => maxSounds = value; }
+        public bool PlaySoundWhenUnfocused { get => playSoundWhenUnfocused.Default(true); set => playSoundWhenUnfocused = value; }
+        public int Mipmapping { get => mipmapping.Default(0); set => mipmapping = value; }
+        public bool BumpMapping { get => bumpMapping.Default(false); set => bumpMapping = value; }
+        public bool MapCompression { get => mapCompression.Default(false); set => mapCompression = value; }
+        public TextureCompression TextureCompression { get => textureCompression.Default(TextureCompression.Uncompressed); set => textureCompression = value; }
+        public EnvironmentAnimation EnvironmentAnimation { get => environmentAnimation.Default(EnvironmentAnimation.Smooth); set => environmentAnimation = value; }
+        public FontType FontType { get => fontType.Default(FontType.Uncompressed); set => fontType = value; }
+        public float? Gamma { get => gamma.Default(0f); set => gamma = value; }
+        public bool DriverStability { get => driverStability.Default(false); set => driverStability = value; }
+        public bool PlayIntro { get => playIntro.Default(false); set => playIntro = value; }
+        public bool Debug { get => debug.Default(false); set => debug = value; }
+        public bool DeveloperMode { get => developerMode.Default(false); set => developerMode = value; }
+        public string SettingsPath { get => settingsPath.Default(null); set => settingsPath = value; }
+        public string UserPath { get => userPath.Default(null); set => userPath = value; }
+        public string TempPath { get => tempPath.Default(null); set => tempPath = value; }
+        public bool AccessControlPrompt { get => accessControlPrompt.Default(true); set => accessControlPrompt = value; }
+        public Profile.GraphicsEngine SelectedEngine { get => selectedEngine.Default(Profile.GraphicsEngine.Vanilla); set => selectedEngine = value; }
+        public bool PolAccountLimit { get => polAccountLimit.Default(false); set => polAccountLimit = value; }
+        public bool PolFastLogin { get => polFastLogin.Default(false); set => polFastLogin = value; }
+        public bool PolNoThrottle { get => polNoThrottle.Default(false); set => polNoThrottle = value; }
 
-        public bool UseSteam
-        {
-            get => useSteam.Default(false);
-            set => useSteam = value;
-        }
-
-        public string Executable
-        {
-            get => executable.Default(null);
-            set => executable = value;
-        }
-
-        public string ExecutableArgs
-        {
-            get => executableArgs.Default(null);
-            set => executableArgs = value;
-        }
-
-        public bool RunAsAdmin
-        {
-            get => runAsAdmin.Default(false);
-            set => runAsAdmin = value;
-        }
-
-        public WindowType WindowType
-        {
-            get => windowType.Default(WindowType.Borderless);
-            set => windowType = value;
-        }
-
-        public string Display
-        {
-            get => display.Default(null);
-            set => display = value;
-        }
-
-        public Dimension? Resolution
-        {
-            get => resolution.Default(null);
-            set => resolution = value;
-        }
-
-        public Point? Position
-        {
-            get => position.Default(null);
-            set => position = value;
-        }
-
-        public float SamplesPerPixel
-        {
-            get => samplesPerPixel.Default(1);
-            set => samplesPerPixel = value;
-        }
-
-        public float? UIScale
-        {
-            get => uiScale.Default(null);
-            set => uiScale = value;
-        }
-
-        public bool HardwareMouse
-        {
-            get => hardwareMouse.Default(true);
-            set => hardwareMouse = value;
-        }
-
-        public int MaxSounds
-        {
-            get => maxSounds.Default(32);
-            set => maxSounds = value;
-        }
-
-        public bool PlaySoundWhenUnfocused
-        {
-            get => playSoundWhenUnfocused.Default(true);
-            set => playSoundWhenUnfocused = value;
-        }
-
-        public int Mipmapping
-        {
-            get => mipmapping.Default(0);
-            set => mipmapping = value;
-        }
-
-        public bool BumpMapping
-        {
-            get => bumpMapping.Default(false);
-            set => bumpMapping = value;
-        }
-
-        public bool MapCompression
-        {
-            get => mapCompression.Default(false);
-            set => mapCompression = value;
-        }
-
-        public TextureCompression TextureCompression
-        {
-            get => textureCompression.Default(TextureCompression.Uncompressed);
-            set => textureCompression = value;
-        }
-
-        public EnvironmentAnimation EnvironmentAnimation
-        {
-            get => environmentAnimation.Default(EnvironmentAnimation.Smooth);
-            set => environmentAnimation = value;
-        }
-
-        public FontType FontType
-        {
-            get => fontType.Default(FontType.Uncompressed);
-            set => fontType = value;
-        }
-
-        public float? Gamma
-        {
-            get => gamma.Default(0f);
-            set => gamma = value;
-        }
-
-        public bool DriverStability
-        {
-            get => driverStability.Default(false);
-            set => driverStability = value;
-        }
-
-        public bool PlayIntro
-        {
-            get => playIntro.Default(false);
-            set => playIntro = value;
-        }
-
-        public bool Debug
-        {
-            get => debug.Default(false);
-            set => debug = value;
-        }
-
-        public bool DeveloperMode
-        {
-            get => developerMode.Default(false);
-            set => developerMode = value;
-        }
-
-        public string SettingsPath
-        {
-            get => settingsPath.Default(null);
-            set => settingsPath = value;
-        }
-
-        public string UserPath
-        {
-            get => userPath.Default(null);
-            set => userPath = value;
-        }
-
-        public string TempPath
-        {
-            get => tempPath.Default(null);
-            set => tempPath = value;
-        }
-
-        public bool AccessControlPrompt
-        {
-            get => accessControlPrompt.Default(true);
-            set => accessControlPrompt = value;
-        }
-
-        public Profile.GraphicsEngine SelectedEngine
-        {
-            get => selectedEngine.Default(Profile.GraphicsEngine.Vanilla);
-            set => selectedEngine = value;
-        }
-
-        public bool PolAccountLimit
-        {
-            get => polAccountLimit.Default(false);
-            set => polAccountLimit = value;
-        }
-
-        public bool PolFastLogin
-        {
-            get => polFastLogin.Default(false);
-            set => polFastLogin = value;
-        }
-
-        public bool PolNoThrottle
-        {
-            get => polNoThrottle.Default(false);
-            set => polNoThrottle = value;
-        }
+        // VRAM allocation property
+        public int? VramAllocation { get => vramAllocation.Default(null); set => vramAllocation = value; }
 
         public Profile Get() => Get(default(Profile));
 
@@ -258,8 +97,8 @@ namespace Windower.Core
         {
             return baseValue.With(name, region, useSteam, executable, executableArgs, runAsAdmin, windowType, display, resolution, position,
                 samplesPerPixel, uiScale, hardwareMouse, maxSounds, playSoundWhenUnfocused, mipmapping, bumpMapping, mapCompression,
-                textureCompression, environmentAnimation, fontType, gamma, driverStability, playIntro, debug, developerMode, userPath, userPath,
-                tempPath, accessControlPrompt, selectedEngine, polAccountLimit, polFastLogin, polNoThrottle);
+                textureCompression, environmentAnimation, fontType, gamma, driverStability, playIntro, debug, developerMode, settingsPath, userPath,
+                tempPath, accessControlPrompt, selectedEngine, polAccountLimit, polFastLogin, polNoThrottle, vramAllocation);
         }
     }
 }

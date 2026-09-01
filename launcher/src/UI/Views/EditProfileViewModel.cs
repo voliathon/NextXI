@@ -114,7 +114,13 @@ namespace Windower.UI.Views
 
         public int VramAllocation
         {
-            get => profile.VramAllocation;
+            get
+            {
+                // If it's an old profile that returns 0, default it to 256 MB.
+                int val = profile.VramAllocation <= 0 ? 256 : profile.VramAllocation;
+                // Safely clamp the value so the WPF slider doesn't break
+                return Math.Max(VramAllocationMin, Math.Min(val, VramAllocationMax));
+            }
             set => Set(ref profile, profile.With(VramAllocation: value));
         }
 

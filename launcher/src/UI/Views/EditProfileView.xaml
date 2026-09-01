@@ -343,7 +343,7 @@ SOFTWARE.
                             <Label Content="Video RAM (VRAM) Allocation" Grid.ColumnSpan="5" Margin="12,0,12,0"/>
 
                             <!-- Slider bounded dynamically by the GPU detector -->
-                            <Slider Grid.Column="1" Grid.ColumnSpan="3" Grid.Row="1" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True" LargeChange="512" Margin="0,4,0,0" Maximum="{Binding VramAllocationMax}" Minimum="{Binding VramAllocationMin}" SmallChange="256" TickFrequency="256" TickPlacement="Both" ToolTip="Set the amount of simulated VRAM in Megabytes." Value="{Binding VramAllocation}"/>
+                            <Slider Grid.Column="1" Grid.ColumnSpan="3" Grid.Row="1" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True" LargeChange="512" Margin="0,4,0,0" Maximum="{Binding VramAllocationMax}" Minimum="{Binding VramAllocationMin}" SmallChange="256" TickFrequency="256" TickPlacement="Both" ToolTip="Set the amount of simulated VRAM in Megabytes." Value="{Binding VramAllocation, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
                             <Label Content="{Binding VramAllocationMin}" ContentStringFormat="{}{0} MB" Grid.Row="1" HorizontalContentAlignment="Right" Margin="12,4,4,0" VerticalAlignment="Center"/>
                             <Label Content="{Binding VramAllocationMax}" ContentStringFormat="{}{0} MB" Grid.Column="4" Grid.Row="1" Margin="4,4,12,0" VerticalAlignment="Center"/>

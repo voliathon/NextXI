@@ -41,6 +41,55 @@ namespace {
         return result.c_str();
     }
 
+    static int lua_set_framerate_divisor(windower::lua::state s)
+    {
+        using namespace windower;
+        auto L = lua::unsafe::unwrap(s);
+        int divisor = static_cast<int>(::lua_tointeger(L, 1));
+
+        static uint32_t* frame_rate_divisor = nullptr;
+        static bool scanned = false;
+
+        if (!scanned)
+        {
+            // ---------------------------------------------------------
+            // TODO: REPLACE THIS SIGNATURE WITH YOUR EXACT DIVISOR PATTERN
+            // ---------------------------------------------------------
+            auto const ptr = windower::scan(
+                u8"FFXiMain.dll",
+                windower::signature{ u8"8B 0D ? ? ? ? 85 C9 74 ? 8B 15" });
+
+            if (ptr)
+            {
+                // Safely decay the windower::address class into a raw void pointer
+                void* raw_ptr = ptr;
+
+                // Dereference the pointer found by the scanner
+                // (Adjust the offset '+ 2' based on where your signature lands)
+                frame_rate_divisor = *reinterpret_cast<uint32_t**>(
+                    static_cast<uint8_t*>(raw_ptr) + 2);
+            }
+            scanned = true;
+        }
+
+        if (frame_rate_divisor)
+        {
+            // Protect the memory page before writing
+            DWORD old_protect;
+            if (::VirtualProtect(frame_rate_divisor, sizeof(uint32_t), PAGE_READWRITE, &old_protect))
+            {
+                *frame_rate_divisor = divisor;
+                ::VirtualProtect(frame_rate_divisor, sizeof(uint32_t), old_protect, &old_protect);
+            }
+        }
+        else
+        {
+            core::instance().output(u8"FPS", u8"Failed to locate FrameRateDivisor memory signature.");
+        }
+
+        return 0;
+    }
+
     extern "C" char const* read_market_file_ffi(char const* filename)
     {
         static std::string content;
@@ -195,14 +244,14 @@ int windower::load_windower_module(lua::state s) {
     lua::push(guard, &get_ffxi_spells_ffi);
     lua::push(guard, &get_ffxi_entities_ffi);
     lua::push(guard, &project_ffi);
+    lua::call(guard, 25); // Executes the Lua script and leaves the core.windower table on the stack
 
-    lua::call(guard, 25);
+    // --- INJECT THE FRAMERATE DIVISOR FUNCTION INTO LUA ---
+    lua::push(guard, u8"set_framerate_divisor");
+    lua::push(guard, lua_set_framerate_divisor);
+    lua::raw_set(guard, -3);
 
-    // ==========================================
-     // INJECT PROFILE MANAGER TO GLOBAL core.profile 
-     // ==========================================
     auto L = lua::unsafe::unwrap(s);
-
     lua_getglobal(L, "core");
     if (!lua_istable(L, -1)) {
         lua_pop(L, 1);
@@ -210,21 +259,16 @@ int windower::load_windower_module(lua::state s) {
         lua_pushvalue(L, -1);
         lua_setglobal(L, "core");
     }
-
     lua_pushstring(L, "profile");
     lua_newtable(L);
-
-    // Use NextXI's safe wrapper to push the functions so the types match perfectly
     lua::push(guard, u8"set_autoload");
     lua::push(guard, windower::profile_manager::lua_set_autoload);
     lua::raw_set(guard, -3);
-
     lua::push(guard, u8"get_autoload");
     lua::push(guard, windower::profile_manager::lua_get_autoload);
     lua::raw_set(guard, -3);
-
-    lua_rawset(L, -3);  // core["profile"] = table
-    lua_pop(L, 1);      // pop "core"
+    lua_rawset(L, -3);
+    lua_pop(L, 1);
 
     return guard.release();
 }

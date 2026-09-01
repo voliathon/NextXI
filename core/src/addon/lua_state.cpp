@@ -4,6 +4,7 @@
 #include "addon/unsafe.hpp"
 #include "utility.hpp"
 #include "utilities/debug_helpers.hpp"
+#include "modules/w4_shim.hpp"
 
 #include <lua.hpp>
 #include <memory>
@@ -88,6 +89,9 @@ extern "C"
         ::lua_pushlstring(s, "tostring", 8);
         ::lua_rawget(s, LUA_GLOBALSINDEX);
         ::lua_rawset(s, LUA_REGISTRYINDEX);
+
+        // INJECT W4 SHIM HERE
+        windower::addon::w4_shim::register_bindings(s);
 
         return 0;
     }
