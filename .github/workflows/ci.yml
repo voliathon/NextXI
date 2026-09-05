@@ -8,6 +8,10 @@ on:
     branches: [ 'main', 'dev' ]
   workflow_dispatch: 
 
+# Suppress Node 20 deprecation warnings until third-party actions update to Node 24
+env:
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+
 defaults:
   run:
     shell: pwsh
@@ -63,7 +67,7 @@ jobs:
           name: compiled-binaries
           path: build/bin/release/
 
-      # --- UPDATED: Automated Release Pipeline ---
+      # --- Automated Release Pipeline ---
       - name: Publish to GitHub Releases
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
