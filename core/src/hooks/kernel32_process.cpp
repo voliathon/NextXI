@@ -48,7 +48,7 @@ namespace
             {
                 auto name = std::max(std::wcsrchr(lpApplicationName, '\\'), std::wcsrchr(lpApplicationName, '/'));
                 name = name ? std::next(name, 1) : lpApplicationName;
-                if (std::wcscmp(name, L"pol.exe") == 0)
+                if (_wcsicmp(name, L"pol.exe") == 0)
                 {
                     STARTUPINFO startup{};
                     startup.cb = sizeof startup;

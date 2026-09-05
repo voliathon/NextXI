@@ -1,47 +1,49 @@
+<p align="center">
+  <img src="/launcher/res/NextXI_Logo.png" alt="NextXI">
+</p>
+
 # NextXI
 
-**NextXI** is a modern, modular, and high-performance engine wrapper and launcher for *Final Fantasy XI*. 
+NextXI is a C++20 engine wrapper and C# .NET launcher for Final Fantasy XI that replaces legacy DirectX 8 hooks to enable DirectX 8/11/12 rendering, window management, and Lua 5.1 addon execution.
 
-Built to modernize a classic game, NextXI intercepts and elevates the aging FFXI client to run flawlessly on modern operating systems. It replaces brittle, legacy hooks with a clean, refactored architecture, providing a robust foundation for modern rendering, custom UI overlays, and advanced Lua addon scripting.
+## Prerequisites & Installation
 
----
+**Prerequisites:**
+* Windows 10 or later
+* Visual Studio 2022 (C++ Desktop and .NET Desktop workloads)
+* vcpkg (for C++ package management)
+* PlayOnline Viewer and Final Fantasy XI client
 
-##  Architecture: Core vs. Launcher
+**Installation:**
+```cmd
+git clone [https://github.com/voliathon/NextXI.git](https://github.com/voliathon/NextXI.git)
+cd NextXI
+msbuild nextxi.sln /p:Configuration=Release /p:Platform=x86
+```
 
-The NextXI project is split into two distinct halves to ensure maximum stability and ease of development:
+## Usage
 
-### 1. The Launcher (C#)
-Located in the `launcher/` directory, this is a modern .NET desktop application. It acts as the user's front door. The launcher handles configuration management, account profiles, and safely bootstraps the injection process, ensuring that the C++ engine hooks are securely loaded into the PlayOnline Viewer (`pol.exe`) before the game boots.
+Launch the C# desktop application to configure game profiles and inject the C++ core into the PlayOnline process.
 
-### 2. The Core (C++)
-Located in the `core/` directory, this is the beating heart of NextXI. It is a native C++ DLL injected directly into the game process. The Core is strictly modularized into isolated domains (Window Management, Input, DirectX Rendering, Memory) and is responsible for:
-* Intercepting the legacy DirectX 8 graphics pipeline.
-* Pumping window messages (`user32`) for safe alt-tabbing and borderless dragging.
-* Running the Lua addon environment.
-* Rendering the hardware-accelerated Dear ImGui overlay.
+```cmd
+.\launcher\bin\Release\NextXI.Launcher.exe
+```
 
----
+Once injected and in-game, interact with the Lua scripting engine via the chat interface:
 
-##  DirectX 12 Modernization
+```text
+//load fps
+//unload fps
+```
 
-Final Fantasy XI natively runs on a deeply outdated DirectX 8 renderer. NextXI is specifically engineered to intercept these legacy D3D8 calls and play flawlessly with modern translation layers like **dgVoodoo2**. 
+## Configuration
 
-By gracefully managing the legacy graphics pipeline and window states, NextXI allows FFXI to run on a modern **DirectX 12** flip-model swapchain. This unlocks massive performance improvements, eliminates screen-tearing, enables native hardware-accelerated UI overlays, and allows the game to utilize modern GPU features without panicking or deadlocking the legacy D3D device.
+Settings are managed via the launcher and stored in an XML profile on disk. Addon configurations reside in the `addons` directory.
 
----
+* **Profile Location:** `settings/profiles.xml`
+* **Addon Location:** `addons/<addon_name>/`
 
-##  Technologies Used
-
-* **C++20** - The native language of the NextXI Core, utilizing modern C++ standards, smart pointers, and strict static analysis.
-* **C# / .NET** - Used for the lightweight, fast, and reliable NextXI Launcher.
-* **Dear ImGui** - Powers the hardware-accelerated, bloat-free in-game UI overlay.
-* **Lua 5.1** - The embedded scripting engine that drives the NextXI addon ecosystem.
-* **DirectX 8 / DirectX 12** - Hooking legacy D3D8 to bridge the gap to modern DX12 rendering backends.
-
----
-
-##  Documentation & Wiki
-
-For everything from compiling the source code to writing your first Lua addon, please consult the official Wiki. It contains detailed setup guides, architecture overviews, and troubleshooting steps for common third-party software conflicts (like DisplayFusion).
-
-**📖 Visit the NextXI Wiki here:** [https://github.com/voliathon/NextXI/wiki](https://github.com/voliathon/NextXI/wiki)
+**Primary Profile Variables:**
+* `graphics-engine`: Sets the rendering backend (e.g., `Direct3D12` via dgVoodoo2).
+* `fps-divisor`: Sets the memory patch value for the frame rate limit (`1` = 60 FPS, `2` = 30 FPS, `0` = uncapped).
+* `vram-allocation`: Sets the simulated video memory size in megabytes.

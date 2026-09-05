@@ -80,7 +80,7 @@ std::filesystem::path windower::client_path()
 
     fs::path result;
 
-    auto handle = ::GetModuleHandleW(L"ffximain.dll");
+    auto handle = ::GetModuleHandleW(L"FFXiMain.dll");
     if (handle)
     {
         auto buffer = std::array<::WCHAR, MAX_PATH + 1>{};

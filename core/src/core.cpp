@@ -31,6 +31,7 @@
 #include <string_view>
 #include <cstring>
 #include "addon/modules/player_scanner.hpp"
+#include "ui/style_manager.hpp"
 
 namespace {
     uint32_t* g_pDivisorPtr = nullptr;
@@ -227,18 +228,30 @@ void windower::core::update() noexcept
     {
         m_updated = true;
 
-        // Update Window Title with Character Name
+        // Update Window Title and Style Profiles dynamically based on Character Name
         static std::string s_current_character = "";
         bool const logged_in = windower::ffximain::is_logged_in();
         char const* const char_name = logged_in ? windower::player_scanner::get_cached_player_name() : nullptr;
 
         std::string const target_name = (char_name != nullptr) ? char_name : "";
 
+        // Trigger on login / character switch / logout
         if (s_current_character != target_name)
         {
             s_current_character = target_name;
             std::string const new_title = target_name.empty() ? "NextXI" : "NextXI - " + target_name;
 
+            // --- 1. Load the specific character's style profile ---
+            if (!target_name.empty()) {
+                windower::ui::style_manager::instance().load_profile(target_name);
+                windower::ui::style_manager::instance().last_profile = target_name;
+            }
+            else {
+                windower::ui::style_manager::instance().load_profile("global");
+                windower::ui::style_manager::instance().last_profile = "global";
+            }
+
+            // --- 2. Update the Win32 Window Title ---
             struct enum_data {
                 DWORD pid;
                 HWND hwnd;
