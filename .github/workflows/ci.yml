@@ -67,7 +67,7 @@ jobs:
           dotnet publish launcher/launcher.csproj `
             -c Release `
             -r win-x86 `
-            --self-contained true `
+            --self-contained false `
             -o build/bin/release/
 
       # 6. Build Installer
