@@ -29,7 +29,7 @@ namespace
 
         // Convert path to lowercase to safely check directories
         std::string lower_path = path_buf.data();
-        for (auto& c : lower_path) c = static_cast<char>(tolower(c));
+        for (auto& c : lower_path) c = gsl::narrow_cast<char>(tolower(c));
 
         // If the DLL loaded from the Windows system folder, the Launcher did NOT wrap it.
         if (lower_path.find("system32") != std::string::npos || lower_path.find("syswow64") != std::string::npos) {

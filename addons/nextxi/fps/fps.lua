@@ -39,25 +39,8 @@ function imgui_render()
 end
 
 windower.register_event('addon command', function(...)
-    local args = {...}
-    if #args > 0 then
-        local target = tonumber(args[1])
-        if target == 60 then
-            windower.set_framerate_divisor(1)
-            print('Framerate cap set to 60 FPS.')
-        elseif target == 30 then
-            windower.set_framerate_divisor(2)
-            print('Framerate cap set to 30 FPS.')
-        elseif target == 0 then
-            windower.set_framerate_divisor(0)
-            print('Framerate uncapped (Use with caution).')
-        else
-            print('Usage: //fps 60 | //fps 30 | //fps 0')
-        end
-    else
-        show_fps = not show_fps
-        print('FPS Monitor display: ' .. tostring(show_fps))
-    end
+    show_fps = not show_fps
+    print('FPS Monitor display: ' .. tostring(show_fps))
 end)
 
 -- Toggle via F12 Key (DIK Code 88)

@@ -50,7 +50,6 @@
     <ClInclude Include="resource.h" />
     <ClInclude Include="src\addon\errors\package_error.hpp" />
     <ClInclude Include="src\addon\modules\class.hpp" />
-    <ClInclude Include="src\addon\modules\fps_unlocker.hpp" />
     <ClInclude Include="src\addon\modules\hash.hpp" />
     <ClInclude Include="src\addon\modules\imgui.hpp" />
     <ClInclude Include="src\addon\modules\imgui_internal.hpp" />
@@ -221,7 +220,6 @@
     <ClCompile Include="src\addon\lua_state.cpp" />
     <ClCompile Include="src\addon\lua_utils.cpp" />
     <ClCompile Include="src\addon\modules\class.cpp" />
-    <ClCompile Include="src\addon\modules\fps_unlocker.cpp" />
     <ClCompile Include="src\addon\modules\hash.cpp" />
     <ClCompile Include="src\addon\modules\imgui.cpp" />
     <ClCompile Include="src\addon\modules\imgui_layout.cpp" />
