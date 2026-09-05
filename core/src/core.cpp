@@ -30,6 +30,7 @@
 #include <array>
 #include <string_view>
 #include <cstring>
+#include "addon/modules/player_scanner.hpp"
 
 namespace {
     uint32_t* g_pDivisorPtr = nullptr;
@@ -225,6 +226,45 @@ void windower::core::update() noexcept
     if (!m_updated)
     {
         m_updated = true;
+
+        // Update Window Title with Character Name
+        static std::string s_current_character = "";
+        bool const logged_in = windower::ffximain::is_logged_in();
+        char const* const char_name = logged_in ? windower::player_scanner::get_cached_player_name() : nullptr;
+
+        std::string const target_name = (char_name != nullptr) ? char_name : "";
+
+        if (s_current_character != target_name)
+        {
+            s_current_character = target_name;
+            std::string const new_title = target_name.empty() ? "NextXI" : "NextXI - " + target_name;
+
+            struct enum_data {
+                DWORD pid;
+                HWND hwnd;
+            } data = { ::GetCurrentProcessId(), nullptr };
+
+            ::EnumWindows([](HWND h, LPARAM lParam) -> BOOL {
+                auto* pData = reinterpret_cast<enum_data*>(lParam);
+                DWORD pid = 0;
+                ::GetWindowThreadProcessId(h, &pid);
+
+                if (pid == pData->pid) {
+                    std::array<char, 256> class_name{};
+                    ::GetClassNameA(h, class_name.data(), gsl::narrow_cast<int>(class_name.size()));
+                    if (std::string_view{ class_name.data() } == "FFXiClass") {
+                        pData->hwnd = h;
+                        return FALSE; // Stop enumeration once found
+                    }
+                }
+                return TRUE;
+                }, reinterpret_cast<LPARAM>(&data));
+
+            if (data.hwnd != nullptr)
+            {
+                ::SetWindowTextA(data.hwnd, new_title.c_str());
+            }
+        }
 
         enforce_fps_patch(core::instance().settings.fps_divisor);
 
