@@ -485,7 +485,7 @@
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <CodeAnalysisTreatWarningsAsErrors>false</CodeAnalysisTreatWarningsAsErrors>
     <IncludePath>$(UniversalCRTSdkDir)Include\$(TargetPlatformVersion)\ucrt;$(IncludePath)</IncludePath>
-    <LinkIncremental>true</LinkIncremental>
+    <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='release|Win32'">
     <OutDir>$(SolutionDir)build\bin\$(Configuration)\</OutDir>
@@ -494,7 +494,7 @@
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
     <IncludePath>$(UniversalCRTSdkDir)Include\$(TargetPlatformVersion)\ucrt;$(IncludePath)</IncludePath>
-    <LinkIncremental>true</LinkIncremental>
+    <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='debug|Win32'">
     <ClCompile>
