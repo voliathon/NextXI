@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <package>
-    <name>imgui_examples</name>
-    <description>Tests the ImGui Lua Bridge</description>
+    <name>addon_encyclopedia</name>
+    <description>Encyclopedia for NextXI Addons</description>
     <author>Voliathon</author>
     <version>1.0</version>
 </package>

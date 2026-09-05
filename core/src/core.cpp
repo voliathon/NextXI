@@ -26,6 +26,85 @@
 #include <mutex>
 #include <thread>
 #include "utilities/logger.hpp"
+#include <psapi.h>
+#include <array>
+#include <string_view>
+#include <cstring>
+
+namespace {
+    uint32_t* g_pDivisorPtr = nullptr;
+    bool g_scanner_finished = false;
+
+    void enforce_fps_patch(int divisor) {
+        if (g_scanner_finished) {
+            if (g_pDivisorPtr != nullptr) {
+                uint32_t current_val = 0;
+                std::memcpy(&current_val, g_pDivisorPtr, sizeof(uint32_t));
+
+                if (current_val != gsl::narrow_cast<uint32_t>(divisor)) {
+                    DWORD oldProtect = 0;
+                    ::VirtualProtect(g_pDivisorPtr, sizeof(uint32_t), PAGE_EXECUTE_READWRITE, &oldProtect);
+                    uint32_t const new_val = gsl::narrow_cast<uint32_t>(divisor);
+                    std::memcpy(g_pDivisorPtr, &new_val, sizeof(uint32_t));
+                    ::VirtualProtect(g_pDivisorPtr, sizeof(uint32_t), oldProtect, &oldProtect);
+                }
+            }
+            return;
+        }
+
+        HMODULE const hMod = ::GetModuleHandleW(L"FFXiMain.dll");
+        if (hMod == nullptr) return;
+
+        MODULEINFO modInfo{};
+        if (::GetModuleInformation(::GetCurrentProcess(), hMod, &modInfo, sizeof(modInfo)) == 0) return;
+        if (modInfo.lpBaseOfDll == nullptr) return;
+
+        gsl::span<const uint8_t> const memory_span{
+            static_cast<const uint8_t*>(modInfo.lpBaseOfDll),
+            gsl::narrow_cast<size_t>(modInfo.SizeOfImage)
+        };
+
+        constexpr std::array<uint8_t, 12> pattern = { 0x81, 0xEC, 0x00, 0x01, 0x00, 0x00, 0x3B, 0xC1, 0x74, 0x21, 0x8B, 0x0D };
+        constexpr std::string_view mask = "xxxxxxxxxxxx";
+
+        for (size_t i = 0; i < memory_span.size() - mask.length(); ++i) {
+            bool found = true;
+            for (size_t j = 0; j < mask.length(); ++j) {
+                if (gsl::at(mask, j) != '?' && gsl::at(pattern, j) != gsl::at(memory_span, i + j)) {
+                    found = false;
+                    break;
+                }
+            }
+
+            if (found) {
+                uint32_t global_var_addr = 0;
+                auto const addr_span = memory_span.subspan(i + 12, sizeof(uint32_t));
+                std::memcpy(&global_var_addr, addr_span.data(), sizeof(uint32_t));
+
+                if (global_var_addr != 0) {
+                    uint32_t struct_base_addr = 0;
+                    auto const* const ptr_to_global = reinterpret_cast<const void*>(gsl::narrow_cast<uintptr_t>(global_var_addr));
+
+                    if (ptr_to_global != nullptr) {
+                        std::memcpy(&struct_base_addr, ptr_to_global, sizeof(uint32_t));
+
+                        if (struct_base_addr != 0) {
+                            uint32_t const final_addr = struct_base_addr + 0x30;
+                            g_pDivisorPtr = reinterpret_cast<uint32_t*>(gsl::narrow_cast<uintptr_t>(final_addr));
+                            windower::logger::sync_trace("core() -> FPS Signature found and locked!");
+                        }
+                    }
+                }
+                break;
+            }
+        }
+
+        g_scanner_finished = true;
+        if (g_pDivisorPtr == nullptr) {
+            windower::logger::sync_trace("core() -> ERROR: Could not find FPS Signature!");
+        }
+    }
+}
 
 void windower::core::initialize() noexcept { instance(); }
 
@@ -146,6 +225,8 @@ void windower::core::update() noexcept
     if (!m_updated)
     {
         m_updated = true;
+
+        enforce_fps_patch(core::instance().settings.fps_divisor);
 
         class FpuStateGuard
         {

@@ -220,6 +220,7 @@ void windower::settings::load()
     // Read the Engine API string and VRAM allocation from the C# Launcher
     graphics_engine = s.get(u8"graphics_engine", u8"Vanilla");
     vram_allocation = s.get(u8"vram_allocation", 1024);
+    fps_divisor = s.get(u8"fps_divisor", 2);
 
     settings_path = s.get(u8"settings_path", u8"");
     user_path     = s.get(u8"user_path", u8"");

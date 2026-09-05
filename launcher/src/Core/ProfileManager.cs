@@ -141,6 +141,7 @@ namespace Windower.Core
             yield return new XElement("window-type", ToLowerString(p.WindowType));
             yield return new XElement("graphics-engine", p.SelectedEngine.ToString());
             yield return new XElement("vram-allocation", p.VramAllocation);
+            yield return new XElement("fps-divisor", p.FpsDivisor);
             yield return new XElement("display", p.Display);
             yield return new XElement("resolution", Serialize(p.Resolution));
             if (p.WindowType != WindowType.FullScreen)
@@ -212,6 +213,7 @@ namespace Windower.Core
                 WindowType = Convert(e.Element("window-type"), WindowType.Borderless),
                 SelectedEngine = Convert(e.Element("graphics-engine"), Profile.GraphicsEngine.Vanilla),
                 VramAllocation = Convert(e.Element("vram-allocation"), 256),
+                FpsDivisor = Convert(e.Element("fps-divisor"), 2),
                 Display = ConvertString(e.Element("display")),
                 Resolution = DeserializeDimension(e.Element("resolution")),
                 Position = DeserializePoint(e.Element("position")),

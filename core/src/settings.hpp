@@ -54,6 +54,7 @@ public:
     //Graphics Engine and VRAM Telemetry
     std::u8string graphics_engine;
     int vram_allocation = 1024;
+    int fps_divisor = 2;
 
     std::filesystem::path settings_path;
     std::filesystem::path user_path;

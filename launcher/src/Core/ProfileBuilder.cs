@@ -41,6 +41,8 @@ namespace Windower.Core
         private Maybe<bool> polNoThrottle;
         private Maybe<int?> vramAllocation;
 
+        public int FpsDivisor { get; set; } = 2;
+
         public string Name
         {
             get => name;
@@ -98,7 +100,7 @@ namespace Windower.Core
             return baseValue.With(name, region, useSteam, executable, executableArgs, runAsAdmin, windowType, display, resolution, position,
                 samplesPerPixel, uiScale, hardwareMouse, maxSounds, playSoundWhenUnfocused, mipmapping, bumpMapping, mapCompression,
                 textureCompression, environmentAnimation, fontType, gamma, driverStability, playIntro, debug, developerMode, settingsPath, userPath,
-                tempPath, accessControlPrompt, selectedEngine, polAccountLimit, polFastLogin, polNoThrottle, vramAllocation);
+                tempPath, accessControlPrompt, selectedEngine, polAccountLimit, polFastLogin, polNoThrottle, vramAllocation, FpsDivisor);
         }
     }
 }

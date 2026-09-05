@@ -127,6 +127,40 @@ namespace Windower.UI.Views
         public int VramAllocationMin { get; } = 256;
         public int VramAllocationMax { get; } = 4096;
 
+        public int FpsSelectedIndex
+        {
+            get
+            {
+                if (profile.FpsDivisor == 2)
+                {
+                    return 0; // 30 FPS
+                }
+                if (profile.FpsDivisor == 1)
+                {
+                    return 1; // 60 FPS
+                }
+                if (profile.FpsDivisor == 0)
+                {
+                    return 2; // Uncapped
+                }
+
+                return 0; // Fallback
+            }
+            set
+            {
+                int div = 2;
+                if (value == 1)
+                {
+                    div = 1;
+                }
+                if (value == 2)
+                {
+                    div = 0;
+                }
+                Set(ref profile, profile.With(FpsDivisor: div));
+            }
+        }
+
         public WindowType WindowType
         {
             get => profile.WindowType;

@@ -110,6 +110,19 @@ void windower::ui::system_diagnostics::render_about_tab()
             ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "%d MB", settings.vram_allocation);
         }
 
+        // Frame Rate Cap Readout
+        ImGui::Text("Target Frame Rate      : ");
+        ImGui::SameLine();
+        if (settings.fps_divisor == 1) {
+            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "60 FPS (Unlocked)");
+        }
+        else if (settings.fps_divisor == 0) {
+            ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Uncapped (Experimental)");
+        }
+        else {
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "30 FPS (Default)");
+        }
+
         ImGui::Text("Scripting Environment  : %s", lua_version_str.c_str());
         ImGui::Spacing();
         ImGui::Separator();
