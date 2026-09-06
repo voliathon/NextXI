@@ -107,9 +107,9 @@ namespace Windower
             {
                 var root = GetPathsRoot();
 
-                SettingsPath = (string)root.Element("settings-path") ?? Path.Combine("%LOCALAPPDATA%", "Windower");
-                UserPath = (string)root.Element("user-path") ?? Path.Combine("%SAVEDGAMES%", "Windower");
-                TempPath = (string)root.Element("temp-path") ?? Path.Combine("%TEMP%", "Windower");
+                SettingsPath = (string)root.Element("settings-path") ?? Path.Combine("%LOCALAPPDATA%", "NextXI");
+                UserPath = (string)root.Element("user-path") ?? Path.Combine("%SAVEDGAMES%", "NextXI");
+                TempPath = (string)root.Element("temp-path") ?? Path.Combine("%TEMP%", "NextXI");
             }
 
             public string SettingsPath { get; }

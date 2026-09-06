@@ -13,11 +13,16 @@ namespace Windower.Core
     using System.Xml.Linq;
 
     using static System.FormattableString;
+
     public class SettingsChannel : IDisposable
     {
         private bool disposed = false;
         private MemoryMappedFile file;
         private EventWaitHandle flag;
+
+        // Declared at the class level so FinishAsync can see it!
+        private Process targetProcess;
+
         [SuppressMessage("Microsoft.Design", "CA1006")]
         public SettingsChannel(Process process, IEnumerable<KeyValuePair<string, object>> settings)
         {
@@ -30,6 +35,9 @@ namespace Windower.Core
             {
                 throw new ArgumentNullException(nameof(settings));
             }
+
+            // Assigned immediately when the constructor fires!
+            targetProcess = process;
 
             var dataName = Invariant($"Windower.Settings[{process.Id:X8}].Data");
             var flagName = Invariant($"Windower.Settings[{process.Id:X8}].Flag");
@@ -53,20 +61,32 @@ namespace Windower.Core
 
             flag = new EventWaitHandle(false, EventResetMode.ManualReset, flagName);
         }
+
         public Task FinishAsync(CancellationToken token) =>
             Task.Run(() =>
             {
                 do
                 {
                     token.ThrowIfCancellationRequested();
+
+                    if (targetProcess != null && targetProcess.HasExited)
+                    {
+                        int exitCode = -1;
+                        try
+                        { exitCode = targetProcess.ExitCode; }
+                        catch { }
+                        throw new InvalidOperationException($"The game process crashed before settings could be transferred. Exit Code: 0x{exitCode:X8}");
+                    }
                 }
                 while (!flag.WaitOne(100));
             }, token);
+
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
         }
+
         protected virtual void Dispose(bool disposing)
         {
             if (!disposed && disposing)

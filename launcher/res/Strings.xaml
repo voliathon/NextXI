@@ -54,6 +54,9 @@ SOFTWARE.
     <sys:String x:Key="Strings.LaunchStatusCheckingDirectPlay">Checking DirectPlay</sys:String>
     <sys:String x:Key="Strings.LaunchStatusInstallingDirectPlay">Installing DirectPlay</sys:String>
     <sys:String x:Key="Strings.LaunchStatusLaunching">Starting PlayOnline Viewer</sys:String>
+    <sys:String x:Key="Strings.LaunchStatusUpdatingSharedLibs">Updating shared libraries...</sys:String>
+    <sys:String x:Key="Strings.LaunchStatusUpdatingWindowerLibs">Updating Windower libraries...</sys:String>
+    <sys:String x:Key="Strings.LaunchStatusUpdatingNextXILibs">Updating NextXI libraries...</sys:String>
     <sys:String x:Key="Strings.Minimize">Minimize</sys:String>
     <sys:String x:Key="Strings.NewProfileNameFormat">Profile {0}</sys:String>
     <sys:String x:Key="Strings.No">No</sys:String>
@@ -153,20 +156,20 @@ SOFTWARE.
     <sys:String x:Key="Strings.CrashReporterFetchingGistDetails">Getting gist details</sys:String>
     <sys:String x:Key="Strings.CrashReporterCreatingIssue">Creating a new issue for this crash report</sys:String>
     <sys:String x:Key="Strings.CrashReporterCreatingComment">Leaving a comment on the issue for this crash report</sys:String>
-    <sys:String x:Key="Strings.CrashReporterSubmitPrompt">Submit a crash report to the Windower dev team?</sys:String>
-    <sys:String x:Key="Strings.CrashReporterSubmitDisclaimerEncrypted" xml:space="preserve">A crash report has been generated. The Windower dev team can use this report to help fix the problem. This crash report includes information about the state of Windower when the problem occurred, and your operating system. The data collected will only be used to fix the problem, and will be encrypted before it is uploaded, so that it cannot be read by anyone else.&#xD;&#xA;&#xD;&#xA;You will need a GitHub account to submit this crash report. The report will be uploaded as a gist to your GitHub account, and attached to an issue.</sys:String>
-    <sys:String x:Key="Strings.CrashReporterSubmitDisclaimer" xml:space="preserve">A crash report has been generated. The Windower dev team can use this report to help fix the problem. This crash report includes information about the state of Windower when the problem occurred, and your operating system. The data collected will only be used to fix the problem.&#xD;&#xA;&#xD;&#xA;You will need a GitHub account to submit this crash report. The report will be uploaded as a gist to your GitHub account, and attached to an issue.</sys:String>
+    <sys:String x:Key="Strings.CrashReporterSubmitPrompt">Submit a crash report to the NextXI Team?</sys:String>
+    <sys:String x:Key="Strings.CrashReporterSubmitDisclaimerEncrypted" xml:space="preserve">A crash report has been generated. The NextXI Team can use this report to help fix the problem. This crash report includes information about the state of Windower when the problem occurred, and your operating system. The data collected will only be used to fix the problem, and will be encrypted before it is uploaded, so that it cannot be read by anyone else.&#xD;&#xA;&#xD;&#xA;You will need a GitHub account to submit this crash report. The report will be uploaded as a gist to your GitHub account, and attached to an issue.</sys:String>
+    <sys:String x:Key="Strings.CrashReporterSubmitDisclaimer" xml:space="preserve">A crash report has been generated. The NextXI Team can use this report to help fix the problem. This crash report includes information about the state of Windower when the problem occurred, and your operating system. The data collected will only be used to fix the problem.&#xD;&#xA;&#xD;&#xA;You will need a GitHub account to submit this crash report. The report will be uploaded as a gist to your GitHub account, and attached to an issue.</sys:String>
     <sys:String x:Key="Strings.CrashReporterViewReport">View the contents of the crash report</sys:String>
     <sys:String x:Key="Strings.CrashReporterViewLocalReport">View the local crash report files</sys:String>
     <sys:String x:Key="Strings.CrashReporterViewRemoteReport">View the crash report</sys:String>
     <sys:String x:Key="Strings.CrashReporterReportSubmitted">Crash report submitted</sys:String>
-    <sys:String x:Key="Strings.CrashReporterReportSubmittedDetails">The crash report has been successfully submitted to the Windower dev team.</sys:String>
+    <sys:String x:Key="Strings.CrashReporterReportSubmittedDetails">The crash report has been successfully submitted to the NextXI Team.</sys:String>
     <sys:String x:Key="Strings.CrashReporterReportExists">Crash already reported</sys:String>
-    <sys:String x:Key="Strings.CrashReporterReportExistsDetails">This crash has already been reported to the Windower dev team.</sys:String>
+    <sys:String x:Key="Strings.CrashReporterReportExistsDetails">This crash has already been reported to the NextXI Team.</sys:String>
     <sys:String x:Key="Strings.CrashReporterReportNotSubmitted">Crash report saved</sys:String>
-    <sys:String x:Key="Strings.CrashReporterReportNotSubmittedDetails">The crash report files have been saved to your hard drive and have not been submitted to the Windower dev team.</sys:String>
+    <sys:String x:Key="Strings.CrashReporterReportNotSubmittedDetails">The crash report files have been saved to your hard drive and have not been submitted to the m.</sys:String>
     <sys:String x:Key="Strings.CrashReporterReportingDisabled">Crash reporting disabled</sys:String>
-    <sys:String x:Key="Strings.CrashReporterReportingDisabledDetails">Crash reporting has been disabled for this version of Windower. The crash report files have been saved to your hard drive.</sys:String>
+    <sys:String x:Key="Strings.CrashReporterReportingDisabledDetails">Crash reporting has been disabled for this version of NextXI. The crash report files have been saved to your hard drive.</sys:String>
     <sys:String x:Key="Strings.CrashReporterReportingFailed">Failed to report crash</sys:String>
     <sys:String x:Key="Strings.CrashReporterReportingFailedDetails">A problem occurred while submitting the crash report. The crash report files have been saved to your hard drive.</sys:String>
     <sys:String x:Key="Strings.CrashReporterDeleteFiles">Delete crash report files</sys:String>

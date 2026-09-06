@@ -54,10 +54,10 @@ namespace Windower.UI.Views
 
         public bool EditCancellable { get; }
 
-        public bool IsAdministrator { get; } = Launcher.IsAdministrator();
+        public bool IsAdministrator { get; } = SecurityService.IsAdministrator();
 
-        public bool IsElevationRequired => Launcher.Resolve(profile).Region?.IsInstalled() == true
-            && Launcher.IsElevationRequired(profile) && !profile.RunAsAdmin;
+        public bool IsElevationRequired => GamePathResolver.Resolve(profile).Region?.IsInstalled() == true
+            && SecurityService.IsElevationRequired(profile) && !profile.RunAsAdmin;
 
         public string Name
         {
@@ -102,7 +102,63 @@ namespace Windower.UI.Views
         public int SelectedEngine
         {
             get => (int)profile.SelectedEngine;
-            set => Set(ref profile, profile.With(SelectedEngine: (Profile.GraphicsEngine)value));
+            set
+            {
+                Set(ref profile, profile.With(SelectedEngine: (Profile.GraphicsEngine)value));
+                OnPropertyChanged(nameof(IsVramSettingsVisible));
+            }
+        }
+
+        public bool IsVramSettingsVisible => profile.SelectedEngine == Profile.GraphicsEngine.Direct3D11 ||
+                                             profile.SelectedEngine == Profile.GraphicsEngine.Direct3D12;
+
+        public int VramAllocation
+        {
+            get
+            {
+                // If it's an old profile that returns 0, default it to 256 MB.
+                int val = profile.VramAllocation <= 0 ? 256 : profile.VramAllocation;
+                // Safely clamp the value so the WPF slider doesn't break
+                return Math.Max(VramAllocationMin, Math.Min(val, VramAllocationMax));
+            }
+            set => Set(ref profile, profile.With(VramAllocation: value));
+        }
+
+        public int VramAllocationMin { get; } = 256;
+        public int VramAllocationMax { get; } = 4096;
+
+        public int FpsSelectedIndex
+        {
+            get
+            {
+                if (profile.FpsDivisor == 2)
+                {
+                    return 0; // 30 FPS
+                }
+                if (profile.FpsDivisor == 1)
+                {
+                    return 1; // 60 FPS
+                }
+                if (profile.FpsDivisor == 0)
+                {
+                    return 2; // Uncapped
+                }
+
+                return 0; // Fallback
+            }
+            set
+            {
+                int div = 2;
+                if (value == 1)
+                {
+                    div = 1;
+                }
+                if (value == 2)
+                {
+                    div = 0;
+                }
+                Set(ref profile, profile.With(FpsDivisor: div));
+            }
         }
 
         public WindowType WindowType
@@ -576,8 +632,9 @@ namespace Windower.UI.Views
             }
         }
 
-        private void ExecuteFixAccessControl(object obj) => Launcher.FixAccessControl(profile);
+        private void ExecuteFixAccessControl(object obj) => SecurityService.FixAccessControl(profile);
 
         private static string GetString(string name) => System.Windows.Application.Current.TryFindResource(name) as string;
     }
+
 }

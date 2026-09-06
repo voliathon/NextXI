@@ -22,9 +22,11 @@ namespace Windower.Core
         private bool initialized;
 
         private readonly System.Collections.Generic.List<SafeProcessMemoryHandle> memoryHandles = new System.Collections.Generic.List<SafeProcessMemoryHandle>();
+
         public Injector(string path, params string[] args) :
             this(path, EscapeArguments(args))
         { }
+
         public Injector(string path, string argString)
         {
             path = Path.GetFullPath(path ?? throw new ArgumentNullException(nameof(path)));
@@ -60,6 +62,7 @@ namespace Windower.Core
             process = Process.GetProcessById((int)info.dwProcessId);
             initialized = false;
         }
+
         public Injector(Process process)
         {
             processHandle = new SafeWaitHandle(process.Handle, false);
@@ -68,7 +71,9 @@ namespace Windower.Core
             this.process = process;
             initialized = true;
         }
+
         public Process Process => Process.GetProcessById(process.Id);
+
         public async Task Inject(string dllPath)
         {
             if (dllPath == null)
@@ -95,6 +100,8 @@ namespace Windower.Core
 
             if (!initialized)
             {
+                // Queue the injection. The OS will automatically execute this 
+                // the moment Launcher.cs calls ResumeProcess(), guaranteed before pol.exe starts.
                 if (NativeMethods.QueueUserAPC(function, threadHandle, remoteBuffer) == 0)
                 {
                     throw new Win32Exception();
@@ -102,8 +109,15 @@ namespace Windower.Core
             }
             else
             {
-                var remoteThreadHandle = NativeMethods.CreateRemoteThread(processHandle, IntPtr.Zero, UIntPtr.Zero, function,
-                    remoteBuffer, 0, IntPtr.Zero);
+                var remoteThreadHandle = NativeMethods.CreateRemoteThread(
+                    processHandle,
+                    IntPtr.Zero,
+                    UIntPtr.Zero,
+                    function,
+                    remoteBuffer,
+                    0,
+                    IntPtr.Zero);
+
                 using (var remoteThread = new SafeWaitHandle(remoteThreadHandle, true))
                 {
                     if (remoteThread.IsInvalid)
@@ -128,11 +142,13 @@ namespace Windower.Core
                 }
             }
         }
+
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
         }
+
         protected virtual void Dispose(bool disposing)
         {
             if (!disposed && disposing)
@@ -166,6 +182,7 @@ namespace Windower.Core
 
             disposed = true;
         }
+
         private void Suspend()
         {
             if (!threadHandle.IsInvalid && NativeMethods.SuspendThread(threadHandle) == 0xFFFFFFFF)
@@ -173,6 +190,7 @@ namespace Windower.Core
                 throw new Win32Exception();
             }
         }
+
         public void ResumeProcess()
         {
             if (!initialized && !disposed)
@@ -189,6 +207,7 @@ namespace Windower.Core
                 throw new Win32Exception();
             }
         }
+
         private IntPtr GetRemoteFunctionAddress(string module, string function)
         {
             var hModule = NativeMethods.GetModuleHandle(module);
@@ -204,6 +223,7 @@ namespace Windower.Core
 
             return IntPtr.Zero;
         }
+
         private static string EscapeArguments(IEnumerable<string> args)
         {
             var quotedArgs =
@@ -212,6 +232,7 @@ namespace Windower.Core
                 select EscapeArgument(a);
             return string.Join(" ", quotedArgs);
         }
+
         private static string EscapeArgument(string argument)
         {
             if (argument.Any(c => "\"\t ".Contains(c)))
@@ -221,6 +242,7 @@ namespace Windower.Core
 
             return argument;
         }
+
         private static async Task<T> ReadAsync<T>(Stream stream)
         {
             var buffer = new byte[Marshal.SizeOf(typeof(T))];
@@ -241,6 +263,7 @@ namespace Windower.Core
                 handle.Free();
             }
         }
+
         private static T Read<T>(SafeWaitHandle process, IntPtr address)
         {
             var size = Marshal.SizeOf(typeof(T));
@@ -262,6 +285,7 @@ namespace Windower.Core
                 }
             }
         }
+
         private static byte[] Read(SafeWaitHandle process, IntPtr address, uint length)
         {
             var buffer = new byte[length];
@@ -273,6 +297,7 @@ namespace Windower.Core
 
             return buffer;
         }
+
         private static void Write(SafeWaitHandle process, IntPtr address, byte[] buffer)
         {
             if (!NativeMethods.WriteProcessMemory(process, address, buffer, (UIntPtr)buffer.Length, IntPtr.Zero))
@@ -280,6 +305,7 @@ namespace Windower.Core
                 throw new Win32Exception();
             }
         }
+
         private static void Write(SafeWaitHandle process, SafeProcessMemoryHandle address, byte[] buffer)
         {
             if (!NativeMethods.WriteProcessMemory(process, address, buffer, (UIntPtr)buffer.Length, IntPtr.Zero))

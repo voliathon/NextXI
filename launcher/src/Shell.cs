@@ -6,7 +6,7 @@ namespace Windower
 
     public static class Shell
     {
-        private const string appUserModelId = "Windower.Windower";
+        private const string appUserModelId = "NextXI.Launcher";
 
         public static void Initialize()
         {

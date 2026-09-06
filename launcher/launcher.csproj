@@ -34,6 +34,8 @@
 
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'debug|AnyCPU' ">
     <DefineConstants>$(ReleaseConstants);DEBUG;TRACE</DefineConstants>
+    <!-- CAVEMAN FIX: FORCE C++ DEBUGGER TO ATTACH -->
+    <!-- <EnableUnmanagedDebugging>true</EnableUnmanagedDebugging> -->
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <UseVSHostingProcess>true</UseVSHostingProcess>
@@ -72,6 +74,12 @@
 
   <ItemGroup>
     <CodeAnalysisDictionary Include="CustomDictionary.xml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Strip the default SDK flag before applying the Resource flag! -->
+    <None Remove="res\NextXI_Logo.png" />
+    <Resource Include="res\NextXI_Logo.png" />
   </ItemGroup>
 
   <ItemGroup>

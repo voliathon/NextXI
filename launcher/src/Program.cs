@@ -224,7 +224,7 @@ namespace Windower
         [SuppressMessage("Microsoft.Design", "CA1031")]
         private static void ExecuteAndExit(int processId)
         {
-            var name = Invariant($"Windower.RPC[{processId}]");
+            var name = Invariant($"NextXI.RPC[{processId}]");
             using (var pipe = new NamedPipeClientStream(".", name, PipeDirection.InOut, PipeOptions.Asynchronous))
             {
                 pipe.Connect();
@@ -271,7 +271,7 @@ namespace Windower
                         }
                     }
 
-                    var cancellationSignalName = Invariant($"Windower.RPC.CancellationSignal[{processId}]");
+                    var cancellationSignalName = Invariant($"NextXI.RPC.CancellationSignal[{processId}]");
                     var cancellationSignal = new EventWaitHandle(false, EventResetMode.ManualReset, cancellationSignalName);
                     var source = new CancellationTokenSource();
                     new Thread(() =>
@@ -306,7 +306,7 @@ namespace Windower
             params object[] args)
         {
             var processId = Process.GetCurrentProcess().Id;
-            var name = Invariant($"Windower.RPC[{processId}]");
+            var name = Invariant($"NextXI.RPC[{processId}]");
             using (var pipe = new NamedPipeServerStream(name, PipeDirection.InOut, 1, PipeTransmissionMode.Byte,
                 PipeOptions.Asynchronous))
             {
@@ -340,7 +340,7 @@ namespace Windower
                         {
                             if (WaitHandle.WaitAny(new[] { token.WaitHandle, completed }) == 0)
                             {
-                                var cancellationSignalName = Invariant($"Windower.RPC.CancellationSignal[{processId}]");
+                                var cancellationSignalName = Invariant($"NextXI.RPC.CancellationSignal[{processId}]");
                                 var cancellationSignal = new EventWaitHandle(false, EventResetMode.ManualReset,
                                     cancellationSignalName);
                                 cancellationSignal.Set();

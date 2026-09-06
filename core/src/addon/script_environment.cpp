@@ -3,10 +3,12 @@
 #include "addon/error.hpp"
 #include "addon/lua.hpp"
 #include "addon/lua_internal.hpp"
+#include "addon/unsafe.hpp"
 #include "addon/package_manager.hpp"
 #include "addon/scheduler.hpp"
 
 #include "addon/modules/command.hpp"
+#include "addon/modules/imgui.hpp"
 
 #include "core.hpp"
 #include "utility.hpp"
@@ -15,6 +17,8 @@
 #include <filesystem>
 #include <fstream>
 #include <utility>
+
+#include <lua.hpp>
 
 namespace
 {
@@ -89,6 +93,9 @@ void windower::script_environment::initialize() const
     lua::push(guard, load_script_module);
     lua::raw_set(guard, -2, 2);
     lua::preload(m_interpreter, u8"core.command", &load_command_module);
+
+    // Expose ImGui to global scripts!
+    lua::preload(m_interpreter, u8"imgui", &load_imgui_module);
 }
 
 void windower::script_environment::run_until_idle()
@@ -100,22 +107,22 @@ void windower::script_environment::execute(std::u8string_view name) const
 {
     auto path = windower_path() / u8"scripts" / name;
     path += u8".lua";
-    std::ifstream stream{path, std::ios::binary};
+    std::ifstream stream{ path, std::ios::binary };
     if (stream.is_open())
     {
-        lua::stack_guard guard{m_interpreter};
+        lua::stack_guard guard{ m_interpreter };
         lua::load(guard, stream, u8'@' + path.u8string());
         lua::call(guard, 0);
     }
     else
     {
-        throw lua::error{"no file '" + path.string() + '\''};
+        throw lua::error{ "no file '" + path.string() + '\'' };
     }
 }
 
 void windower::script_environment::evaluate(std::u8string_view string) const
 {
-    lua::stack_guard guard{m_interpreter};
+    lua::stack_guard guard{ m_interpreter };
     lua::load(guard, string);
     lua::call(guard, 0);
 }

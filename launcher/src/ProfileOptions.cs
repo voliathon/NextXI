@@ -265,8 +265,8 @@ namespace Windower
         [GeneratedCode("", "")]
         public enum GraphicsEngineInternal
         {
-            legacy = Profile.GraphicsEngine.Legacy,
-            dgVoodoo2 = Profile.GraphicsEngine.dgVoodoo2
+            vanilla = Profile.GraphicsEngine.Vanilla,
+            direct3D12 = Profile.GraphicsEngine.Direct3D12
         }
     }
 }

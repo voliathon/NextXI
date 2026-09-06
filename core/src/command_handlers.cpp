@@ -1,12 +1,10 @@
 #include "command_handlers.hpp"
-
 #include "command_manager.hpp"
 #include "core.hpp"
 #include "errors/command_error.hpp"
 #include "unicode.hpp"
 #include "utility.hpp"
 #include "utilities/module_info.hpp"
-
 #include <limits>
 
 namespace
@@ -111,8 +109,7 @@ void windower::command_handlers::unloadall(
     }
     else
     {
-        throw command_error{
-            u8"Addon manager is not initialized", u8"/unloadall" };
+        throw command_error{ u8"Addon manager is not initialized", u8"/unloadall" };
     }
 }
 
@@ -127,8 +124,51 @@ void windower::command_handlers::reloadall(
     }
     else
     {
+        throw command_error{ u8"Addon manager is not initialized", u8"/reloadall" };
+    }
+}
+
+// ==========================================
+// //LUA ROUTER (Windower 4 Compatibility)
+// Supports: //lua l, //lua u, //lua r, //lua load, //lua unload, //lua reload
+// ==========================================
+void windower::command_handlers::lua(
+    std::vector<std::u8string> const& args, command_source source)
+{
+    check_args(u8"/lua", args, 1, unlimited);
+    auto const& subcmd = args.at(0);
+
+    std::vector<std::u8string> sub_args;
+    if (args.size() > 1)
+    {
+        sub_args.assign(args.begin() + 1, args.end());
+    }
+
+    if (subcmd == u8"l" || subcmd == u8"load")
+    {
+        load(sub_args, source);
+    }
+    else if (subcmd == u8"u" || subcmd == u8"unload")
+    {
+        unload(sub_args, source);
+    }
+    else if (subcmd == u8"r" || subcmd == u8"reload")
+    {
+        reload(sub_args, source);
+    }
+    else if (subcmd == u8"ra" || subcmd == u8"reloadall" || subcmd == u8"rall")
+    {
+        reloadall(sub_args, source);
+    }
+    else if (subcmd == u8"ua" || subcmd == u8"unloadall" || subcmd == u8"uall")
+    {
+        unloadall(sub_args, source);
+    }
+    else
+    {
         throw command_error{
-            u8"Addon manager is not initialized", u8"/reloadall" };
+            u8"Usage: //lua <load|l|unload|u|reload|r|reloadall|ra|unloadall|ua> [addon_name]",
+            u8"/lua" };
     }
 }
 
@@ -255,6 +295,7 @@ void windower::command_handlers::register_all()
     cmd.register_command(command_manager::layer::core, u8"", u8"reload", reload);
     cmd.register_command(command_manager::layer::core, u8"", u8"unloadall", unloadall);
     cmd.register_command(command_manager::layer::core, u8"", u8"reloadall", reloadall);
+    cmd.register_command(command_manager::layer::core, u8"", u8"lua", lua);
     cmd.register_command(command_manager::layer::core, u8"", u8"alias", alias, true);
     cmd.register_command(command_manager::layer::core, u8"", u8"unalias", unalias);
     cmd.register_command(command_manager::layer::core, u8"", u8"bind", bind, true);

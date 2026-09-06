@@ -5,7 +5,6 @@ namespace Windower.Core
     using System.Collections.Generic;
     using System.Diagnostics.CodeAnalysis;
     using System.Text;
-
     [SuppressMessage("Microsoft.Naming", "CA1724")]
     [Serializable]
     public struct Profile : IEquatable<Profile>
@@ -23,16 +22,17 @@ namespace Windower.Core
         private readonly bool? polAccountLimit;
         private readonly bool? polFastLogin;
         private readonly bool? polNoThrottle;
+        private readonly int? vramAllocation;
+        private readonly int? fpsDivisor;
 
         public static Profile Default { get; } = default(Profile);
-
         public Profile(string name, Region? region, bool useSteam, string executable, string executableArgs, bool runAsAdmin,
             WindowType windowType, string display, Dimension? resolution, Point? position, float samplesPerPixel, float? uiScale,
             bool hardwareMouse, int maxSounds, bool playSoundWhenUnfocused, int mipmapping, bool bumpMapping, bool mapCompression,
             TextureCompression textureCompression, EnvironmentAnimation environmentAnimation, FontType fontType, float? gamma,
             bool driverStability, bool playIntro, bool debug, bool developerMode, string settingsPath, string userPath,
             string tempPath, bool accessControlPrompt, GraphicsEngine selectedEngine,
-            bool polAccountLimit, bool polFastLogin, bool polNoThrottle)
+            bool polAccountLimit, bool polFastLogin, bool polNoThrottle, int? vramAllocation, int? fpsDivisor)
         {
             this.name = name?.Trim() ?? throw new ArgumentNullException(nameof(name));
             this.samplesPerPixel = samplesPerPixel;
@@ -47,7 +47,8 @@ namespace Windower.Core
             this.polAccountLimit = polAccountLimit;
             this.polFastLogin = polFastLogin;
             this.polNoThrottle = polNoThrottle;
-
+            this.vramAllocation = vramAllocation;
+            this.fpsDivisor = fpsDivisor;
             Region = region;
             UseSteam = useSteam;
             Executable = executable;
@@ -70,81 +71,48 @@ namespace Windower.Core
             UserPath = Paths.CollapsePath(userPath);
             TempPath = Paths.CollapsePath(tempPath);
         }
-
         public string Name => name ?? string.Empty;
-
-        public GraphicsEngine SelectedEngine => selectedEngine ?? GraphicsEngine.Legacy;
-
+        public GraphicsEngine SelectedEngine => selectedEngine ?? GraphicsEngine.Vanilla;
+        public int VramAllocation => vramAllocation ?? 1024;
+        public int FpsDivisor => fpsDivisor ?? 2;
         public Region? Region { get; }
-
         public bool UseSteam { get; }
-
         public string Executable { get; }
-
         public string ExecutableArgs { get; }
-
         public bool RunAsAdmin { get; }
-
         public WindowType WindowType { get; }
-
         public string Display { get; }
-
         public Dimension? Resolution { get; }
-
         public Point? Position { get; }
-
         public float SamplesPerPixel => samplesPerPixel ?? 1f;
-
         public float? UIScale { get; }
-
         public bool HardwareMouse => hardwareMouse ?? true;
-
         public int MaxSounds => maxSounds ?? 32;
-
         public bool PlaySoundWhenUnfocused => playSoundWhenUnfocused ?? true;
-
         public int Mipmapping { get; }
-
         public bool BumpMapping { get; }
-
         public bool MapCompression { get; }
-
         public TextureCompression TextureCompression => textureCompression ?? TextureCompression.Uncompressed;
-
         public EnvironmentAnimation EnvironmentAnimation => environmentAnimation ?? EnvironmentAnimation.Smooth;
-
         public FontType FontType => fontType ?? FontType.Uncompressed;
-
         public float? Gamma { get; }
-
         public bool DriverStability { get; }
-
         public bool PlayIntro { get; }
-
         public bool Debug { get; }
-
         public bool DeveloperMode { get; }
-
         public string SettingsPath { get; }
-
         public string UserPath { get; }
-
         public string TempPath { get; }
-
         public bool AccessControlPrompt => accessControlPrompt ?? true;
-
         public bool PolAccountLimit => polAccountLimit ?? false;
-
         public bool PolFastLogin => polFastLogin ?? false;
-
         public bool PolNoThrottle => polNoThrottle ?? false;
-
         public enum GraphicsEngine
         {
-            Legacy = 0,
-            dgVoodoo2 = 1
+            Vanilla,
+            Direct3D11,
+            Direct3D12
         }
-
         [SuppressMessage("Microsoft.Design", "CA1006")]
         [SuppressMessage("Microsoft.Design", "CA1026")]
         [SuppressMessage("Microsoft.Maintainability", "CA1502")]
@@ -183,7 +151,9 @@ namespace Windower.Core
             Maybe<GraphicsEngine> SelectedEngine = new Maybe<GraphicsEngine>(),
             Maybe<bool> PolAccountLimit = new Maybe<bool>(),
             Maybe<bool> PolFastLogin = new Maybe<bool>(),
-            Maybe<bool> PolNoThrottle = new Maybe<bool>())
+            Maybe<bool> PolNoThrottle = new Maybe<bool>(),
+            Maybe<int?> VramAllocation = new Maybe<int?>(),
+            Maybe<int?> FpsDivisor = new Maybe<int?>())
         {
             if (Name != this.Name || Region != this.Region || UseSteam != this.UseSteam || Executable != this.Executable ||
                 ExecutableArgs != this.ExecutableArgs || RunAsAdmin != this.RunAsAdmin || WindowType != this.WindowType ||
@@ -196,7 +166,8 @@ namespace Windower.Core
                 PlayIntro != this.PlayIntro || Debug != this.Debug || DeveloperMode != this.DeveloperMode ||
                 SettingsPath != this.SettingsPath || UserPath != this.UserPath || TempPath != this.TempPath ||
                 AccessControlPrompt != this.AccessControlPrompt || SelectedEngine != this.SelectedEngine ||
-                PolAccountLimit != this.PolAccountLimit || PolFastLogin != this.PolFastLogin || PolNoThrottle != this.PolNoThrottle)
+                PolAccountLimit != this.PolAccountLimit || PolFastLogin != this.PolFastLogin || PolNoThrottle != this.PolNoThrottle ||
+                VramAllocation != this.VramAllocation || FpsDivisor != this.FpsDivisor)
             {
                 return new Profile(
                     Name.Default(this.Name),
@@ -232,18 +203,20 @@ namespace Windower.Core
                     SelectedEngine.Default(this.SelectedEngine),
                     PolAccountLimit.Default(this.PolAccountLimit),
                     PolFastLogin.Default(this.PolFastLogin),
-                    PolNoThrottle.Default(this.PolNoThrottle));
+                    PolNoThrottle.Default(this.PolNoThrottle),
+                    VramAllocation.Default(this.VramAllocation),
+                    FpsDivisor.Default(this.FpsDivisor));
             }
-
             return this;
         }
-
         [SuppressMessage("Microsoft.Design", "CA1006")]
         public IEnumerable<KeyValuePair<string, object>> Settings
         {
             get
             {
                 yield return Pair("graphics_engine", SelectedEngine.ToString());
+                yield return Pair("vram_allocation", VramAllocation);
+                yield return Pair("fps_divisor", FpsDivisor);
                 yield return Pair("window_type", WindowType);
                 yield return Pair("display_device_name", Display);
                 yield return Pair("width", Resolution?.Width);
@@ -276,7 +249,6 @@ namespace Windower.Core
                 yield return Pair("verbose_logging", true);
             }
         }
-
         [SuppressMessage("Microsoft.Maintainability", "CA1502")]
         public string ArgString
         {
@@ -284,6 +256,8 @@ namespace Windower.Core
             {
                 var builder = new StringBuilder("launch");
                 AddOption(builder, p => p.SelectedEngine, "engine");
+                AddOption(builder, p => p.VramAllocation, "vram");
+                AddOption(builder, p => p.FpsDivisor, "fps");
                 AddOption(builder, p => p.Region, "region");
                 AddOption(builder, p => p.UseSteam, "steam");
                 AddOption(builder, p => p.Executable, "executable");
@@ -317,24 +291,16 @@ namespace Windower.Core
                 return builder.ToString();
             }
         }
-
         public static bool operator ==(Profile left, Profile right) =>
             string.Equals(left.Name, right.Name, StringComparison.CurrentCultureIgnoreCase);
-
         public static bool operator !=(Profile left, Profile right) => !(left == right);
-
         public bool Equals(Profile other) => this == other;
-
         public override bool Equals(object obj) => obj is Profile other && Equals(other);
-
         public override int GetHashCode() => Name.GetHashCode();
-
         private static KeyValuePair<string, object> Pair(string key, object value) => new KeyValuePair<string, object>(key, value);
-
         [SuppressMessage("Microsoft.Globalization", "CA1308")]
         private void AddOption<T>(StringBuilder builder, Func<Profile, T> getter, string arg) =>
             AddOption(builder, getter, arg, v => v?.ToString().ToLowerInvariant() ?? "auto");
-
         private void AddOption<T>(StringBuilder builder, Func<Profile, T> getter, string arg,
             Func<T, string> formatter)
         {

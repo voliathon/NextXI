@@ -1,5 +1,6 @@
 #include "packet_queue.hpp"
 #include "addon/modules/packet.hpp"
+#include "addon/modules/packets/packet_parser.hpp"
 
 #include <cstring>
 
@@ -154,6 +155,12 @@ void windower::packet_queue::process_packet(
     std::u8string_view injected_by) const
 {
     using namespace windower;
+
+    // --- FEED C++ TRACKER ---
+    if (m_direction == packet_direction::incoming) {
+        windower::network::parse_incoming_packet(id, data);
+    }
+    // -----------------------------
 
     auto const result = trigger_packet(
         m_direction == packet_direction::incoming, id, counter, timestamp, data,

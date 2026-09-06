@@ -148,7 +148,7 @@ std::string_view lookup_autotranslate_impl(
     if (!hooks::autotranslate_ptr)
     {
         if (auto const temp =
-                **scan(u8"ffximain.dll", signatures::autotranslate_ptr))
+                **scan(u8"FFXiMain.dll", signatures::autotranslate_ptr))
         {
             hooks::autotranslate_ptr = *(temp + 0x7E6C);
         }
@@ -439,28 +439,28 @@ void windower::ffximain::install()
     {
         command_tag = std::make_shared<int>();
 
-        hooks::chat_log_ptr = scan(u8"ffximain.dll", signatures::chat_log_ptr);
+        hooks::chat_log_ptr = scan(u8"FFXiMain.dll", signatures::chat_log_ptr);
         hooks::chat_mode_ptr =
-            scan(u8"ffximain.dll", signatures::chat_mode_ptr);
-        hooks::menu_ptr = scan(u8"ffximain.dll", signatures::menu_ptr);
+            scan(u8"FFXiMain.dll", signatures::chat_mode_ptr);
+        hooks::menu_ptr = scan(u8"FFXiMain.dll", signatures::menu_ptr);
 
         hooks::add_to_chat = hooklib::make_hook_thiscall(
-            scan(u8"ffximain.dll", signatures::add_to_chat),
+            scan(u8"FFXiMain.dll", signatures::add_to_chat),
             callbacks::add_to_chat);
         hooks::input_command = hooklib::make_hook(
-            scan(u8"ffximain.dll", signatures::input_command),
+            scan(u8"FFXiMain.dll", signatures::input_command),
             callbacks::input_command);
         hooks::decode_packet = hooklib::make_hook(
-            scan(u8"ffximain.dll", signatures::decode_packet),
+            scan(u8"FFXiMain.dll", signatures::decode_packet),
             callbacks::decode_packet);
         hooks::encode_packet = hooklib::make_hook(
-            scan(u8"ffximain.dll", signatures::encode_packet),
+            scan(u8"FFXiMain.dll", signatures::encode_packet),
             callbacks::encode_packet);
         hooks::lookup_autotranslate = hooklib::make_hook_thiscall(
-            scan(u8"ffximain.dll", signatures::autotranslate_lookup),
+            scan(u8"FFXiMain.dll", signatures::autotranslate_lookup),
             callbacks::lookup_autotranslate);
         hooks::draw_scene = hooklib::make_hook_thiscall(
-            scan(u8"ffximain.dll", signatures::draw_scene),
+            scan(u8"FFXiMain.dll", signatures::draw_scene),
             callbacks::draw_scene);
 
         static constexpr auto resource_name = L"client-commands";
@@ -591,4 +591,9 @@ void const* windower::ffximain::menu(
         }
     }
     return nullptr;
+}
+
+bool windower::ffximain::is_logged_in() noexcept
+{
+    return hooks::chat_log_ptr && *hooks::chat_log_ptr != nullptr;
 }

@@ -1,34 +1,50 @@
 #include "wrappers/direct_3d_device.hpp"
-
 #include "addon/addon_manager.hpp"
 #include "addon/script_environment.hpp"
+#include "addon/modules/event.hpp"
 #include "command_manager.hpp"
 #include "core.hpp"
 #include "hooks/ffximain.hpp"
 #include "wrappers/direct_3d.hpp"
+#include "utilities/paths.hpp"
 
 #include <windows.h>
-
 #include <imgui.h>
 #include <imgui_impl_win32.h>
 #include <imgui_impl_dx8.h>
 #include <d3d11.h>
 #include <dxgi.h>
 #include <d3d8.h>
-
 #include <cstddef>
 #include <memory>
 #include <string>
+#include <stdio.h> 
+#include <array>
+#include <filesystem>
+
+// --- NEXTXI LOGGING MACRO ---
+#ifdef _DEBUG
+#define NEXTXI_LOG(format, ...) \
+    { \
+        std::array<char, 512> buffer{}; \
+        sprintf_s(buffer.data(), buffer.size(), "[NextXI-Telemetry] " format "\n", __VA_ARGS__); \
+        ::OutputDebugStringA(buffer.data()); \
+    }
+#else
+#define NEXTXI_LOG(format, ...) do {} while(0)
+#endif
+// ----------------------------
 
 static bool g_imgui_initialized = false;
+extern IMGUI_IMPL_API void ImGui_ImplDX8_Shutdown();
+extern IMGUI_IMPL_API void ImGui_ImplWin32_Shutdown();
 
 windower::direct_3d_device::direct_3d_device(
     ::IDirect3DDevice8* impl, ::HWND hwnd, direct_3d* parent) :
-    m_impl{impl},
-    m_parent{parent}
+    m_impl{ impl },
+    m_parent{ parent }
 {
     m_parent->AddRef();
-
     AddRef();
 
     auto& core = core::instance();
@@ -60,7 +76,6 @@ windower::direct_3d_device::direct_3d_device(
         {
             ::windower::core::error(u8"core", e, ::windower::command_source::console);
         }
-
         });
 }
 
@@ -75,6 +90,14 @@ windower::direct_3d_device::~direct_3d_device()
 
     core.incoming_packet_queue = nullptr;
     core.outgoing_packet_queue = nullptr;
+
+    if (g_imgui_initialized)
+    {
+        ImGui_ImplDX8_Shutdown();
+        ImGui_ImplWin32_Shutdown();
+        ImGui::DestroyContext();
+        g_imgui_initialized = false;
+    }
 
     m_impl->Release();
     m_impl = nullptr;
@@ -96,14 +119,14 @@ windower::direct_3d_device::~direct_3d_device()
     {
         AddRef();
         ::IUnknown* const ptr = this;
-        *ppvObj               = ptr;
+        *ppvObj = ptr;
         return S_OK;
     }
     else if (::IsEqualGUID(riid, ::IID_IDirect3DDevice8))
     {
         AddRef();
         ::IDirect3DDevice8* const ptr = this;
-        *ppvObj                       = ptr;
+        *ppvObj = ptr;
         return S_OK;
     }
     return E_NOINTERFACE;
@@ -124,86 +147,18 @@ windower::direct_3d_device::~direct_3d_device()
     return count;
 }
 
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::TestCooperativeLevel() noexcept
-{
-    return m_impl->TestCooperativeLevel();
-}
-
-::UINT STDMETHODCALLTYPE
-windower::direct_3d_device::GetAvailableTextureMem() noexcept
-{
-    return m_impl->GetAvailableTextureMem();
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::ResourceManagerDiscardBytes(::DWORD Bytes) noexcept
-{
-    return m_impl->ResourceManagerDiscardBytes(Bytes);
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::GetDirect3D(::IDirect3D8** ppD3D8) noexcept
-{
-    if (ppD3D8)
-    {
-        m_parent->AddRef();
-        *ppD3D8 = m_parent;
-        return S_OK;
-    }
-    return D3DERR_INVALIDCALL;
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::GetDeviceCaps(::D3DCAPS8* pCaps) noexcept
-{
-    return m_impl->GetDeviceCaps(pCaps);
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::GetDisplayMode(::D3DDISPLAYMODE* pMode) noexcept
-{
-    return m_impl->GetDisplayMode(pMode);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::GetCreationParameters(
-    ::D3DDEVICE_CREATION_PARAMETERS* pParameters) noexcept
-{
-    return m_impl->GetCreationParameters(pParameters);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::SetCursorProperties(
-    ::UINT XHotSpot, ::UINT YHotSpot,
-    ::IDirect3DSurface8* pCursorBitmap) noexcept
-{
-    return m_impl->SetCursorProperties(XHotSpot, YHotSpot, pCursorBitmap);
-}
-
-void STDMETHODCALLTYPE windower::direct_3d_device::SetCursorPosition(
-    int X, int Y, ::DWORD Flags) noexcept
-{
-    return m_impl->SetCursorPosition(X, Y, Flags);
-}
-
-::BOOL STDMETHODCALLTYPE
-windower::direct_3d_device::ShowCursor(::BOOL bShow) noexcept
-{
-    return m_impl->ShowCursor(bShow);
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::CreateAdditionalSwapChain(
-    ::D3DPRESENT_PARAMETERS* pPresentationParameters,
-    ::IDirect3DSwapChain8** pSwapChain) noexcept
-{
-    return m_impl->CreateAdditionalSwapChain(
-        pPresentationParameters, pSwapChain);
-}
-
 ::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::Reset(
     ::D3DPRESENT_PARAMETERS* pPresentationParameters) noexcept
 {
-    return m_impl->Reset(pPresentationParameters);
+    const HRESULT hr = m_impl->Reset(pPresentationParameters);
+
+    if (SUCCEEDED(hr) && g_imgui_initialized)
+    {
+        ImGui_ImplDX8_Shutdown();
+        ImGui_ImplDX8_Init(m_impl);
+    }
+
+    return hr;
 }
 
 ::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::Present(
@@ -212,19 +167,67 @@ windower::direct_3d_device::CreateAdditionalSwapChain(
 {
     auto& core = core::instance();
 
-    m_impl->BeginScene();
-    core.update();
-    core.end_frame();
+    HWND target_hwnd = hDestWindowOverride ? hDestWindowOverride : static_cast<HWND>(core.client_hwnd);
 
-    // IMGUI BOOT UP & NEW FRAME
     if (!g_imgui_initialized)
     {
-        HWND target_hwnd = hDestWindowOverride ? hDestWindowOverride : static_cast<HWND>(core.client_hwnd);
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO(); (void)io;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+        io.ConfigWindowsResizeFromEdges = true;
         ImGui::StyleColorsDark();
+
+        // ====================================================================
+        // FONT ATLAS GENERATION (Injected before DX8 Init locks the texture)
+        // ====================================================================
+        io.Fonts->AddFontDefault();
+
+        auto try_load_font = [&](std::filesystem::path const& path) {
+            std::error_code ec;
+            if (std::filesystem::exists(path, ec)) {
+                ImFontConfig font_cfg;
+                font_cfg.OversampleH = 2;
+                font_cfg.OversampleV = 2;
+                io.Fonts->AddFontFromFileTTF(path.string().c_str(), 16.0f, &font_cfg);
+            }
+            };
+
+        // 1. Physically locate this DLL via memory address using our static variable
+        HMODULE hModule = nullptr;
+        ::GetModuleHandleExW(
+            GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+            reinterpret_cast<LPCWSTR>(&g_imgui_initialized),
+            &hModule
+        );
+
+        if (hModule) {
+            WCHAR module_path[MAX_PATH];
+            ::GetModuleFileNameW(hModule, module_path, MAX_PATH);
+            std::filesystem::path core_dll_path(module_path);
+
+            auto custom_font_dir = core_dll_path.parent_path() / "assets" / "fonts";
+
+            std::error_code ec;
+            if (std::filesystem::exists(custom_font_dir, ec)) {
+                for (auto const& entry : std::filesystem::directory_iterator(custom_font_dir, ec)) {
+                    std::string ext = entry.path().extension().string();
+                    if (ext == ".ttf" || ext == ".TTF") {
+                        try_load_font(entry.path());
+                    }
+                }
+            }
+        }
+
+        // 2. Standard Windows Fallbacks
+        try_load_font("C:\\Windows\\Fonts\\arial.ttf");
+        try_load_font("C:\\Windows\\Fonts\\consola.ttf");
+        try_load_font("C:\\Windows\\Fonts\\trebuc.ttf");
+        try_load_font("C:\\Windows\\Fonts\\tahoma.ttf");
+        try_load_font("C:\\Windows\\Fonts\\verdana.ttf");
+        try_load_font("C:\\Windows\\Fonts\\comic.ttf");
+        try_load_font("C:\\Windows\\Fonts\\times.ttf");
+        // ====================================================================
 
         ImGui_ImplWin32_Init(target_hwnd);
         ImGui_ImplDX8_Init(m_impl);
@@ -236,156 +239,70 @@ windower::direct_3d_device::CreateAdditionalSwapChain(
         ImGui_ImplDX8_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
+
+        windower::run_on_all_interpreters([](windower::lua::state s) {
+            try
+            {
+                windower::lua::stack_guard guard{ s };
+                windower::lua::push(guard, u8"imgui_render");
+                windower::lua::raw_get(guard, windower::lua::globals);
+
+                if (windower::lua::typeof(guard, -1) == windower::lua::type::function)
+                {
+                    windower::lua::call(guard, 0, 0);
+                }
+            }
+            catch (std::exception const& e)
+            {
+                windower::core::error(u8"ImGui Bridge", e, windower::command_source::console);
+            }
+            catch (...)
+            {
+            }
+            });
     }
 
-    // RENDER NORMAL UI (This triggers m_console->render() -> ImGui::Begin!)
+    m_impl->BeginScene();
+
+    core.update();
+    core.end_frame();
+
     core.ui.render(windower::ui::layer::screen);
     core.ui.render(windower::ui::layer::layout);
 
-    // FLUSH IMGUI TO DIRECTX
     if (g_imgui_initialized)
     {
         ImGui::Render();
+
+        D3DVIEWPORT8 ffxi_viewport;
+        m_impl->GetViewport(&ffxi_viewport);
+
+        IDirect3DSurface8* backbuffer = nullptr;
+        if (SUCCEEDED(m_impl->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &backbuffer)) && backbuffer)
+        {
+            D3DSURFACE_DESC desc;
+            backbuffer->GetDesc(&desc);
+            backbuffer->Release();
+
+            D3DVIEWPORT8 imgui_viewport;
+            imgui_viewport.X = 0;
+            imgui_viewport.Y = 0;
+            imgui_viewport.Width = desc.Width;
+            imgui_viewport.Height = desc.Height;
+            imgui_viewport.MinZ = 0.0f;
+            imgui_viewport.MaxZ = 1.0f;
+
+            m_impl->SetViewport(&imgui_viewport);
+        }
+
         ImGui_ImplDX8_RenderDrawData(ImGui::GetDrawData());
+        m_impl->SetViewport(&ffxi_viewport);
     }
 
     m_impl->EndScene();
     m_frame_in_progress = false;
 
     return m_impl->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::GetBackBuffer(
-    ::UINT BackBuffer, ::D3DBACKBUFFER_TYPE Type,
-    ::IDirect3DSurface8** ppBackBuffer) noexcept
-{
-    return m_impl->GetBackBuffer(BackBuffer, Type, ppBackBuffer);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::GetRasterStatus(
-    ::D3DRASTER_STATUS* pRasterStatus) noexcept
-{
-    return m_impl->GetRasterStatus(pRasterStatus);
-}
-
-void STDMETHODCALLTYPE windower::direct_3d_device::SetGammaRamp(
-    ::DWORD Flags, ::D3DGAMMARAMP const* pRamp) noexcept
-{
-    return m_impl->SetGammaRamp(Flags, pRamp);
-}
-
-void STDMETHODCALLTYPE
-windower::direct_3d_device::GetGammaRamp(::D3DGAMMARAMP* pRamp) noexcept
-{
-    return m_impl->GetGammaRamp(pRamp);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::CreateTexture(
-    ::UINT Width, ::UINT Height, ::UINT Levels, ::DWORD Usage,
-    ::D3DFORMAT Format, ::D3DPOOL Pool,
-    ::IDirect3DTexture8** ppTexture) noexcept
-{
-    return m_impl->CreateTexture(
-        Width, Height, Levels, Usage, Format, Pool, ppTexture);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::CreateVolumeTexture(
-    ::UINT Width, ::UINT Height, ::UINT Depth, ::UINT Levels, ::DWORD Usage,
-    ::D3DFORMAT Format, ::D3DPOOL Pool,
-    ::IDirect3DVolumeTexture8** ppVolumeTexture) noexcept
-{
-    return m_impl->CreateVolumeTexture(
-        Width, Height, Depth, Levels, Usage, Format, Pool, ppVolumeTexture);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::CreateCubeTexture(
-    ::UINT EdgeLength, ::UINT Levels, ::DWORD Usage, ::D3DFORMAT Format,
-    ::D3DPOOL Pool, ::IDirect3DCubeTexture8** ppCubeTexture) noexcept
-{
-    return m_impl->CreateCubeTexture(
-        EdgeLength, Levels, Usage, Format, Pool, ppCubeTexture);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::CreateVertexBuffer(
-    ::UINT Length, ::DWORD Usage, ::DWORD FVF, ::D3DPOOL Pool,
-    ::IDirect3DVertexBuffer8** ppVertexBuffer) noexcept
-{
-    return m_impl->CreateVertexBuffer(Length, Usage, FVF, Pool, ppVertexBuffer);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::CreateIndexBuffer(
-    ::UINT Length, ::DWORD Usage, ::D3DFORMAT Format, ::D3DPOOL Pool,
-    ::IDirect3DIndexBuffer8** ppIndexBuffer) noexcept
-{
-    return m_impl->CreateIndexBuffer(
-        Length, Usage, Format, Pool, ppIndexBuffer);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::CreateRenderTarget(
-    ::UINT Width, ::UINT Height, ::D3DFORMAT Format,
-    ::D3DMULTISAMPLE_TYPE MultiSample, ::BOOL Lockable,
-    ::IDirect3DSurface8** ppSurface) noexcept
-{
-    return m_impl->CreateRenderTarget(
-        Width, Height, Format, MultiSample, Lockable, ppSurface);
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::CreateDepthStencilSurface(
-    ::UINT Width, ::UINT Height, ::D3DFORMAT Format,
-    ::D3DMULTISAMPLE_TYPE MultiSample, ::IDirect3DSurface8** ppSurface) noexcept
-{
-    return m_impl->CreateDepthStencilSurface(
-        Width, Height, Format, MultiSample, ppSurface);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::CreateImageSurface(
-    ::UINT Width, ::UINT Height, ::D3DFORMAT Format,
-    ::IDirect3DSurface8** ppSurface) noexcept
-{
-    return m_impl->CreateImageSurface(Width, Height, Format, ppSurface);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::CopyRects(
-    ::IDirect3DSurface8* pSourceSurface, ::RECT const* pSourceRectsArray,
-    ::UINT cRects, ::IDirect3DSurface8* pDestinationSurface,
-    ::POINT const* pDestPointsArray) noexcept
-{
-    return m_impl->CopyRects(
-        pSourceSurface, pSourceRectsArray, cRects, pDestinationSurface,
-        pDestPointsArray);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::UpdateTexture(
-    ::IDirect3DBaseTexture8* pSourceTexture,
-    ::IDirect3DBaseTexture8* pDestinationTexture) noexcept
-{
-    return m_impl->UpdateTexture(pSourceTexture, pDestinationTexture);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::GetFrontBuffer(
-    ::IDirect3DSurface8* pDestSurface) noexcept
-{
-    return m_impl->GetFrontBuffer(pDestSurface);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::SetRenderTarget(
-    ::IDirect3DSurface8* pRenderTarget,
-    ::IDirect3DSurface8* pNewZStencil) noexcept
-{
-    return m_impl->SetRenderTarget(pRenderTarget, pNewZStencil);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::GetRenderTarget(
-    ::IDirect3DSurface8** ppRenderTarget) noexcept
-{
-    return m_impl->GetRenderTarget(ppRenderTarget);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::GetDepthStencilSurface(
-    ::IDirect3DSurface8** ppZStencilSurface) noexcept
-{
-    return m_impl->GetDepthStencilSurface(ppZStencilSurface);
 }
 
 ::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::BeginScene() noexcept
@@ -402,412 +319,4 @@ windower::direct_3d_device::CreateDepthStencilSurface(
 ::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::EndScene() noexcept
 {
     return m_impl->EndScene();
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::Clear(
-    ::DWORD Count, ::D3DRECT const* pRects, ::DWORD Flags, ::D3DCOLOR Color,
-    float Z, ::DWORD Stencil) noexcept
-{
-    return m_impl->Clear(Count, pRects, Flags, Color, Z, Stencil);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::SetTransform(
-    ::D3DTRANSFORMSTATETYPE State, ::D3DMATRIX const* pMatrix) noexcept
-{
-    if (pMatrix)
-    {
-        if (State == D3DTS_VIEW)
-        {
-            core::instance().view_matrix = *pMatrix;
-        }
-        else if (State == D3DTS_PROJECTION)
-        {
-            core::instance().projection_matrix = *pMatrix;
-        }
-    }
-    return m_impl->SetTransform(State, pMatrix);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::GetTransform(
-    ::D3DTRANSFORMSTATETYPE State, ::D3DMATRIX* pMatrix) noexcept
-{
-    return m_impl->GetTransform(State, pMatrix);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::MultiplyTransform(
-    ::D3DTRANSFORMSTATETYPE State, ::D3DMATRIX const* pMatrix) noexcept
-{
-    return m_impl->MultiplyTransform(State, pMatrix);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::SetViewport(
-    ::D3DVIEWPORT8 const* pViewport) noexcept
-{
-    if (pViewport)
-    {
-        core::instance().viewport = *pViewport;
-    }
-    return m_impl->SetViewport(pViewport);
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::GetViewport(::D3DVIEWPORT8* pViewport) noexcept
-{
-    return m_impl->GetViewport(pViewport);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::SetMaterial(
-    ::D3DMATERIAL8 const* pMaterial) noexcept
-{
-    return m_impl->SetMaterial(pMaterial);
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::GetMaterial(::D3DMATERIAL8* pMaterial) noexcept
-{
-    return m_impl->GetMaterial(pMaterial);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::SetLight(
-    ::DWORD Index, ::D3DLIGHT8 const* pLight) noexcept
-{
-    return m_impl->SetLight(Index, pLight);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::GetLight(
-    ::DWORD Index, ::D3DLIGHT8* pLight) noexcept
-{
-    return m_impl->GetLight(Index, pLight);
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::LightEnable(::DWORD Index, ::BOOL Enable) noexcept
-{
-    return m_impl->LightEnable(Index, Enable);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::GetLightEnable(
-    ::DWORD Index, ::BOOL* pEnable) noexcept
-{
-    return m_impl->GetLightEnable(Index, pEnable);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::SetClipPlane(
-    ::DWORD Index, float const* pPlane) noexcept
-{
-    return m_impl->SetClipPlane(Index, pPlane);
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::GetClipPlane(::DWORD Index, float* pPlane) noexcept
-{
-    return m_impl->GetClipPlane(Index, pPlane);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::SetRenderState(
-    ::D3DRENDERSTATETYPE State, ::DWORD Value) noexcept
-{
-    return m_impl->SetRenderState(State, Value);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::GetRenderState(
-    ::D3DRENDERSTATETYPE State, ::DWORD* pValue) noexcept
-{
-    return m_impl->GetRenderState(State, pValue);
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::BeginStateBlock() noexcept
-{
-    return m_impl->BeginStateBlock();
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::EndStateBlock(::DWORD* pToken) noexcept
-{
-    return m_impl->EndStateBlock(pToken);
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::ApplyStateBlock(::DWORD Token) noexcept
-{
-    return m_impl->ApplyStateBlock(Token);
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::CaptureStateBlock(::DWORD Token) noexcept
-{
-    return m_impl->CaptureStateBlock(Token);
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::DeleteStateBlock(::DWORD Token) noexcept
-{
-    return m_impl->DeleteStateBlock(Token);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::CreateStateBlock(
-    ::D3DSTATEBLOCKTYPE Type, ::DWORD* pToken) noexcept
-{
-    return m_impl->CreateStateBlock(Type, pToken);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::SetClipStatus(
-    ::D3DCLIPSTATUS8 const* pClipStatus) noexcept
-{
-    return m_impl->SetClipStatus(pClipStatus);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::GetClipStatus(
-    ::D3DCLIPSTATUS8* pClipStatus) noexcept
-{
-    return m_impl->GetClipStatus(pClipStatus);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::GetTexture(
-    ::DWORD Stage, ::IDirect3DBaseTexture8** ppTexture) noexcept
-{
-    return m_impl->GetTexture(Stage, ppTexture);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::SetTexture(
-    ::DWORD Stage, ::IDirect3DBaseTexture8* pTexture) noexcept
-{
-    return m_impl->SetTexture(Stage, pTexture);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::GetTextureStageState(
-    ::DWORD Stage, ::D3DTEXTURESTAGESTATETYPE Type, ::DWORD* pValue) noexcept
-{
-    return m_impl->GetTextureStageState(Stage, Type, pValue);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::SetTextureStageState(
-    ::DWORD Stage, ::D3DTEXTURESTAGESTATETYPE Type, ::DWORD Value) noexcept
-{
-    return m_impl->SetTextureStageState(Stage, Type, Value);
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::ValidateDevice(::DWORD* pNumPasses) noexcept
-{
-    return m_impl->ValidateDevice(pNumPasses);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::GetInfo(
-    ::DWORD DevInfoID, void* pDevInfoStruct, ::DWORD DevInfoStructSize) noexcept
-{
-    return m_impl->GetInfo(DevInfoID, pDevInfoStruct, DevInfoStructSize);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::SetPaletteEntries(
-    ::UINT PaletteNumber, ::PALETTEENTRY const* pEntries) noexcept
-{
-    return m_impl->SetPaletteEntries(PaletteNumber, pEntries);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::GetPaletteEntries(
-    ::UINT PaletteNumber, ::PALETTEENTRY* pEntries) noexcept
-{
-    return m_impl->GetPaletteEntries(PaletteNumber, pEntries);
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::SetCurrentTexturePalette(
-    ::UINT PaletteNumber) noexcept
-{
-    return m_impl->SetCurrentTexturePalette(PaletteNumber);
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::GetCurrentTexturePalette(
-    ::UINT* PaletteNumber) noexcept
-{
-    return m_impl->GetCurrentTexturePalette(PaletteNumber);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::DrawPrimitive(
-    ::D3DPRIMITIVETYPE PrimitiveType, ::UINT StartVertex,
-    ::UINT PrimitiveCount) noexcept
-{
-    return m_impl->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::DrawIndexedPrimitive(
-    ::D3DPRIMITIVETYPE PrimitiveType, ::UINT minIndex, ::UINT NumVertices,
-    ::UINT startIndex, ::UINT primCount) noexcept
-{
-    return m_impl->DrawIndexedPrimitive(
-        PrimitiveType, minIndex, NumVertices, startIndex, primCount);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::DrawPrimitiveUP(
-    ::D3DPRIMITIVETYPE PrimitiveType, ::UINT PrimitiveCount,
-    void const* pVertexStreamZeroData, ::UINT VertexStreamZeroStride) noexcept
-{
-    return m_impl->DrawPrimitiveUP(
-        PrimitiveType, PrimitiveCount, pVertexStreamZeroData,
-        VertexStreamZeroStride);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::DrawIndexedPrimitiveUP(
-    ::D3DPRIMITIVETYPE PrimitiveType, ::UINT MinVertexIndex,
-    ::UINT NumVertexIndices, ::UINT PrimitiveCount, void const* pIndexData,
-    ::D3DFORMAT IndexDataFormat, void const* pVertexStreamZeroData,
-    ::UINT VertexStreamZeroStride) noexcept
-{
-    return m_impl->DrawIndexedPrimitiveUP(
-        PrimitiveType, MinVertexIndex, NumVertexIndices, PrimitiveCount,
-        pIndexData, IndexDataFormat, pVertexStreamZeroData,
-        VertexStreamZeroStride);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::ProcessVertices(
-    ::UINT SrcStartIndex, ::UINT DestIndex, ::UINT VertexCount,
-    ::IDirect3DVertexBuffer8* pDestBuffer, ::DWORD Flags) noexcept
-{
-    return m_impl->ProcessVertices(
-        SrcStartIndex, DestIndex, VertexCount, pDestBuffer, Flags);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::CreateVertexShader(
-    ::DWORD const* pDeclaration, ::DWORD const* pFunction, ::DWORD* pHandle,
-    ::DWORD Usage) noexcept
-{
-    return m_impl->CreateVertexShader(pDeclaration, pFunction, pHandle, Usage);
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::SetVertexShader(::DWORD Handle) noexcept
-{
-    return m_impl->SetVertexShader(Handle);
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::GetVertexShader(::DWORD* pHandle) noexcept
-{
-    return m_impl->GetVertexShader(pHandle);
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::DeleteVertexShader(::DWORD Handle) noexcept
-{
-    return m_impl->DeleteVertexShader(Handle);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::SetVertexShaderConstant(
-    ::DWORD Register, void const* pConstantData, ::DWORD ConstantCount) noexcept
-{
-    return m_impl->SetVertexShaderConstant(
-        Register, pConstantData, ConstantCount);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::GetVertexShaderConstant(
-    ::DWORD Register, void* pConstantData, ::DWORD ConstantCount) noexcept
-{
-    return m_impl->GetVertexShaderConstant(
-        Register, pConstantData, ConstantCount);
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::GetVertexShaderDeclaration(
-    ::DWORD Handle, void* pData, ::DWORD* pSizeOfData) noexcept
-{
-    return m_impl->GetVertexShaderDeclaration(Handle, pData, pSizeOfData);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::GetVertexShaderFunction(
-    ::DWORD Handle, void* pData, ::DWORD* pSizeOfData) noexcept
-{
-    return m_impl->GetVertexShaderFunction(Handle, pData, pSizeOfData);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::SetStreamSource(
-    ::UINT StreamNumber, ::IDirect3DVertexBuffer8* pStreamData,
-    ::UINT Stride) noexcept
-{
-    return m_impl->SetStreamSource(StreamNumber, pStreamData, Stride);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::GetStreamSource(
-    ::UINT StreamNumber, ::IDirect3DVertexBuffer8** ppStreamData,
-    ::UINT* pStride) noexcept
-{
-    return m_impl->GetStreamSource(StreamNumber, ppStreamData, pStride);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::SetIndices(
-    ::IDirect3DIndexBuffer8* pIndexData, ::UINT BaseVertexIndex) noexcept
-{
-    return m_impl->SetIndices(pIndexData, BaseVertexIndex);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::GetIndices(
-    ::IDirect3DIndexBuffer8** ppIndexData, ::UINT* pBaseVertexIndex) noexcept
-{
-    return m_impl->GetIndices(ppIndexData, pBaseVertexIndex);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::CreatePixelShader(
-    ::DWORD const* pFunction, ::DWORD* pHandle) noexcept
-{
-    return m_impl->CreatePixelShader(pFunction, pHandle);
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::SetPixelShader(::DWORD Handle) noexcept
-{
-    return m_impl->SetPixelShader(Handle);
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::GetPixelShader(::DWORD* pHandle) noexcept
-{
-    return m_impl->GetPixelShader(pHandle);
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::DeletePixelShader(::DWORD Handle) noexcept
-{
-    return m_impl->DeletePixelShader(Handle);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::SetPixelShaderConstant(
-    ::DWORD Register, void const* pConstantData, ::DWORD ConstantCount) noexcept
-{
-    return m_impl->SetPixelShaderConstant(
-        Register, pConstantData, ConstantCount);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::GetPixelShaderConstant(
-    ::DWORD Register, void* pConstantData, ::DWORD ConstantCount) noexcept
-{
-    return m_impl->GetPixelShaderConstant(
-        Register, pConstantData, ConstantCount);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::GetPixelShaderFunction(
-    ::DWORD Handle, void* pData, ::DWORD* pSizeOfData) noexcept
-{
-    return m_impl->GetPixelShaderFunction(Handle, pData, pSizeOfData);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::DrawRectPatch(
-    ::UINT Handle, float const* pNumSegs,
-    ::D3DRECTPATCH_INFO const* pRectPatchInfo) noexcept
-{
-    return m_impl->DrawRectPatch(Handle, pNumSegs, pRectPatchInfo);
-}
-
-::HRESULT STDMETHODCALLTYPE windower::direct_3d_device::DrawTriPatch(
-    ::UINT Handle, float const* pNumSegs,
-    ::D3DTRIPATCH_INFO const* pTriPatchInfo) noexcept
-{
-    return m_impl->DrawTriPatch(Handle, pNumSegs, pTriPatchInfo);
-}
-
-::HRESULT STDMETHODCALLTYPE
-windower::direct_3d_device::DeletePatch(::UINT Handle) noexcept
-{
-    return m_impl->DeletePatch(Handle);
 }

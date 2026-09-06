@@ -11,13 +11,16 @@
 namespace windower
 {
 
-class ffximain
-{
-public:
-    static void install();
-    static void uninstall() noexcept;
+    class ffximain
+    {
+    public:
+        static void install();
+        static void uninstall() noexcept;
 
-    static std::u8string lookup_autotranslate(char32_t code_point);
+        // Expose login state for the UI!
+        static bool is_logged_in() noexcept;
+
+        static std::u8string lookup_autotranslate(char32_t code_point);
     static void add_to_chat(
         std::u8string_view text, std::uint8_t type = 206,
         bool indented = false);

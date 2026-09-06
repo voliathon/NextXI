@@ -1,9 +1,10 @@
 #include "addon/addon.hpp"
-
 #include "addon/errors/package_error.hpp"
 #include "addon/lua.hpp"
 #include "addon/lua_internal.hpp"
+#include "addon/unsafe.hpp"
 #include "addon/package_manager.hpp"
+#include "addon/modules/imgui.hpp"
 #include "core.hpp"
 #include "errors/windower_error.hpp"
 
@@ -15,85 +16,85 @@
 
 namespace
 {
-std::byte addon_key;
-std::byte implicit_packages_key;
+    std::byte addon_key;
+    std::byte implicit_packages_key;
 
-int load_internal_module(windower::lua::state s)
-{
-    using namespace windower;
-
-    lua::stack_guard guard{s};
-
-    auto name_buffer = lua::get<std::u8string>(s, 1);
-    auto name        = std::u8string_view{name_buffer};
-
-    if (name.find(u8':') != std::string::npos)
+    int load_internal_module(windower::lua::state s)
     {
-        lua::push(guard, lua::nil);
+        using namespace windower;
+
+        lua::stack_guard guard{ s };
+
+        auto name_buffer = lua::get<std::u8string>(s, 1);
+        auto name = std::u8string_view{ name_buffer };
+
+        if (name.find(u8':') != std::string::npos)
+        {
+            lua::push(guard, lua::nil);
+            return guard.release();
+        }
+
+        std::filesystem::path file_name;
+        while (!name.empty())
+        {
+            auto const pos = name.find(u8'.');
+            file_name /= name.substr(0, pos);
+            name.remove_prefix(
+                pos != std::u8string_view::npos ? pos + 1 : name.size());
+        }
+        file_name += u8".lua";
+
+        auto package = addon::get_package(s);
+        if (!package)
+        {
+            throw windower_error{ u8"INT:2" };
+        }
+
+        try
+        {
+            auto stream = package->resolve(file_name);
+            lua::load(
+                guard, stream,
+                u8'@' + package->name() + u8":" + file_name.u8string());
+        }
+        catch (package_error const& e)
+        {
+            auto const libs_root =
+                package->path().parent_path() / u8"libs";
+            if (auto flat = std::ifstream{ libs_root / file_name, std::ios::binary };
+                flat.is_open())
+            {
+                lua::load(guard, flat, u8"@libs:" + file_name.u8string());
+            }
+            else if (auto dir = std::ifstream{
+                         libs_root / file_name.stem() / file_name,
+                         std::ios::binary };
+                         dir.is_open())
+            {
+                lua::load(
+                    guard, dir,
+                    u8"@libs/" + file_name.stem().u8string() + u8":" +
+                    file_name.u8string());
+            }
+            else
+            {
+                std::u8string error;
+                error.append(u8"\n    [");
+                error.append(e.error_code());
+                error.append(u8"] ");
+                error.append(e.message());
+                lua::push(guard, error);
+            }
+        }
+
         return guard.release();
     }
-
-    std::filesystem::path file_name;
-    while (!name.empty())
-    {
-        auto const pos = name.find(u8'.');
-        file_name /= name.substr(0, pos);
-        name.remove_prefix(
-            pos != std::u8string_view::npos ? pos + 1 : name.size());
-    }
-    file_name += u8".lua";
-
-    auto package = addon::get_package(s);
-    if (!package)
-    {
-        throw windower_error{u8"INT:2"};
-    }
-
-    try
-    {
-        auto stream = package->resolve(file_name);
-        lua::load(
-            guard, stream,
-            u8'@' + package->name() + u8":" + file_name.u8string());
-    }
-    catch (package_error const& e)
-    {
-        auto const libs_root =
-            package->path().parent_path() / u8"libs";
-        if (auto flat = std::ifstream{libs_root / file_name, std::ios::binary};
-            flat.is_open())
-        {
-            lua::load(guard, flat, u8"@libs:" + file_name.u8string());
-        }
-        else if (auto dir = std::ifstream{
-                     libs_root / file_name.stem() / file_name,
-                     std::ios::binary};
-                 dir.is_open())
-        {
-            lua::load(
-                guard, dir,
-                u8"@libs/" + file_name.stem().u8string() + u8":" +
-                    file_name.u8string());
-        }
-        else
-        {
-            std::u8string error;
-            error.append(u8"\n    [");
-            error.append(e.error_code());
-            error.append(u8"] ");
-            error.append(e.message());
-            lua::push(guard, error);
-        }
-    }
-
-    return guard.release();
-}
 }
 
 std::shared_ptr<windower::package const>
 windower::addon::get_package(lua::state s)
 {
-    lua::stack_guard guard{s};
+    lua::stack_guard guard{ s };
     lua::push(guard, &addon_key);
     lua::raw_get(guard, lua::registry);
     if (auto const ptr = static_cast<addon const*>(lua::get<void*>(guard, -1)))
@@ -105,10 +106,13 @@ windower::addon::get_package(lua::state s)
 
 windower::addon::addon(
     std::shared_ptr<windower::package const> const& package) :
-    m_package_name{package->name()},
-    m_package{package}
+    m_package_name{ package->name() },
+    m_package{ package }
 {
-    lua::stack_guard guard{m_interpreter};
+    lua::stack_guard guard{ m_interpreter };
+
+    // Preload ImGui into the addon's private sandbox!
+    lua::preload(m_interpreter, u8"imgui", &load_imgui_module);
 
     lua::push(guard, &addon_key);
     lua::push(guard, this);
@@ -120,6 +124,13 @@ windower::addon::addon(
     lua::push(guard, u8"name");
     lua::push(guard, package->name());
     lua::raw_set(guard, -3);
+
+    // INJECT LEGACY _ADDON GLOBAL ---
+    // Windower 4 scripts require this table to exist so they can assign metadata
+    lua::push(guard, u8"_addon");
+    lua::create_table(guard);
+    lua::raw_set(guard, lua::globals);
+    // ------------------------------------------------
 
     lua::push(guard, u8"loaders");
     lua::raw_get(guard, -2);
@@ -207,22 +218,35 @@ std::shared_ptr<windower::package const> windower::addon::find_dependency(
             }
         }
 
-        // Handle unmet dependencies
-        if (core.settings.developer_mode)
+        // --- CAVEMAN FIX: STRICT NEXTXI VS LOOSE WINDOWER 4 ENFORCEMENT ---
+        // Check the physical installation path of the addon.
+        std::u8string const path_str = pkg->path().u8string();
+        bool const is_legacy_windower =
+            (path_str.find(u8"/windower/") != std::u8string::npos) ||
+            (path_str.find(u8"\\windower\\") != std::u8string::npos);
+
+        // Allow bypassing the manifest graph if it's a legacy Windower 4 addon,
+        // OR if the user is a NextXI developer running in developer_mode.
+        if (is_legacy_windower || core.settings.developer_mode)
         {
             if (auto p = core.package_manager->get_package(package_name))
             {
-                std::u8string warning_message;
-                warning_message.append(u8"!!! WARNING !!!\n");
-                warning_message.append(u8"The package \"");
-                warning_message.append(package_name);
-                warning_message.append(
-                    u8"\" is being loaded, but is not referenced in the "
-                    u8"manifest dependency list.\nPlease contact the "
-                    u8"developer, and tell them to add a reference to the "
-                    u8"package manifest.");
-                core::error(pkg->name(), warning_message);
+                // If it is a NextXI addon cheating the system in dev mode, yell at them!
+                // Legacy Windower 4 addons will skip this warning and load silently.
+                if (!is_legacy_windower)
+                {
+                    std::u8string warning_message;
+                    warning_message.append(u8"!!! WARNING !!!\n");
+                    warning_message.append(u8"The NextXI package \"");
+                    warning_message.append(package_name);
+                    warning_message.append(
+                        u8"\" is being loaded, but is not referenced in the "
+                        u8"manifest dependency list.\nPlease be a good developer and add a reference to your "
+                        u8"package manifest.");
+                    core::error(pkg->name(), warning_message);
+                }
 
+                // Implicitly register the dependency so we don't have to scan the queue again
                 lua::stack_guard guard{ s };
                 lua::push(guard, &implicit_packages_key);
                 lua::raw_get(guard, lua::registry);
@@ -245,6 +269,7 @@ std::shared_ptr<windower::package const> windower::addon::find_dependency(
             }
         }
 
+        // If a NextXI addon forgets a dependency and is NOT in dev mode, kill it!
         throw package_error{ u8"PKG:P2", package_name };
     }
 
@@ -259,7 +284,7 @@ std::shared_ptr<windower::package const> windower::addon::package() const
         ptr = core::instance().package_manager->get_package(m_package_name);
         if (!ptr)
         {
-            throw windower_error{u8"INT:2"};
+            throw windower_error{ u8"INT:2" };
         }
         m_package = ptr;
     }

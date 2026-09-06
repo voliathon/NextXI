@@ -70,10 +70,10 @@ namespace Windower.UI.Views
 
         public ICommand OpenWebpage { get; }
 
-        public bool IsAdministrator { get; } = Launcher.IsAdministrator();
+        public bool IsAdministrator { get; } = SecurityService.IsAdministrator();
 
         public bool IsElevationRequired =>
-            SelectedProfile != null && Launcher.IsElevationRequired((Profile)SelectedProfile);
+            SelectedProfile != null && SecurityService.IsElevationRequired((Profile)SelectedProfile);
 
         public IImmutableSet<Profile> Profiles => manager.Profiles;
 
@@ -186,7 +186,12 @@ namespace Windower.UI.Views
         {
             if (arg is string url)
             {
-                Process.Start(url);
+                // Force Windows to use the default web browser instead of crashing!
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = url,
+                    UseShellExecute = true
+                });
             }
         }
 

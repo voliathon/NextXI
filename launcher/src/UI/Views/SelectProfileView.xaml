@@ -410,7 +410,7 @@ SOFTWARE.
                             <Control Style="{StaticResource IconEllipsis}" Width="20" Height="20"/>
                         </MenuItem.Icon>
                         <MenuItem Header="{StaticResource Strings.About}" Command="{Binding OpenAboutPage}"/>
-                        <MenuItem Header="{StaticResource Strings.ReportBug}" d:LayoutOverrides="Width" Command="{Binding OpenWebpage}" CommandParameter="https://github.com/windower/windower/issues"/>
+                        <MenuItem Header="{StaticResource Strings.ReportBug}" d:LayoutOverrides="Width" Command="{Binding OpenWebpage}" CommandParameter="https://github.com/voliathon/NextXI/issues"/>
                     </MenuItem>
                 </Menu>
             </Grid>

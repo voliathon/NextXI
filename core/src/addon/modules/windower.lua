@@ -25,6 +25,7 @@ local -- params
     get_ffxi_entities_ptr,
     project_ptr = ...
 
+local table = require('table')
 local ffi = require('ffi')
 local get_package_list_c = ffi.typeof('char const*(*)()')(get_package_list_ptr)
 local get_package_readme_c = ffi.typeof('char const*(*)(char const*)')(get_package_readme_ptr)
@@ -245,13 +246,15 @@ local event_registry = {
     ['incoming chunk'] = {},
     ['outgoing chunk'] = {},
     ['status change'] = {},
-    ['login'] = {}
+    ['login'] = {},
+    ['keyboard'] = {}
 }
 
 windower.register_event = function(event_name, callback)
-    if event_registry[event_name] then
-        table.insert(event_registry[event_name], callback)
+    if not event_registry[event_name] then
+        event_registry[event_name] = {}
     end
+    table.insert(event_registry[event_name], callback)
 end
 windower.trigger_event = function(event_name, ...)
     local blocked = false
@@ -277,30 +280,34 @@ windower.add_to_chat = function(mode, text)
     print(text)
 end
 
+-- Corrected FFI signatures and safely loaded kernel32
 pcall(function()
     ffi.cdef[[
         uint32_t GetFileAttributesA(const char* lpFileName);
-        bool CreateDirectoryA(const char* lpPathName, void* lpSecurityAttributes);
+        int32_t CreateDirectoryA(const char* lpPathName, void* lpSecurityAttributes);
     ]]
 end)
 local bit = require('bit')
 
+-- Safely bind to kernel32 instead of default C namespace
+local kernel32 = ffi.load('kernel32')
+
 windower.file_exists = function(path)
     if type(path) ~= 'string' or path == '' then return false end
-    local success, attrs = pcall(function() return ffi.C.GetFileAttributesA(path) end)
+    local success, attrs = pcall(function() return kernel32.GetFileAttributesA(path) end)
     if not success or attrs == 0xFFFFFFFF then return false end
     return bit.band(attrs, 16) == 0
 end
 windower.dir_exists = function(path)
     if type(path) ~= 'string' or path == '' then return false end
-    local success, attrs = pcall(function() return ffi.C.GetFileAttributesA(path) end)
+    local success, attrs = pcall(function() return kernel32.GetFileAttributesA(path) end)
     if not success or attrs == 0xFFFFFFFF then return false end
     return bit.band(attrs, 16) == 16
 end
 windower.create_dir = function(path)
     if type(path) ~= 'string' or path == '' then return false end
-    local success, res = pcall(function() return ffi.C.CreateDirectoryA(path, nil) end)
-    return success and res
+    local success, res = pcall(function() return kernel32.CreateDirectoryA(path, nil) end)
+    return success and (res ~= 0)
 end
 
 windower.debug = function(...)

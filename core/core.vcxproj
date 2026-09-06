@@ -37,6 +37,7 @@
   </Target>
   <Import Project="$(SolutionDir)extern\vcpkg\scripts\buildsystems\msbuild\vcpkg.targets" />
   <ItemGroup>
+    <ClInclude Include="F:\Downloads\json.hpp" />
     <ClInclude Include="lib\d3d8.h" />
     <ClInclude Include="lib\ddraw.h" />
     <ClInclude Include="lib\dinput.h" />
@@ -46,11 +47,20 @@
     <ClInclude Include="lib\imgui\imgui.h" />
     <ClInclude Include="lib\imgui\imgui_internal.h" />
     <ClInclude Include="lib\imgui\misc\cpp\imgui_stdlib.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="src\addon\errors\package_error.hpp" />
     <ClInclude Include="src\addon\modules\class.hpp" />
     <ClInclude Include="src\addon\modules\hash.hpp" />
+    <ClInclude Include="src\addon\modules\imgui.hpp" />
+    <ClInclude Include="src\addon\modules\imgui_internal.hpp" />
     <ClInclude Include="src\addon\modules\os.hpp" />
+    <ClInclude Include="src\addon\modules\packets\packet_parser.hpp" />
+    <ClInclude Include="src\addon\modules\packets\player_state.hpp" />
     <ClInclude Include="src\addon\modules\pin.hpp" />
+    <ClInclude Include="src\addon\modules\player_scanner.hpp" />
+    <ClInclude Include="src\addon\modules\w4_shim.hpp" />
+    <ClInclude Include="src\addon\package.hpp" />
+    <ClInclude Include="src\addon\profile_manager.hpp" />
     <ClInclude Include="src\addon\unsafe.hpp" />
     <ClInclude Include="src\command_parser.hpp" />
     <ClInclude Include="src\errors\command_error.hpp" />
@@ -83,7 +93,12 @@
     <ClInclude Include="src\addon\lua_internal.hpp" />
     <ClInclude Include="src\geometry.hpp" />
     <ClInclude Include="src\guid.hpp" />
+    <ClInclude Include="src\hooks\kernel32_internal.hpp" />
+    <ClInclude Include="src\hooks\user32_internal.hpp" />
+    <ClInclude Include="src\hooks\user32_window_find.hpp" />
+    <ClInclude Include="src\hooks\user32_window_split.hpp" />
     <ClInclude Include="src\hooks\ws2_32.hpp" />
+    <ClInclude Include="src\nlohmann\json.hpp" />
     <ClInclude Include="src\packet_queue.hpp" />
     <ClInclude Include="src\settings_channel.hpp" />
     <ClInclude Include="src\crash_handler.hpp" />
@@ -107,6 +122,7 @@
     <ClInclude Include="src\hooks\kernel32.hpp" />
     <ClInclude Include="src\hooks\user32.hpp" />
     <ClInclude Include="src\hooklib\trampoline.hpp" />
+    <ClInclude Include="src\ui\addon_browser.hpp" />
     <ClInclude Include="src\ui\bitmap.hpp" />
     <ClInclude Include="src\ui\color.hpp" />
     <ClInclude Include="src\ui\commands.hpp" />
@@ -116,6 +132,10 @@
     <ClInclude Include="src\ui\cursor.hpp" />
     <ClInclude Include="src\ui\data_buffer.hpp" />
     <ClInclude Include="src\ui\data_buffer_traits.hpp" />
+    <ClInclude Include="src\ui\debug_scanner.hpp" />
+    <ClInclude Include="src\ui\debug_scanner_entity.hpp" />
+    <ClInclude Include="src\ui\debug_scanner_utils.hpp" />
+    <ClInclude Include="src\ui\debug_scanner_value.hpp" />
     <ClInclude Include="src\ui\dimension.hpp" />
     <ClInclude Include="src\ui\direction.hpp" />
     <ClInclude Include="src\ui\dwrite_iids.hpp" />
@@ -128,6 +148,11 @@
     <ClInclude Include="src\ui\mouse.hpp" />
     <ClInclude Include="src\ui\mouse_button.hpp" />
     <ClInclude Include="src\ui\mouse_scroll_axis.hpp" />
+    <ClInclude Include="src\ui\session_tracker.hpp" />
+    <ClInclude Include="src\ui\style_manager.hpp" />
+    <ClInclude Include="src\ui\system_diagnostics.hpp" />
+    <ClInclude Include="src\ui\tabs\tab_addons.hpp" />
+    <ClInclude Include="src\ui\tabs\tab_styling.hpp" />
     <ClInclude Include="src\ui\thickness.hpp" />
     <ClInclude Include="src\ui\patch.hpp" />
     <ClInclude Include="src\ui\primitives.hpp" />
@@ -164,6 +189,7 @@
     <ClInclude Include="src\unicode.hpp" />
     <ClInclude Include="src\utilities\coroutine.hpp" />
     <ClInclude Include="src\utilities\debug_helpers.hpp" />
+    <ClInclude Include="src\utilities\iat_hook.hpp" />
     <ClInclude Include="src\utilities\logger.hpp" />
     <ClInclude Include="src\utilities\null_output.hpp" />
     <ClInclude Include="src\utilities\paths.hpp" />
@@ -189,10 +215,26 @@
     <ClCompile Include="lib\imgui\imgui_widgets.cpp" />
     <ClCompile Include="lib\imgui\misc\cpp\imgui_stdlib.cpp" />
     <ClCompile Include="src\addon\errors\package_error.cpp" />
+    <ClCompile Include="src\addon\lua_execution.cpp" />
+    <ClCompile Include="src\addon\lua_stack.cpp" />
+    <ClCompile Include="src\addon\lua_state.cpp" />
+    <ClCompile Include="src\addon\lua_utils.cpp" />
     <ClCompile Include="src\addon\modules\class.cpp" />
     <ClCompile Include="src\addon\modules\hash.cpp" />
+    <ClCompile Include="src\addon\modules\imgui.cpp" />
+    <ClCompile Include="src\addon\modules\imgui_layout.cpp" />
+    <ClCompile Include="src\addon\modules\imgui_style.cpp" />
+    <ClCompile Include="src\addon\modules\imgui_widgets.cpp" />
+    <ClCompile Include="src\addon\modules\imgui_window.cpp" />
     <ClCompile Include="src\addon\modules\os.cpp" />
+    <ClCompile Include="src\addon\modules\packets\packet_parser.cpp" />
     <ClCompile Include="src\addon\modules\pin.cpp" />
+    <ClCompile Include="src\addon\modules\player_scanner.cpp" />
+    <ClCompile Include="src\addon\modules\w4_shim.cpp" />
+    <ClCompile Include="src\addon\package.cpp" />
+    <ClCompile Include="src\addon\package_manager_graph.cpp" />
+    <ClCompile Include="src\addon\package_manager_network.cpp" />
+    <ClCompile Include="src\addon\profile_manager.cpp" />
     <ClCompile Include="src\addon\unsafe.cpp" />
     <ClCompile Include="src\command_parser.cpp" />
     <ClCompile Include="src\errors\command_error.cpp" />
@@ -200,7 +242,6 @@
     <ClCompile Include="src\addon\addon.cpp" />
     <ClCompile Include="src\addon\addon_manager.cpp" />
     <ClCompile Include="src\addon\error.cpp" />
-    <ClCompile Include="src\addon\lua.cpp" />
     <ClCompile Include="src\addon\modules\chat.cpp" />
     <ClCompile Include="src\addon\modules\command.cpp" />
     <ClCompile Include="src\addon\modules\event.cpp" />
@@ -229,8 +270,20 @@
     <ClCompile Include="src\hooks\ffximain.cpp" />
     <ClCompile Include="src\hooks\imm32.cpp" />
     <ClCompile Include="src\hooks\advapi32.cpp" />
-    <ClCompile Include="src\addon\lua_internal.cpp" />
+    <ClCompile Include="src\hooks\kernel32_misc.cpp" />
+    <ClCompile Include="src\hooks\kernel32_process.cpp" />
+    <ClCompile Include="src\hooks\kernel32_sync.cpp" />
+    <ClCompile Include="src\hooks\user32_audio.cpp" />
+    <ClCompile Include="src\hooks\user32_input.cpp" />
+    <ClCompile Include="src\hooks\user32_window.cpp" />
+    <ClCompile Include="src\hooks\user32_window_class.cpp" />
+    <ClCompile Include="src\hooks\user32_window_create.cpp" />
+    <ClCompile Include="src\hooks\user32_window_find.cpp" />
+    <ClCompile Include="src\hooks\user32_window_msg.cpp" />
+    <ClCompile Include="src\hooks\user32_window_state.cpp" />
     <ClCompile Include="src\library.cpp" />
+    <ClCompile Include="src\lua_imgui.cpp" />
+    <ClCompile Include="src\lua_window.cpp" />
     <ClCompile Include="src\package_command_handlers.cpp" />
     <ClCompile Include="src\packet_queue.cpp" />
     <ClCompile Include="src\scanner.cpp" />
@@ -245,18 +298,27 @@
     <ClCompile Include="src\hooks\ws2_32.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\settings_channel.cpp" />
+    <ClCompile Include="src\ui\addon_browser.cpp" />
     <ClCompile Include="src\ui\bitmap.cpp" />
     <ClCompile Include="src\ui\commands.cpp" />
     <ClCompile Include="src\ui\command_buffer.cpp" />
     <ClCompile Include="src\ui\cursor.cpp" />
     <ClCompile Include="src\ui\data_buffer_traits.cpp" />
     <ClCompile Include="src\ui\context.cpp" />
+    <ClCompile Include="src\ui\debug_scanner.cpp" />
+    <ClCompile Include="src\ui\debug_scanner_entity.cpp" />
+    <ClCompile Include="src\ui\debug_scanner_value.cpp" />
     <ClCompile Include="src\ui\engine_console.cpp" />
     <ClCompile Include="src\ui\ffxi_image.cpp" />
     <ClCompile Include="src\ui\inline_object.cpp" />
     <ClCompile Include="src\ui\markdown.cpp" />
     <ClCompile Include="src\ui\mouse.cpp" />
     <ClCompile Include="src\ui\primitives.cpp" />
+    <ClCompile Include="src\ui\session_tracker.cpp" />
+    <ClCompile Include="src\ui\style_manager.cpp" />
+    <ClCompile Include="src\ui\system_diagnostics.cpp" />
+    <ClCompile Include="src\ui\tabs\tab_addons.cpp" />
+    <ClCompile Include="src\ui\tabs\tab_styling.cpp" />
     <ClCompile Include="src\ui\texture_cache.cpp" />
     <ClCompile Include="src\ui\texture_loaders.cpp" />
     <ClCompile Include="src\ui\text_layout_engine.cpp" />
@@ -281,6 +343,7 @@
     <ClCompile Include="src\ui\window_manager.cpp" />
     <ClCompile Include="src\unicode.cpp" />
     <ClCompile Include="src\utilities\debug_helpers.cpp" />
+    <ClCompile Include="src\utilities\iat_hook.cpp" />
     <ClCompile Include="src\utilities\logger.cpp" />
     <ClCompile Include="src\utilities\module_info.cpp" />
     <ClCompile Include="src\utilities\paths.cpp" />
@@ -290,6 +353,8 @@
     <ClCompile Include="src\utilities\xml.cpp" />
     <ClCompile Include="src\wrappers\direct_3d.cpp" />
     <ClCompile Include="src\wrappers\direct_3d_device.cpp" />
+    <ClCompile Include="src\wrappers\direct_3d_device_pipeline.cpp" />
+    <ClCompile Include="src\wrappers\direct_3d_device_resources.cpp" />
     <ClCompile Include="src\wrappers\direct_draw.cpp" />
     <ClCompile Include="src\wrappers\direct_draw_surface.cpp" />
     <ClCompile Include="src\wrappers\direct_input.cpp" />
@@ -298,9 +363,11 @@
     <ClCompile Include="src\errors\windower_error.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="..\..\..\Users\volia\OneDrive\Desktop\settings.png" />
     <Image Include="res\favicon.ico" />
     <Image Include="res\icon.ico" />
     <Image Include="res\icons.png" />
+    <Image Include="res\info.png" />
     <Image Include="res\layout-grid.100.png" />
     <Image Include="res\layout-grid.125.png" />
     <Image Include="res\layout-grid.150.png" />
@@ -314,6 +381,8 @@
     <Image Include="res\layout-grid.350.png" />
     <Image Include="res\layout-grid.375.png" />
     <Image Include="res\layout-grid.400.png" />
+    <Image Include="res\load.png" />
+    <Image Include="res\settings.png" />
     <Image Include="res\stable\icon.ico" />
     <Image Include="res\stable\skin.100.png" />
     <Image Include="res\stable\skin.125.png" />
@@ -355,6 +424,7 @@
     <Image Include="res\test\skin.350.png" />
     <Image Include="res\test\skin.375.png" />
     <Image Include="res\test\skin.400.png" />
+    <Image Include="res\unload.png" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="res\client-commands.txt" />
@@ -413,6 +483,7 @@
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <CodeAnalysisTreatWarningsAsErrors>false</CodeAnalysisTreatWarningsAsErrors>
     <IncludePath>$(UniversalCRTSdkDir)Include\$(TargetPlatformVersion)\ucrt;$(IncludePath)</IncludePath>
+    <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='release|Win32'">
     <OutDir>$(SolutionDir)build\bin\$(Configuration)\</OutDir>
@@ -421,6 +492,7 @@
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
     <IncludePath>$(UniversalCRTSdkDir)Include\$(TargetPlatformVersion)\ucrt;$(IncludePath)</IncludePath>
+    <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='debug|Win32'">
     <ClCompile>
@@ -446,6 +518,7 @@
       <AdditionalLibraryDirectories>$(SolutionDir)build\lib\luajit\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ModuleDefinitionFile>$(ProjectName).def</ModuleDefinitionFile>
       <AdditionalDependencies>lua51.static.lib;shlwapi.lib;dbghelp.lib;winhttp.lib;imm32.lib;dwrite.lib;d2d1.lib;windowscodecs.lib;icu.lib;psapi.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
     </Link>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(IntDir)src;$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -462,6 +535,10 @@ copy /Y "$(SolutionDir)extern\luajit\src\lua51.dll" "$(SolutionDir)build\lib\lua
 copy /Y "$(SolutionDir)extern\luajit\src\lua51.dll" "$(SolutionDir)build\bin\$(Configuration)\lua51.dll"
 xcopy /E /I /Y "$(SolutionDir)extern\luajit\src\jit\*" "$(SolutionDir)build\lib\luajit\$(Configuration)\lua\jit\"</Command>
     </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>
+      </Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='release|Win32'">
     <ClCompile>
@@ -498,6 +575,7 @@ xcopy /E /I /Y "$(SolutionDir)extern\luajit\src\jit\*" "$(SolutionDir)build\lib\
       <AdditionalDependencies>lua51.static.lib;shlwapi.lib;dbghelp.lib;winhttp.lib;imm32.lib;dwrite.lib;d2d1.lib;windowscodecs.lib;icu.lib;psapi.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <GenerateMapFile>true</GenerateMapFile>
+      <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
     </Link>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(IntDir)src;$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -514,6 +592,10 @@ copy /Y "$(SolutionDir)extern\luajit\src\lua51.dll" "$(SolutionDir)build\lib\lua
 copy /Y "$(SolutionDir)extern\luajit\src\lua51.dll" "$(SolutionDir)build\bin\$(Configuration)\lua51.dll"
 xcopy /E /I /Y "$(SolutionDir)extern\luajit\src\jit\*" "$(SolutionDir)build\lib\luajit\$(Configuration)\lua\jit\"</Command>
     </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>
+      </Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
