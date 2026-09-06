@@ -53,10 +53,10 @@ jobs:
         .\vcpkg integrate install
       shell: pwsh
 
-    # CodeQL must observe the code being compiled to map out the C++/C# logic
+    # CodeQL must observe the code being compiled. We MUST disable Node Reuse and force a clean build!
     - name: Build Solution
       run: |
-        msbuild nextxi.sln -t:'restore;build' -p:configuration=release -p:PlatformToolset=v143 -p:TreatWarningsAsErrors=false -p:RunCodeAnalysis=false -m
+        msbuild nextxi.sln -t:'clean;restore;build' -p:configuration=release -p:PlatformToolset=v143 -p:TreatWarningsAsErrors=false -p:RunCodeAnalysis=false -p:UseSharedCompilation=false -nodeReuse:false -m
       shell: pwsh
 
     # Finalizes the scan and uploads results to the GitHub Security tab
