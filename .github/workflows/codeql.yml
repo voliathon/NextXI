@@ -1,0 +1,85 @@
+name: "CodeQL Analysis"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    - cron: '0 12 * * 1' # Runs automatically every Monday
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: windows-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # CodeQL supports both C++ and C#
+        language: [ 'cpp', 'csharp' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    # Initializes CodeQL and loads the 'security-and-quality' suite
+    # This suite is what gives you warnings/best-practices, not just critical CVEs
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        queries: security-and-quality
+
+    # --- Standard Build Environment Setup ---
+    - name: Set up build environment
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Set up NuGet
+      uses: nuget/setup-nuget@v2
+
+    - name: Setup and Bootstrap vcpkg
+      run: |
+        New-Item -ItemType Directory -Force -Path extern
+        git clone https://github.com/microsoft/vcpkg.git extern/vcpkg
+        cd extern\vcpkg
+        .\bootstrap-vcpkg.bat
+        .\vcpkg integrate install
+      shell: pwsh
+
+    # CodeQL must observe the code being compiled. We MUST disable Node Reuse and force a clean build!
+    - name: Build Solution
+      run: |
+        msbuild nextxi.sln -t:'clean;restore;build' -p:configuration=release -p:PlatformToolset=v143 -p:TreatWarningsAsErrors=false -p:RunCodeAnalysis=false -p:UseSharedCompilation=false -nodeReuse:false -m
+      shell: pwsh
+
+    # 1. Finalizes the scan but STOPS it from uploading automatically
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"
+        upload: failure-only
+        output: sarif-results
+
+    # 2. Strips out all alerts from the build/ and extern/ folders
+    - name: Filter SARIF
+      uses: advanced-security/filter-sarif@v1
+      with:
+        patterns: |
+          -extern/**/*
+          -build/**/*
+        input: sarif-results/${{ matrix.language }}.sarif
+        output: sarif-results/${{ matrix.language }}.sarif
+
+    # 3. Uploads the cleaned results to the GitHub Security tab
+    - name: Upload Cleaned SARIF
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: sarif-results/${{ matrix.language }}.sarif
+        category: "/language:${{matrix.language}}"
