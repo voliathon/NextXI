@@ -1,5 +1,6 @@
 #include "command_manager.hpp"
 #include "command_parser.hpp"
+#include "core.hpp"
 
 #include "addon/modules/command.hpp"
 #include "errors/command_error.hpp"
@@ -161,17 +162,13 @@ void windower::command_manager::validate_command(
 void windower::command_manager::handle_command(
     std::u8string_view command_string, command_source const source)
 {
-    std::u8string expanded;
+    // Echo command to console
+    std::u8string const log_command = u8"[cmd] > " + std::u8string{ command_string };
+    windower::core::instance().output(u8"", log_command);
 
-    // CAVEMAN FIX: Intercept Windower 4 muscle memory before parsing!
+    std::u8string expanded;
     std::u8string legacy_fix;
-    if (command_string.starts_with(u8"//lua "))
-    {
-        legacy_fix.append(u8"/");
-        legacy_fix.append(command_string.substr(6));
-        command_string = legacy_fix;
-    }
-    else if (command_string.starts_with(u8"//"))
+    if (command_string.starts_with(u8"//"))
     {
         legacy_fix.append(u8"/");
         legacy_fix.append(command_string.substr(2));
@@ -179,20 +176,18 @@ void windower::command_manager::handle_command(
     }
 
     auto [component, command] = command_parser::parse_command(command_string);
-
     if (!component)
     {
         if (auto alias = resolve_alias(command_parser::substring(command_string, command)))
         {
             expanded.append(*alias);
             expanded.append(command_string.substr(command.second));
-            command_string    = expanded;
+            command_string = expanded;
             auto const result = command_parser::parse_command(command_string);
-            component         = result.first;
-            command           = result.second;
+            component = result.first;
+            command = result.second;
         }
     }
-
     while (auto descriptor = find(command_string, component, command))
     {
         auto lock = descriptor->tag.lock();
@@ -225,18 +220,16 @@ void windower::command_manager::handle_command(
         {
             throw;
         }
-        catch (std::exception const& e) // Name the exception!
+        catch (std::exception const& e)
         {
-            // Do not throw away the inner Lua error! Chain them together!
             std::throw_with_nested(command_error{ u8"CMD:X1", command_string });
         }
     }
-
     if (component || !trigger_unknown_command(command_string, source))
     {
         throw syntax_error{
             u8"CMD:L2", command_string, command.first, command.first,
-            command.second};
+            command.second };
     }
 }
 

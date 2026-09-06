@@ -58,7 +58,7 @@
     <ClInclude Include="src\addon\modules\packets\player_state.hpp" />
     <ClInclude Include="src\addon\modules\pin.hpp" />
     <ClInclude Include="src\addon\modules\player_scanner.hpp" />
-    <ClInclude Include="src\addon\modules\w4_shim.hpp" />
+    <ClInclude Include="src\addon\modules\windower_shim\shim.hpp" />
     <ClInclude Include="src\addon\package.hpp" />
     <ClInclude Include="src\addon\profile_manager.hpp" />
     <ClInclude Include="src\addon\unsafe.hpp" />
@@ -230,7 +230,10 @@
     <ClCompile Include="src\addon\modules\packets\packet_parser.cpp" />
     <ClCompile Include="src\addon\modules\pin.cpp" />
     <ClCompile Include="src\addon\modules\player_scanner.cpp" />
-    <ClCompile Include="src\addon\modules\w4_shim.cpp" />
+    <ClCompile Include="src\addon\modules\windower_shim\shim_chat.cpp" />
+    <ClCompile Include="src\addon\modules\windower_shim\shim_core.cpp" />
+    <ClCompile Include="src\addon\modules\windower_shim\shim_events.cpp" />
+    <ClCompile Include="src\addon\modules\windower_shim\shim_ffxi.cpp" />
     <ClCompile Include="src\addon\package.cpp" />
     <ClCompile Include="src\addon\package_manager_graph.cpp" />
     <ClCompile Include="src\addon\package_manager_network.cpp" />

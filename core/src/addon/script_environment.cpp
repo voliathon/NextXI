@@ -105,6 +105,14 @@ void windower::script_environment::run_until_idle()
 
 void windower::script_environment::execute(std::u8string_view name) const
 {
+    // --- Kill the ghost startup script silently ---
+    // The client automatically fires "/exec init" on boot. We ignore it safely here
+    // since we now rely entirely on the JSON profile manager for startup logic.
+    if (name == u8"init")
+    {
+        return;
+    }
+
     auto path = windower_path() / u8"scripts" / name;
     path += u8".lua";
     std::ifstream stream{ path, std::ios::binary };
