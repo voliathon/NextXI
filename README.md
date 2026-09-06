@@ -10,9 +10,12 @@ NextXI is a C++20 engine wrapper and C# .NET launcher for Final Fantasy XI that 
 
 **Prerequisites:**
 * Windows 10 or later
+* .NET 10 Desktop Runtime (x86)
 * Visual Studio 2022 (C++ Desktop and .NET Desktop workloads)
 * vcpkg (for C++ package management)
 * PlayOnline Viewer and Final Fantasy XI client
+
+> **Linux & Steam Deck Note:** If you are running NextXI via WINE or Proton, you must install the .NET 10 Desktop Runtime into your prefix before running the launcher. You can do this via `winetricks dotnetdesktop10` or by executing the Windows installer directly inside your prefix.
 
 **Installation:**
 ```cmd
