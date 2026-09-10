@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <package>
-    <name>addon_encyclopedia</name>
+    <name>nextxi_encyclopedia</name>
     <description>Encyclopedia for NextXI Addons</description>
     <author>Voliathon</author>
     <version>1.0</version>

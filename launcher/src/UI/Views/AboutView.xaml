@@ -80,7 +80,7 @@ SOFTWARE.
             </Hyperlink>
         </TextBlock>
 
-        <!-- Copyright and NextXI Acknowledgments -->
+        <!-- Copyright and NextXI Acknowledgements -->
         <TextBlock Grid.ColumnSpan="2" Margin="12,0" Grid.Row="9" FontSize="12" MinHeight="16" LineHeight="18" Foreground="{StaticResource BaseMedium}">Copyright © 2026 NextXI Contributors. All rights reserved.</TextBlock>
         <ScrollViewer Grid.ColumnSpan="2" Margin="0,12,0,0" Grid.Row="10" Height="150" Padding="12,0" IsTabStop="True">
             <Grid Margin="0">
@@ -94,7 +94,7 @@ SOFTWARE.
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock FontSize="12" FontWeight="Bold" TextWrapping="Wrap" LineHeight="18" Padding="0" Foreground="{StaticResource BaseMedium}" Margin="0,-4,0,0" Text="Acknowledgments &amp; History:"/>
+                <TextBlock FontSize="12" FontWeight="Bold" TextWrapping="Wrap" LineHeight="18" Padding="0" Foreground="{StaticResource BaseMedium}" Margin="0,-4,0,0" Text="Acknowledgements &amp; History:"/>
 
                 <TextBlock FontSize="12" TextWrapping="Wrap" LineHeight="18" Padding="0" TextAlignment="Justify" Grid.Row="1" Foreground="{StaticResource BaseMedium}" Margin="0,4,0,0">
                     NextXI is a modernized, high-performance injection engine. It was originally forked from the Fenestra project but has been heavily modified and architecturally rewritten to support self-sufficient offline dependencies, native C++ ImGui rendering, and an isolated Lua Vault system.

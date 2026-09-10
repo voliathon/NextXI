@@ -19,7 +19,8 @@ namespace windower::network {
 
     class player_state_manager {
     public:
-        static player_state_manager& get() {
+        static player_state_manager& get() noexcept
+        {
             static player_state_manager instance;
             return instance;
         }
